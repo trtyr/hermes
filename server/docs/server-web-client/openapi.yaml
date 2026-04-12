@@ -1,0 +1,1970 @@
+openapi: 3.1.0
+info:
+    title: Hermes Server API
+    version: 0.1.0
+    description: |
+        Hermes server management API.
+
+        Current architecture:
+        - server: control plane
+        - web_client: operations UI
+        - agent client: office machine executor
+servers:
+    - url: http://127.0.0.1:3000
+      description: Local development
+tags:
+    - name: system
+    - name: auth
+    - name: dashboard
+    - name: agents
+    - name: command_sessions
+    - name: tasks
+    - name: audits
+    - name: events
+components:
+    securitySchemes:
+        bearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: Session Token or Legacy API Token
+        xApiToken:
+            type: apiKey
+            in: header
+            name: x-api-token
+    parameters:
+        Limit:
+            name: limit
+            in: query
+            schema:
+                type: integer
+                minimum: 1
+                maximum: 200
+                default: 50
+        Offset:
+            name: offset
+            in: query
+            schema:
+                type: integer
+                minimum: 0
+                default: 0
+        OperatorHeader:
+            name: x-operator
+            in: header
+            required: false
+            schema:
+                type: string
+            description: Optional operator identity recorded in audit logs.
+    schemas:
+        HealthResponse:
+            type: object
+            required: [status]
+            properties:
+                status:
+                    type: string
+                    example: ok
+        HostLoadAverage:
+            type: object
+            required: [one, five, fifteen]
+            properties:
+                one:
+                    type: number
+                    format: double
+                five:
+                    type: number
+                    format: double
+                fifteen:
+                    type: number
+                    format: double
+        HostMemorySummary:
+            type: object
+            required: [total_bytes, used_bytes, available_bytes]
+            properties:
+                total_bytes:
+                    type: integer
+                used_bytes:
+                    type: integer
+                available_bytes:
+                    type: integer
+        HostOpsSummary:
+            type: object
+            required:
+                - hostname
+                - os_name
+                - os_version
+                - kernel_version
+                - architecture
+                - uptime_seconds
+                - cpu_cores
+                - load_average
+                - memory
+            properties:
+                hostname:
+                    type: [string, "null"]
+                os_name:
+                    type: [string, "null"]
+                os_version:
+                    type: [string, "null"]
+                kernel_version:
+                    type: [string, "null"]
+                architecture:
+                    type: [string, "null"]
+                uptime_seconds:
+                    type: integer
+                cpu_cores:
+                    type: [integer, "null"]
+                load_average:
+                    $ref: "#/components/schemas/HostLoadAverage"
+                memory:
+                    $ref: "#/components/schemas/HostMemorySummary"
+        AgentOverviewSummary:
+            type: object
+            required: [total, online, offline, disabled, connected_sessions]
+            properties:
+                total:
+                    type: integer
+                online:
+                    type: integer
+                offline:
+                    type: integer
+                disabled:
+                    type: integer
+                connected_sessions:
+                    type: integer
+        ListenerKindSummary:
+            type: object
+            required: [tcp_json, https_json, private_proto]
+            properties:
+                tcp_json:
+                    type: integer
+                https_json:
+                    type: integer
+                private_proto:
+                    type: integer
+        ListenerOverviewSummary:
+            type: object
+            required:
+                [
+                    total,
+                    enabled,
+                    disabled,
+                    running,
+                    stopped,
+                    starting,
+                    error,
+                    by_kind,
+                ]
+            properties:
+                total:
+                    type: integer
+                enabled:
+                    type: integer
+                disabled:
+                    type: integer
+                running:
+                    type: integer
+                stopped:
+                    type: integer
+                starting:
+                    type: integer
+                error:
+                    type: integer
+                by_kind:
+                    $ref: "#/components/schemas/ListenerKindSummary"
+        DashboardOverviewResponse:
+            type: object
+            required: [generated_at, server, agents, listeners]
+            properties:
+                generated_at:
+                    type: integer
+                    description: Unix timestamp in milliseconds
+                server:
+                    $ref: "#/components/schemas/HostOpsSummary"
+                agents:
+                    $ref: "#/components/schemas/AgentOverviewSummary"
+                listeners:
+                    $ref: "#/components/schemas/ListenerOverviewSummary"
+        ApiResponse:
+            type: object
+            required: [success, detail, task_id]
+            properties:
+                success:
+                    type: boolean
+                detail:
+                    type: string
+                task_id:
+                    type: [string, "null"]
+        AuthLoginRequest:
+            type: object
+            required: [username, password]
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+        AuthLoginResponse:
+            type: object
+            required: [success, detail, session_token, username, expires_at]
+            properties:
+                success:
+                    type: boolean
+                detail:
+                    type: string
+                session_token:
+                    type: string
+                username:
+                    type: string
+                expires_at:
+                    type: integer
+        AuthMeResponse:
+            type: object
+            required: [authenticated, username, expires_at]
+            properties:
+                authenticated:
+                    type: boolean
+                username:
+                    type: string
+                expires_at:
+                    type: integer
+        DispatchTaskRequest:
+            type: object
+            required: [command]
+            properties:
+                command:
+                    type: string
+                    example: collect_logs
+                payload:
+                    type: [string, "null"]
+                    example: '{"days":3}'
+        AgentBeaconConfigRequest:
+            type: object
+            required: [sleep_interval, jitter]
+            properties:
+                sleep_interval:
+                    type: integer
+                    minimum: 1
+                jitter:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+        AgentSnapshot:
+            type: object
+            required:
+                - session_id
+                - agent_id
+                - listener_id
+                - listener_name
+                - hostname
+                - username
+                - os
+                - arch
+                - pid
+                - internal_ip
+                - external_ip
+                - tags
+                - sleep_interval
+                - jitter
+                - peer_addr
+                - connected_at
+                - last_seen
+            properties:
+                session_id:
+                    type: integer
+                agent_id:
+                    type: [string, "null"]
+                listener_id:
+                    type: [integer, "null"]
+                listener_name:
+                    type: [string, "null"]
+                hostname:
+                    type: [string, "null"]
+                username:
+                    type: [string, "null"]
+                os:
+                    type: [string, "null"]
+                arch:
+                    type: [string, "null"]
+                pid:
+                    type: [integer, "null"]
+                internal_ip:
+                    type: [string, "null"]
+                external_ip:
+                    type: [string, "null"]
+                tags:
+                    type: array
+                    items:
+                        type: string
+                sleep_interval:
+                    type: integer
+                jitter:
+                    type: integer
+                peer_addr:
+                    type: string
+                connected_at:
+                    type: integer
+                last_seen:
+                    type: integer
+        AgentRecord:
+            type: object
+            required:
+                - agent_id
+                - session_id
+                - listener_id
+                - listener_name
+                - hostname
+                - username
+                - os
+                - arch
+                - pid
+                - internal_ip
+                - external_ip
+                - tags
+                - sleep_interval
+                - jitter
+                - peer_addr
+                - connected_at
+                - last_seen
+                - is_online
+                - is_disabled
+                - updated_at
+            properties:
+                agent_id:
+                    type: string
+                session_id:
+                    type: [integer, "null"]
+                listener_id:
+                    type: [integer, "null"]
+                listener_name:
+                    type: [string, "null"]
+                hostname:
+                    type: [string, "null"]
+                username:
+                    type: [string, "null"]
+                os:
+                    type: [string, "null"]
+                arch:
+                    type: [string, "null"]
+                pid:
+                    type: [integer, "null"]
+                internal_ip:
+                    type: [string, "null"]
+                external_ip:
+                    type: [string, "null"]
+                tags:
+                    type: array
+                    items:
+                        type: string
+                sleep_interval:
+                    type: integer
+                jitter:
+                    type: integer
+                peer_addr:
+                    type: string
+                connected_at:
+                    type: integer
+                last_seen:
+                    type: integer
+                is_online:
+                    type: boolean
+                is_disabled:
+                    type: boolean
+                updated_at:
+                    type: integer
+        TaskStatus:
+            type: string
+            enum:
+                [
+                    pending,
+                    dispatched,
+                    running,
+                    succeeded,
+                    failed,
+                    cancelled,
+                    partial,
+                ]
+        TaskSnapshot:
+            type: object
+            required:
+                - task_id
+                - parent_task_id
+                - target_agent_id
+                - command
+                - payload
+                - status
+                - created_at
+                - updated_at
+                - success
+                - output
+                - children
+            properties:
+                task_id:
+                    type: string
+                parent_task_id:
+                    type: [string, "null"]
+                target_agent_id:
+                    type: [string, "null"]
+                command:
+                    type: string
+                payload:
+                    type: [string, "null"]
+                status:
+                    $ref: "#/components/schemas/TaskStatus"
+                created_at:
+                    type: integer
+                updated_at:
+                    type: integer
+                success:
+                    type: [boolean, "null"]
+                output:
+                    type: [string, "null"]
+                children:
+                    type: array
+                    items:
+                        type: string
+        AuditRecord:
+            type: object
+            required:
+                - audit_id
+                - operator
+                - action
+                - target_kind
+                - target_id
+                - detail
+                - created_at
+            properties:
+                audit_id:
+                    type: integer
+                operator:
+                    type: string
+                action:
+                    type: string
+                target_kind:
+                    type: string
+                target_id:
+                    type: [string, "null"]
+                detail:
+                    type: [string, "null"]
+                created_at:
+                    type: integer
+        AgentsResponse:
+            type: object
+            required: [agents]
+            properties:
+                agents:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/AgentSnapshot"
+        AgentRecordsResponse:
+            type: object
+            required: [agents, total, limit, offset]
+            properties:
+                agents:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/AgentRecord"
+                total:
+                    type: integer
+                limit:
+                    type: integer
+                offset:
+                    type: integer
+        AgentMutationResponse:
+            type: object
+            required: [success, detail, agent]
+            properties:
+                success:
+                    type: boolean
+                detail:
+                    type: string
+                agent:
+                    $ref: "#/components/schemas/AgentRecord"
+        TasksResponse:
+            type: object
+            required: [tasks, total, limit, offset]
+            properties:
+                tasks:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/TaskSnapshot"
+                total:
+                    type: integer
+                limit:
+                    type: integer
+                offset:
+                    type: integer
+        AuditsResponse:
+            type: object
+            required: [audits, total, limit, offset]
+            properties:
+                audits:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/AuditRecord"
+                total:
+                    type: integer
+                limit:
+                    type: integer
+                offset:
+                    type: integer
+        CommandSessionStatus:
+            type: string
+            enum: [open, closed]
+        CommandSessionSnapshot:
+            type: object
+            required:
+                [
+                    command_session_id,
+                    agent_id,
+                    cwd,
+                    status,
+                    created_by,
+                    created_at,
+                    last_active_at,
+                ]
+            properties:
+                command_session_id:
+                    type: string
+                agent_id:
+                    type: string
+                cwd:
+                    type: string
+                status:
+                    $ref: "#/components/schemas/CommandSessionStatus"
+                created_by:
+                    type: string
+                created_at:
+                    type: integer
+                last_active_at:
+                    type: integer
+        CommandSessionResult:
+            type: object
+            required:
+                [
+                    command_session_id,
+                    agent_id,
+                    request_id,
+                    line,
+                    cwd_before,
+                    cwd_after,
+                    exit_code,
+                    stdout,
+                    stderr,
+                    success,
+                    finished_at,
+                ]
+            properties:
+                command_session_id:
+                    type: string
+                agent_id:
+                    type: string
+                request_id:
+                    type: string
+                line:
+                    type: string
+                cwd_before:
+                    type: string
+                cwd_after:
+                    type: string
+                exit_code:
+                    type: integer
+                stdout:
+                    type: string
+                stderr:
+                    type: string
+                success:
+                    type: boolean
+                finished_at:
+                    type: integer
+        CommandExecutionStatus:
+            type: string
+            enum:
+                [
+                    queued,
+                    dispatched,
+                    running,
+                    succeeded,
+                    failed,
+                    cancelled,
+                    dropped,
+                ]
+        CommandExecutionSnapshot:
+            type: object
+            required:
+                - command_id
+                - command_session_id
+                - agent_id
+                - line
+                - status
+                - queued_at
+                - updated_at
+            properties:
+                command_id:
+                    type: string
+                command_session_id:
+                    type: string
+                agent_id:
+                    type: string
+                line:
+                    type: string
+                status:
+                    $ref: "#/components/schemas/CommandExecutionStatus"
+                queued_at:
+                    type: integer
+                updated_at:
+                    type: integer
+                dispatched_at:
+                    type: integer
+                    nullable: true
+                started_at:
+                    type: integer
+                    nullable: true
+                finished_at:
+                    type: integer
+                    nullable: true
+                cwd_before:
+                    type: string
+                    nullable: true
+                cwd_after:
+                    type: string
+                    nullable: true
+                exit_code:
+                    type: integer
+                    nullable: true
+                stdout:
+                    type: string
+                    nullable: true
+                stderr:
+                    type: string
+                    nullable: true
+                success:
+                    type: boolean
+                    nullable: true
+        CommandSessionsResponse:
+            type: object
+            required: [sessions, total, limit, offset]
+            properties:
+                sessions:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CommandSessionSnapshot"
+                total:
+                    type: integer
+                limit:
+                    type: integer
+                offset:
+                    type: integer
+        CommandExecutionsResponse:
+            type: object
+            required: [commands, total, limit, offset]
+            properties:
+                commands:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/CommandExecutionSnapshot"
+                total:
+                    type: integer
+                limit:
+                    type: integer
+                offset:
+                    type: integer
+        CommandSessionCreateResponse:
+            type: object
+            required: [success, detail, session]
+            properties:
+                success:
+                    type: boolean
+                detail:
+                    type: string
+                session:
+                    $ref: "#/components/schemas/CommandSessionSnapshot"
+        CommandSessionExecuteRequest:
+            type: object
+            required: [line]
+            properties:
+                line:
+                    type: string
+        CommandSessionExecuteResponse:
+            type: object
+            required: [success, detail, result]
+            properties:
+                success:
+                    type: boolean
+                detail:
+                    type: string
+                result:
+                    $ref: "#/components/schemas/CommandSessionResult"
+        CommandQueueResponse:
+            type: object
+            required: [success, detail, command]
+            properties:
+                success:
+                    type: boolean
+                detail:
+                    type: string
+                command:
+                    $ref: "#/components/schemas/CommandExecutionSnapshot"
+        WebEventSnapshot:
+            type: object
+            required: [type, agents]
+            properties:
+                type:
+                    type: string
+                    const: snapshot
+                agents:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/AgentSnapshot"
+        WebEventAgentConnected:
+            type: object
+            required: [type, session_id, peer_addr, connected_at]
+            properties:
+                type:
+                    type: string
+                    const: agent_connected
+                session_id:
+                    type: integer
+                peer_addr:
+                    type: string
+                connected_at:
+                    type: integer
+        WebEventAgentRegistered:
+            type: object
+            required: [type, agent]
+            properties:
+                type:
+                    type: string
+                    const: agent_registered
+                agent:
+                    $ref: "#/components/schemas/AgentSnapshot"
+        WebEventAgentHeartbeat:
+            type: object
+            required: [type, session_id, agent_id, last_seen]
+            properties:
+                type:
+                    type: string
+                    const: agent_heartbeat
+                session_id:
+                    type: integer
+                agent_id:
+                    type: [string, "null"]
+                last_seen:
+                    type: integer
+        WebEventAgentUpdated:
+            type: object
+            required: [type, agent]
+            properties:
+                type:
+                    type: string
+                    const: agent_updated
+                agent:
+                    $ref: "#/components/schemas/AgentSnapshot"
+        WebEventAgentDisconnected:
+            type: object
+            required: [type, session_id, agent_id]
+            properties:
+                type:
+                    type: string
+                    const: agent_disconnected
+                session_id:
+                    type: integer
+                agent_id:
+                    type: [string, "null"]
+        WebEventTaskDispatched:
+            type: object
+            required: [type, task_id, target_agent_id, command, payload]
+            properties:
+                type:
+                    type: string
+                    const: task_dispatched
+                task_id:
+                    type: string
+                target_agent_id:
+                    type: string
+                command:
+                    type: string
+                payload:
+                    type: [string, "null"]
+        WebEventTaskResult:
+            type: object
+            required: [type, task_id, agent_id, success, output]
+            properties:
+                type:
+                    type: string
+                    const: task_result
+                task_id:
+                    type: string
+                agent_id:
+                    type: [string, "null"]
+                success:
+                    type: boolean
+                output:
+                    type: string
+        WebEventTaskCancelledRequested:
+            type: object
+            required: [type, task_id, target_agent_id]
+            properties:
+                type:
+                    type: string
+                    const: task_cancelled_requested
+                task_id:
+                    type: string
+                target_agent_id:
+                    type: [string, "null"]
+        WebEventTaskUpdated:
+            type: object
+            required: [type, task]
+            properties:
+                type:
+                    type: string
+                    const: task_updated
+                task:
+                    $ref: "#/components/schemas/TaskSnapshot"
+        WebEventAgentDisconnectRequested:
+            type: object
+            required: [type, agent_id]
+            properties:
+                type:
+                    type: string
+                    const: agent_disconnect_requested
+                agent_id:
+                    type: string
+        WebEventAgentDeleted:
+            type: object
+            required: [type, agent_id]
+            properties:
+                type:
+                    type: string
+                    const: agent_deleted
+                agent_id:
+                    type: string
+        WebEventAgentDisabled:
+            type: object
+            required: [type, agent_id]
+            properties:
+                type:
+                    type: string
+                    const: agent_disabled
+                agent_id:
+                    type: string
+        WebEventAgentEnabled:
+            type: object
+            required: [type, agent_id]
+            properties:
+                type:
+                    type: string
+                    const: agent_enabled
+                agent_id:
+                    type: string
+        WebEventCommandSessionOpened:
+            type: object
+            required: [type, session]
+            properties:
+                type:
+                    type: string
+                    const: command_session_opened
+                session:
+                    $ref: "#/components/schemas/CommandSessionSnapshot"
+        WebEventCommandSessionUpdated:
+            type: object
+            required: [type, session]
+            properties:
+                type:
+                    type: string
+                    const: command_session_updated
+                session:
+                    $ref: "#/components/schemas/CommandSessionSnapshot"
+        WebEventCommandSessionClosed:
+            type: object
+            required: [type, command_session_id, agent_id]
+            properties:
+                type:
+                    type: string
+                    const: command_session_closed
+                command_session_id:
+                    type: string
+                agent_id:
+                    type: string
+        WebEventCommandSessionResult:
+            type: object
+            required: [type, result]
+            properties:
+                type:
+                    type: string
+                    const: command_session_result
+                result:
+                    $ref: "#/components/schemas/CommandSessionResult"
+        WebEventCommandUpdated:
+            type: object
+            required: [type, command]
+            properties:
+                type:
+                    type: string
+                    const: command_updated
+                command:
+                    $ref: "#/components/schemas/CommandExecutionSnapshot"
+        WebEvent:
+            oneOf:
+                - $ref: "#/components/schemas/WebEventSnapshot"
+                - $ref: "#/components/schemas/WebEventAgentConnected"
+                - $ref: "#/components/schemas/WebEventAgentRegistered"
+                - $ref: "#/components/schemas/WebEventAgentHeartbeat"
+                - $ref: "#/components/schemas/WebEventAgentUpdated"
+                - $ref: "#/components/schemas/WebEventAgentDisconnected"
+                - $ref: "#/components/schemas/WebEventTaskDispatched"
+                - $ref: "#/components/schemas/WebEventTaskResult"
+                - $ref: "#/components/schemas/WebEventTaskCancelledRequested"
+                - $ref: "#/components/schemas/WebEventTaskUpdated"
+                - $ref: "#/components/schemas/WebEventAgentDisconnectRequested"
+                - $ref: "#/components/schemas/WebEventAgentDeleted"
+                - $ref: "#/components/schemas/WebEventAgentDisabled"
+                - $ref: "#/components/schemas/WebEventAgentEnabled"
+                - $ref: "#/components/schemas/WebEventCommandSessionOpened"
+                - $ref: "#/components/schemas/WebEventCommandSessionUpdated"
+                - $ref: "#/components/schemas/WebEventCommandSessionClosed"
+                - $ref: "#/components/schemas/WebEventCommandUpdated"
+                - $ref: "#/components/schemas/WebEventCommandSessionResult"
+paths:
+    /health:
+        get:
+            tags: [system]
+            summary: Health check
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/HealthResponse"
+    /auth/login:
+        post:
+            tags: [auth]
+            summary: Login to backend and create a session
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/AuthLoginRequest"
+            responses:
+                "200":
+                    description: Login succeeded
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AuthLoginResponse"
+                "401":
+                    description: Invalid username or password
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "503":
+                    description: Backend login is not configured
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /auth/logout:
+        post:
+            tags: [auth]
+            summary: Logout and invalidate the current backend session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            responses:
+                "200":
+                    description: Logout succeeded
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /auth/me:
+        get:
+            tags: [auth]
+            summary: Get current backend authentication identity
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            responses:
+                "200":
+                    description: Current backend auth identity
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AuthMeResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /dashboard/stats:
+        get:
+            tags: [dashboard]
+            summary: Dashboard overview stats
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            responses:
+                "200":
+                    description: Overview snapshot for server, agents, and listeners
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/DashboardOverviewResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents:
+        get:
+            tags: [agents]
+            summary: List online agents
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            responses:
+                "200":
+                    description: Online agent snapshots
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentsResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/history:
+        get:
+            tags: [agents]
+            summary: List persisted agents
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: online
+                  in: query
+                  schema:
+                      type: boolean
+                - name: disabled
+                  in: query
+                  schema:
+                      type: boolean
+                - name: keyword
+                  in: query
+                  schema:
+                      type: string
+                - name: tag
+                  in: query
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                "200":
+                    description: Persisted agent records
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentRecordsResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}:
+        get:
+            tags: [agents]
+            summary: Get one persisted agent
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                "200":
+                    description: Agent record
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentRecord"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+        delete:
+            tags: [agents]
+            summary: Delete one persisted agent record
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "200":
+                    description: Agent record deleted
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is online and must be disconnected first
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}/disconnect:
+        post:
+            tags: [agents]
+            summary: Disconnect one online agent session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "202":
+                    description: Disconnect queued
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is already offline
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}/beacon-config:
+        post:
+            tags: [agents]
+            summary: Update one online agent beacon config
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/AgentBeaconConfigRequest"
+            responses:
+                "200":
+                    description: Agent beacon config updated and confirmed by the agent
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AgentMutationResponse"
+                "400":
+                    description: Invalid sleep_interval or jitter
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is offline, disabled, or update confirmation timed out
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}/disable:
+        post:
+            tags: [agents]
+            summary: Disable one persisted agent asset
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "202":
+                    description: Agent disabled
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is already disabled
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}/enable:
+        post:
+            tags: [agents]
+            summary: Enable one disabled agent asset
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "200":
+                    description: Agent enabled
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is not disabled
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}/command-sessions:
+        post:
+            tags: [command_sessions]
+            summary: Open one non-PTY command session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "201":
+                    description: Command session opened
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandSessionCreateResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is disabled or offline
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /agents/{agent_id}/tasks:
+        post:
+            tags: [tasks]
+            summary: Dispatch task to one agent
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DispatchTaskRequest"
+            responses:
+                "202":
+                    description: Task queued
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Agent not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Agent is disabled
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /command-sessions:
+        get:
+            tags: [command_sessions]
+            summary: List command sessions
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: agent_id
+                  in: query
+                  schema:
+                      type: string
+                - name: status
+                  in: query
+                  schema:
+                      $ref: "#/components/schemas/CommandSessionStatus"
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                "200":
+                    description: Command sessions
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandSessionsResponse"
+                "400":
+                    description: Unsupported command session status
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /command-sessions/{command_session_id}:
+        get:
+            tags: [command_sessions]
+            summary: Get one command session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: command_session_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                "200":
+                    description: Command session snapshot
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandSessionSnapshot"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Command session not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /command-sessions/{command_session_id}/commands:
+        get:
+            tags: [command_sessions]
+            summary: List queued and completed commands for one command session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: command_session_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                "200":
+                    description: Command queue snapshots
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandExecutionsResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Command session not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+        post:
+            tags: [command_sessions]
+            summary: Queue one line in a command session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: command_session_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CommandSessionExecuteRequest"
+            responses:
+                "202":
+                    description: Command queued
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandQueueResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Command session is not open or target agent unavailable
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /command-sessions/{command_session_id}/commands/{command_id}:
+        get:
+            tags: [command_sessions]
+            summary: Get one queued or completed command snapshot
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: command_session_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - name: command_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                "200":
+                    description: Command snapshot
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandExecutionSnapshot"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Command not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /command-sessions/{command_session_id}/execute:
+        post:
+            tags: [command_sessions]
+            summary: Execute one line in a command session via the server queue
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: command_session_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CommandSessionExecuteRequest"
+            responses:
+                "200":
+                    description: Command line executed
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandSessionExecuteResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Command session is not open or target agent unavailable
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /command-sessions/{command_session_id}/close:
+        post:
+            tags: [command_sessions]
+            summary: Close one command session
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: command_session_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "200":
+                    description: Command session closed
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CommandSessionCreateResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Command session unavailable
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /tasks:
+        get:
+            tags: [tasks]
+            summary: List tasks
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: status
+                  in: query
+                  schema:
+                      $ref: "#/components/schemas/TaskStatus"
+                - name: agent_id
+                  in: query
+                  schema:
+                      type: string
+                - name: keyword
+                  in: query
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                "200":
+                    description: Task list
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TasksResponse"
+                "400":
+                    description: Unsupported task status
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /tasks/{task_id}:
+        get:
+            tags: [tasks]
+            summary: Get one task
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: task_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                "200":
+                    description: Task snapshot
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TaskSnapshot"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Task not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+        delete:
+            tags: [tasks]
+            summary: Cancel one task
+            description: Cancels a task if it is still pending, dispatched, or running.
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: task_id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/OperatorHeader"
+            responses:
+                "202":
+                    description: Cancel queued
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "404":
+                    description: Task not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "409":
+                    description: Task is not cancellable
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /tasks/broadcast:
+        post:
+            tags: [tasks]
+            summary: Broadcast task to all online agents
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - $ref: "#/components/parameters/OperatorHeader"
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/DispatchTaskRequest"
+            responses:
+                "202":
+                    description: Broadcast task queued
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /audits:
+        get:
+            tags: [audits]
+            summary: List audit records
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: operator
+                  in: query
+                  schema:
+                      type: string
+                - name: action
+                  in: query
+                  schema:
+                      type: string
+                - name: target_kind
+                  in: query
+                  schema:
+                      type: string
+                - name: target_id
+                  in: query
+                  schema:
+                      type: string
+                - $ref: "#/components/parameters/Limit"
+                - $ref: "#/components/parameters/Offset"
+            responses:
+                "200":
+                    description: Audit record list
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/AuditsResponse"
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+    /events/ws:
+        get:
+            tags: [events]
+            summary: WebSocket event stream
+            description: |
+                Connect with a WebSocket client. After connect, the server sends a snapshot event first,
+                then pushes incremental agent and task events. Browser clients should prefer
+                query parameter `session_token`. Legacy `api_token` is still accepted.
+            security:
+                - bearerAuth: []
+                - xApiToken: []
+            parameters:
+                - name: session_token
+                  in: query
+                  required: false
+                  schema:
+                      type: string
+                - name: api_token
+                  in: query
+                  required: false
+                  schema:
+                      type: string
+            responses:
+                "101":
+                    description: Switching Protocols
+                "401":
+                    description: Unauthorized
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/ApiResponse"
+            x-websocket-messages:
+                inbound:
+                    description: Server currently ignores normal client messages and closes on socket close/error.
+                outbound:
+                    schema:
+                        $ref: "#/components/schemas/WebEvent"
+                    examples:
+                        snapshot:
+                            summary: Initial snapshot
+                            value:
+                                type: snapshot
+                                agents:
+                                    - session_id: 1
+                                      agent_id: agent-001
+                                      hostname: office-pc-01
+                                      username: alice
+                                      os: windows
+                                      arch: x86_64
+                                      pid: 4512
+                                      internal_ip: 10.0.0.15
+                                      external_ip: 203.0.113.5
+                                      tags: [office, windows]
+                                      sleep_interval: 15
+                                      jitter: 0
+                                      peer_addr: 10.0.0.15:53321
+                                      connected_at: 1710000000000
+                                      last_seen: 1710000050000
+                        agent_registered:
+                            summary: Agent registration event
+                            value:
+                                type: agent_registered
+                                agent:
+                                    session_id: 1
+                                    agent_id: agent-001
+                                    hostname: office-pc-01
+                                    username: alice
+                                    os: windows
+                                    arch: x86_64
+                                    pid: 4512
+                                    internal_ip: 10.0.0.15
+                                    external_ip: 203.0.113.5
+                                    tags: [office, windows]
+                                    sleep_interval: 15
+                                    jitter: 0
+                                    peer_addr: 10.0.0.15:53321
+                                    connected_at: 1710000000000
+                                    last_seen: 1710000050000
+                        agent_updated:
+                            summary: Agent runtime metadata update event
+                            value:
+                                type: agent_updated
+                                agent:
+                                    session_id: 1
+                                    agent_id: agent-001
+                                    hostname: office-pc-01
+                                    username: alice
+                                    os: windows
+                                    arch: x86_64
+                                    pid: 4512
+                                    internal_ip: 10.0.0.15
+                                    external_ip: 203.0.113.5
+                                    tags: [office, windows]
+                                    sleep_interval: 10
+                                    jitter: 20
+                                    peer_addr: 10.0.0.15:53321
+                                    connected_at: 1710000000000
+                                    last_seen: 1710000060000
+                        task_updated:
+                            summary: Task status update
+                            value:
+                                type: task_updated
+                                task:
+                                    task_id: task-12
+                                    parent_task_id: null
+                                    target_agent_id: agent-001
+                                    command: collect_logs
+                                    payload: '{"days":3}'
+                                    status: succeeded
+                                    created_at: 1710000100
+                                    updated_at: 1710000120
+                                    success: true
+                                    output: done
+                                    children: []
+                        command_updated:
+                            summary: Queued command status update
+                            value:
+                                type: command_updated
+                                command:
+                                    command_id: cmdreq-2
+                                    command_session_id: cmdsess-1
+                                    agent_id: agent-001
+                                    line: pwd
+                                    status: running
+                                    queued_at: 1710000100000
+                                    updated_at: 1710000100500
+                                    dispatched_at: 1710000100100
+                                    started_at: 1710000100500
+                                    finished_at: null
+                                    cwd_before: null
+                                    cwd_after: null
+                                    exit_code: null
+                                    stdout: null
+                                    stderr: null
+                                    success: null

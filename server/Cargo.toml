@@ -1,0 +1,30 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+axum = { version = "0.8.4", features = ["ws"] }
+base64 = "0.22"
+hmac = "0.12.1"
+getrandom = "0.3.3"
+rcgen = "0.13"
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+rustls = "0.23"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+sha2 = "0.10.9"
+sysinfo = "0.37.2"
+tokio = { version = "1.50.0", features = ["full", "test-util"] }
+tokio-rustls = "0.26"
+toml = "1.0.3"
+tower-http = { version = "0.6", features = ["cors"] }
+
+[profile.dev]
+debug = 0
+incremental = true
+
+[profile.test]
+debug = 0
+incremental = true

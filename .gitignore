@@ -1,0 +1,23 @@
+# Rust build artifacts
+target/
+
+# Node.js
+node_modules/
+dist/
+
+# Server runtime data
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.log

@@ -1,0 +1,7 @@
+[auth]
+# 登录前端的 UI 凭据
+username = "admin"
+
+# 密码的 SHA-256 哈希值 (明文是 "123456")
+# 使用哈希存储，这样即使该文件被直接下载，攻击者也无法直接得知明文密码
+password_hash = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
