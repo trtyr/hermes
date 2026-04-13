@@ -20,6 +20,7 @@ from e2e.https_listener import run as run_https_listener
 from e2e.listeners import run as run_listeners
 from e2e.lifecycle import run as run_lifecycle
 from e2e.command_session import run as run_command_session
+from e2e.full_chain import run as run_full_chain
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,6 +45,7 @@ def parse_args() -> argparse.Namespace:
             "listeners",
             "lifecycle",
             "command_session",
+            "full_chain",
         ],
     )
     return parser.parse_args()
@@ -216,6 +218,23 @@ def main() -> int:
                 json.dumps(
                     {
                         "concurrent_stress_suite": run_concurrent_stress(harness),
+                        "base_url": harness.base,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0
+        finally:
+            harness.close()
+    if args.suite == "full_chain":
+        harness = Harness("hermes-full-chain-e2e-")
+        try:
+            harness.start_server()
+            print(
+                json.dumps(
+                    {
+                        "full_chain_suite": run_full_chain(harness),
                         "base_url": harness.base,
                     },
                     ensure_ascii=False,

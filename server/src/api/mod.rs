@@ -18,7 +18,7 @@ use axum::{
     http::{HeaderMap, Method, StatusCode, header},
     middleware::{self, Next},
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, patch, post},
 };
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};
@@ -62,10 +62,15 @@ pub async fn run_http_api(
             "/agent-builds/{build_id}",
             get(agent_builds::get_agent_build),
         )
+        .route(
+            "/agent-builds/{build_id}/download",
+            get(agent_builds::download_agent_build),
+        )
         .route("/openapi.yaml", get(system::openapi_spec))
         .route("/docs", get(system::api_docs))
         .route("/agents", get(agents::list_agents))
         .route("/agents/history", get(agents::list_persisted_agents))
+        .route("/agents/{agent_id}", patch(agents::update_agent))
         .route("/agents/{agent_id}/enable", post(agents::enable_agent))
         .route("/agents/{agent_id}/disable", post(agents::disable_agent))
         .route(

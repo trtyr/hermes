@@ -214,7 +214,7 @@ impl KernelState {
             .filter(|task| {
                 matches!(
                     task.status,
-                    TaskStatus::Pending | TaskStatus::Dispatched | TaskStatus::Running | TaskStatus::CancelRequested
+                    TaskStatus::Dispatched | TaskStatus::Running | TaskStatus::CancelRequested
                 ) && (task.target_agent_id.is_some() || task.children.is_empty())
             })
             .map(|task| task.task_id.clone())

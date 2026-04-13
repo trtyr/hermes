@@ -32,6 +32,51 @@ impl TaskService {
     }
 
     pub fn dispatch(&mut self, task_id: &str, command: &str, payload: Option<&str>) {
+        // Route built-in file operations to dedicated handler
+        if super::file_ops::is_file_op(command) {
+            let sender = self.sender.clone();
+            let tid = task_id.to_string();
+            let cmd = command.to_string();
+            let pay = payload.map(String::from);
+
+            std::thread::spawn(move || {
+                match cmd.as_str() {
+                    "upload" => {
+                        if let Some(p) = pay.as_deref() {
+                            super::file_ops::handle_upload(&tid, p, &sender);
+                        } else {
+                            let _ = sender.send(AgentMessage::TaskResult {
+                                task_id: tid,
+                                success: false,
+                                output: "upload requires payload".to_string(),
+                            });
+                        }
+                    }
+                    "download" => {
+                        super::file_ops::handle_download(
+                            &tid,
+                            pay.as_deref().unwrap_or(""),
+                            &sender,
+                        );
+                    }
+                    _ => unreachable!(),
+                }
+            });
+            return;
+        }
+
+        // Route built-in system operations to dedicated handler
+        if super::sys_ops::is_sys_op(command) {
+            let sender = self.sender.clone();
+            let tid = task_id.to_string();
+            let cmd = command.to_string();
+
+            std::thread::spawn(move || {
+                super::sys_ops::handle(&tid, &cmd, &sender);
+            });
+            return;
+        }
+
         let running = Arc::clone(&self.running);
         let sender = self.sender.clone();
         let tid = task_id.to_string();

@@ -26,12 +26,28 @@
         <DesktopOutlined /> 打开独立终端
       </div>
       
-      <div class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 opacity-50 cursor-not-allowed" title="功能开发中">
+      <div 
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
+        @click="!agent?.is_disabled && emitAction('open-file-ops')"
+      >
         <FolderOpenOutlined /> 文件管理
       </div>
       
-      <div class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 opacity-50 cursor-not-allowed" title="功能开发中">
+      <div 
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
+        @click="!agent?.is_disabled && emitAction('screenshot')"
+      >
         <CameraOutlined /> 屏幕截图
+      </div>
+
+      <div 
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
+        @click="!agent?.is_disabled && emitAction('ps')"
+      >
+        <UnorderedListOutlined /> 进程列表
       </div>
 
       <div class="h-[1px] bg-gray-100 dark:bg-gray-800 my-1"></div>
@@ -74,7 +90,7 @@
 <script setup lang="ts">
 import { 
   DesktopOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined,
-  DeleteOutlined, CodeOutlined, FolderOpenOutlined, CameraOutlined
+  DeleteOutlined, CodeOutlined, FolderOpenOutlined, CameraOutlined, UnorderedListOutlined
 } from '@ant-design/icons-vue';
 import type { Agent } from '@/api/agent';
 
@@ -85,13 +101,19 @@ const props = defineProps<{
   agent: Agent | null;
 }>();
 
-const emit = defineEmits(['action', 'open-task', 'open-terminal', 'close']);
+const emit = defineEmits(['action', 'open-task', 'open-terminal', 'open-file-ops', 'screenshot', 'ps', 'close']);
 
-function emitAction(type: 'action' | 'open-task' | 'open-terminal', act?: string) {
+function emitAction(type: 'action' | 'open-task' | 'open-terminal' | 'open-file-ops' | 'screenshot' | 'ps', act?: string) {
   if (type === 'action') {
     emit('action', { action: act, agent: props.agent });
   } else if (type === 'open-task') {
     emit('open-task', props.agent);
+  } else if (type === 'open-file-ops') {
+    emit('open-file-ops', props.agent);
+  } else if (type === 'screenshot') {
+    emit('screenshot', props.agent);
+  } else if (type === 'ps') {
+    emit('ps', props.agent);
   } else {
     emit('open-terminal', props.agent);
   }

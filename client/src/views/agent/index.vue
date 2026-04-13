@@ -85,6 +85,9 @@
                     <a-menu-item key="terminal" :disabled="record.is_disabled" @click="openTerminal(record)">
                       <template #icon><DesktopOutlined /></template> 打开独立终端
                     </a-menu-item>
+                    <a-menu-item key="fileops" :disabled="record.is_disabled" @click="openFileOps(record)">
+                      <template #icon><FolderOpenOutlined /></template> 文件管理
+                    </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="disconnect" :disabled="!record.is_online" @click="handleAction({ action: 'disconnect', agent: record })">
                       <template #icon><DisconnectOutlined /></template> 断开连接
@@ -122,6 +125,11 @@
       :agent="actionAgent" 
     />
 
+    <FileOpsModal 
+      v-model:visible="fileOpsVisible" 
+      :agent="actionAgent" 
+    />
+
     <AgentContextMenu 
       :visible="contextMenuState.visible" 
       :x="contextMenuState.x" 
@@ -130,6 +138,9 @@
       @close="contextMenuState.visible = false"
       @open-task="openTaskModal"
       @open-terminal="openTerminal"
+      @open-file-ops="openFileOps"
+      @screenshot="handleScreenshot"
+      @ps="handlePs"
       @action="handleAction"
     />
   </div>
@@ -139,13 +150,14 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
-import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined } from '@ant-design/icons-vue';
-import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent, fetchAgentDetail } from '@/api/agent';
+import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons-vue';
+import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent, fetchAgentDetail, takeScreenshot, dispatchTask } from '@/api/agent';
 import type { Agent } from '@/api/agent';
 import { formatTimestamp } from '@/utils/format';
 import { useAgentWebSocket } from './hooks/useAgentWebSocket';
 import AgentDetailDrawer from './components/AgentDetailDrawer.vue';
 import AgentTaskModal from './components/AgentTaskModal.vue';
+import FileOpsModal from './components/FileOpsModal.vue';
 import AgentContextMenu from './components/AgentContextMenu.vue';
 
 const router = useRouter();
@@ -159,6 +171,7 @@ const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChange
 // UI Component State
 const detailVisible = ref(false);
 const taskModalVisible = ref(false);
+const fileOpsVisible = ref(false);
 const selectedAgent = ref<Agent | null>(null);
 const actionAgent = ref<Agent | null>(null); 
 const contextMenuState = reactive({ visible: false, x: 0, y: 0, record: null as Agent | null });
@@ -213,6 +226,37 @@ function openDetail(agent: Agent) {
 function openTaskModal(agent: Agent) {
   actionAgent.value = agent;
   taskModalVisible.value = true;
+}
+
+function openFileOps(agent: Agent) {
+  actionAgent.value = agent;
+  fileOpsVisible.value = true;
+}
+
+async function handleScreenshot(agent: Agent) {
+  try {
+    const res = await takeScreenshot(agent.agent_id);
+    if (res.success) {
+      message.success(`截图任务已下发 (task: ${res.task_id})`);
+    } else {
+      message.error(res.detail || '截图失败');
+    }
+  } catch (e: any) {
+    message.error(e.message);
+  }
+}
+
+async function handlePs(agent: Agent) {
+  try {
+    const res = await dispatchTask(agent.agent_id, { command: 'ps' });
+    if (res.success) {
+      message.success(`进程列表任务已下发 (task: ${res.task_id})`);
+    } else {
+      message.error(res.detail || '获取进程列表失败');
+    }
+  } catch (e: any) {
+    message.error(e.message);
+  }
 }
 
 function openTerminal(agent: Agent) {

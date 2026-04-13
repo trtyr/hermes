@@ -133,6 +133,19 @@ impl KernelState {
             .is_some()
     }
 
+    pub fn update_agent_tags(&mut self, agent_id: &str, tags: &[String]) -> bool {
+        let session_id = match self.agent_index.get(agent_id) {
+            Some(&id) => id,
+            None => return false,
+        };
+        if let Some(session) = self.sessions.get_mut(&session_id) {
+            session.tags = tags.to_vec();
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn fail_pending_agent_beacon_updates_for_agent(&mut self, agent_id: &str, reason: &str) {
         let pending_ids = self
             .pending_agent_beacon_updates

@@ -1,10 +1,12 @@
 //! Services Layer
 //!
-//! Heartbeat, Task, Session, Network - each as independent service
+//! Heartbeat, Task, Session, Network, FileOps, SysOps - each as independent service
 
+pub mod file_ops;
 pub mod heartbeat;
 pub mod network;
 pub mod session;
+pub mod sys_ops;
 pub mod task;
 
 pub use heartbeat::HeartbeatService;

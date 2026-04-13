@@ -1,5 +1,112 @@
 use super::*;
 
+use crate::api::common::{ApiResponse, AppState};
+use axum::extract::{Path, State};
+use axum::http::HeaderMap;
+use axum::response::IntoResponse;
+use axum::Json;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub(crate) struct UpdateAgentRequest {
+    pub tags: Option<Vec<String>>,
+}
+
+pub(crate) async fn update_agent(
+    Path(agent_id): Path<String>,
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Json(request): Json<UpdateAgentRequest>,
+) -> impl IntoResponse {
+    if let Some(response) = authorize_api(&state, &headers, None) {
+        return response;
+    }
+    let operator = extract_operator_for_request(&state, &headers, None);
+
+    match state.kernel.agent_queries().persisted(&agent_id).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse {
+                    success: false,
+                    detail: format!("agent {} not found", agent_id),
+                    task_id: None,
+                }),
+            )
+                .into_response();
+        }
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse {
+                    success: false,
+                    detail: error.to_string(),
+                    task_id: None,
+                }),
+            )
+                .into_response();
+        }
+    }
+
+    if let Some(tags) = request.tags {
+        match state
+            .kernel
+            .agent_commands()
+            .update_tags(&agent_id, &tags)
+            .await
+        {
+            Ok(true) => {
+                state.kernel.append_audit_record(
+                    operator,
+                    "update_agent_tags".to_string(),
+                    "agent".to_string(),
+                    Some(agent_id.clone()),
+                    Some(format!("tags updated to {:?}", tags)),
+                    now_ts(),
+                );
+                (
+                    StatusCode::OK,
+                    Json(ApiResponse {
+                        success: true,
+                        detail: format!("agent {} tags updated", agent_id),
+                        task_id: None,
+                    }),
+                )
+                    .into_response()
+            }
+            Ok(false) => (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse {
+                    success: false,
+                    detail: format!("agent {} not found", agent_id),
+                    task_id: None,
+                }),
+            )
+                .into_response(),
+            Err(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse {
+                    success: false,
+                    detail: error.to_string(),
+                    task_id: None,
+                }),
+            )
+                .into_response(),
+        }
+    } else {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse {
+                success: false,
+                detail: "no fields to update".to_string(),
+                task_id: None,
+            }),
+        )
+            .into_response()
+    }
+}
+
 pub(crate) async fn disable_agent(
     Path(agent_id): Path<String>,
     headers: HeaderMap,

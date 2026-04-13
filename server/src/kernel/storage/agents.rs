@@ -229,6 +229,22 @@ impl Storage {
         .await
         .context("sqlite delete agent record join error")?
     }
+
+    pub async fn update_agent_tags(&self, agent_id: &str, tags: &[String]) -> anyhow::Result<bool> {
+        let path = self.sqlite_path.clone();
+        let agent_id = agent_id.to_string();
+        let tags_json = serde_json::to_string(tags)?;
+        tokio::task::spawn_blocking(move || {
+            let connection = open_connection(&path)?;
+            let rows = connection.execute(
+                "UPDATE agents SET tags_json = ?2, updated_at = ?3 WHERE agent_id = ?1",
+                params![agent_id, tags_json, now_ts()],
+            )?;
+            Ok(rows > 0)
+        })
+        .await
+        .context("sqlite update agent tags join error")?
+    }
 }
 
 fn load_agent_records(connection: &Connection) -> anyhow::Result<Vec<AgentRecord>> {

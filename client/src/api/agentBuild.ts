@@ -75,4 +75,8 @@ export async function fetchAgentBuild(buildId: number): Promise<AgentBuildRecord
   return res.json();
 }
 
+export function getBuildDownloadUrl(buildId: number): string {
+  return `${getBaseUrl()}/agent-builds/${buildId}/download`;
+}
+
 

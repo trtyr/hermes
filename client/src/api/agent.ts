@@ -132,6 +132,77 @@ export async function deleteAgent(agentId: string): Promise<any> {
   return res.json();
 }
 
+export async function uploadFile(agentId: string, remotePath: string, contentBase64: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
+  const store = useConnectionStore();
+  const profile = store.activeProfile;
+  if (!profile) throw new Error('未连接到后端服务器');
+
+  const res = await fetch(`${profile.server_url}/agents/${agentId}/upload`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.api_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ remote_path: remotePath, content_base64: contentBase64 })
+  });
+
+  if (!res.ok) throw new Error(`上传文件失败: ${res.statusText}`);
+  return res.json();
+}
+
+export async function downloadFile(agentId: string, remotePath: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
+  const store = useConnectionStore();
+  const profile = store.activeProfile;
+  if (!profile) throw new Error('未连接到后端服务器');
+
+  const res = await fetch(`${profile.server_url}/agents/${agentId}/download`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.api_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ remote_path: remotePath })
+  });
+
+  if (!res.ok) throw new Error(`下载文件失败: ${res.statusText}`);
+  return res.json();
+}
+
+export async function takeScreenshot(agentId: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
+  const store = useConnectionStore();
+  const profile = store.activeProfile;
+  if (!profile) throw new Error('未连接到后端服务器');
+
+  const res = await fetch(`${profile.server_url}/agents/${agentId}/screenshot`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.api_token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!res.ok) throw new Error(`截图失败: ${res.statusText}`);
+  return res.json();
+}
+
+export async function updateAgentTags(agentId: string, tags: string[]): Promise<{ success: boolean; detail: string }> {
+  const store = useConnectionStore();
+  const profile = store.activeProfile;
+  if (!profile) throw new Error('未连接到后端服务器');
+
+  const res = await fetch(`${profile.server_url}/agents/${agentId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${profile.api_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ tags })
+  });
+
+  if (!res.ok) throw new Error(`更新标签失败: ${res.statusText}`);
+  return res.json();
+}
+
 async function executeAgentAction(agentId: string, action: string) {
   const store = useConnectionStore();
   const profile = store.activeProfile;

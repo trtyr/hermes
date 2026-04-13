@@ -19,6 +19,19 @@ impl AgentCommandFacade {
             .await
     }
 
+    pub async fn update_tags(&self, agent_id: &str, tags: &[String]) -> anyhow::Result<bool> {
+        let storage_ok = self
+            .kernel
+            .storage
+            .update_agent_tags(agent_id, tags)
+            .await?;
+        if storage_ok {
+            let mut state = self.kernel.state.write().await;
+            state.update_agent_tags(agent_id, tags);
+        }
+        Ok(storage_ok)
+    }
+
     pub async fn disconnect(
         &self,
         agent_id: String,

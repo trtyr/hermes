@@ -31,10 +31,22 @@
         <a-descriptions-item label="进程 ID">{{ localAgent.pid }}</a-descriptions-item>
         <a-descriptions-item label="会话 ID">{{ localAgent.session_id !== null ? localAgent.session_id : '-' }}</a-descriptions-item>
         <a-descriptions-item label="标签" :span="2">
-          <template v-if="localAgent.tags && localAgent.tags.length > 0">
-            <a-tag v-for="tag in localAgent.tags" :key="tag" color="blue">{{ tag }}</a-tag>
-          </template>
-          <span v-else class="text-slate-400">-</span>
+          <div class="flex items-center gap-1 flex-wrap">
+            <a-tag v-for="tag in localAgent.tags" :key="tag" color="blue" closable @close="removeTag(tag)">{{ tag }}</a-tag>
+            <a-input
+              v-if="tagInputVisible"
+              ref="tagInputRef"
+              v-model:value="tagInputValue"
+              size="small"
+              style="width: 100px"
+              placeholder="输入标签"
+              @blur="handleTagInputConfirm"
+              @keyup.enter="handleTagInputConfirm"
+            />
+            <a-button v-else size="small" type="dashed" @click="showTagInput">
+              <template #icon><PlusOutlined /></template> 添加
+            </a-button>
+          </div>
         </a-descriptions-item>
       </a-descriptions>
 
@@ -93,10 +105,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive, watch, nextTick } from 'vue';
 import { message } from 'ant-design-vue';
-import { DownOutlined } from '@ant-design/icons-vue';
-import { fetchAgentDetail, updateBeaconConfig } from '@/api/agent';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue';
+import { fetchAgentDetail, updateBeaconConfig, updateAgentTags } from '@/api/agent';
 import type { Agent } from '@/api/agent';
 import { formatTimestamp } from '@/utils/format';
 
@@ -113,6 +125,9 @@ const beaconForm = reactive({
   sleep_interval: 10,
   jitter: 20
 });
+const tagInputVisible = ref(false);
+const tagInputValue = ref('');
+const tagInputRef = ref<any>(null);
 
 watch(() => props.visible, async (newVal) => {
   if (newVal && props.agent) {
@@ -153,6 +168,46 @@ async function handleUpdateBeacon() {
 function handleAction(action: string) {
   if (localAgent.value) {
     emit('action', { action, agent: localAgent.value });
+  }
+}
+
+function showTagInput() {
+  tagInputVisible.value = true;
+  tagInputValue.value = '';
+  nextTick(() => {
+    tagInputRef.value?.focus();
+  });
+}
+
+async function handleTagInputConfirm() {
+  tagInputVisible.value = false;
+  const newTag = tagInputValue.value.trim();
+  if (!newTag || !localAgent.value) return;
+
+  const tags = [...(localAgent.value.tags || [])];
+  if (tags.includes(newTag)) return;
+  tags.push(newTag);
+
+  await saveTags(tags);
+}
+
+async function removeTag(tag: string) {
+  if (!localAgent.value) return;
+  const tags = (localAgent.value.tags || []).filter(t => t !== tag);
+  await saveTags(tags);
+}
+
+async function saveTags(tags: string[]) {
+  if (!localAgent.value) return;
+  try {
+    const res = await updateAgentTags(localAgent.value.agent_id, tags);
+    if (res.success) {
+      localAgent.value = { ...localAgent.value, tags };
+      emit('update:agent', localAgent.value);
+      message.success('标签已更新');
+    }
+  } catch (e: any) {
+    message.error(e.message);
   }
 }
 

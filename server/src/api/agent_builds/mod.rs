@@ -7,4 +7,4 @@ mod mutations;
 mod queries;
 
 pub(crate) use mutations::create_agent_build;
-pub(crate) use queries::{get_agent_build, list_agent_builds};
+pub(crate) use queries::{download_agent_build, get_agent_build, list_agent_builds};

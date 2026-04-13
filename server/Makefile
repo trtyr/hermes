@@ -25,6 +25,7 @@ e2e:
 	python3 scripts/e2e_regression.py command_session
 	python3 scripts/e2e_regression.py database
 	python3 scripts/e2e_regression.py listeners
+	python3 scripts/e2e_regression.py full_chain
 
 e2e-all:
 	python3 scripts/e2e_regression.py all

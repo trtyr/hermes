@@ -85,6 +85,19 @@
             </a-tooltip>
             <span v-else class="text-slate-400">-</span>
           </template>
+
+          <template v-else-if="column.key === 'action'">
+            <a-button
+              v-if="record.status === 'succeeded'"
+              type="link"
+              size="small"
+              @click="handleDownload(record)"
+            >
+              <template #icon><DownloadOutlined /></template>
+              下载
+            </a-button>
+            <span v-else class="text-slate-400 text-xs">-</span>
+          </template>
         </template>
       </a-table>
     </div>
@@ -167,6 +180,7 @@ import {
   RocketOutlined,
   ReloadOutlined,
   PlusOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
@@ -174,8 +188,10 @@ import {
   AgentBuildRecord,
   fetchAgentBuilds,
   createAgentBuild,
+  getBuildDownloadUrl,
 } from '@/api/agentBuild';
 import { fetchListeners, ListenerRecord } from '@/api/listener';
+import { useConnectionStore } from '@/store/connection';
 
 const builds = ref<AgentBuildRecord[]>([]);
 const loading = ref(false);
@@ -207,6 +223,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
   { title: '详情', dataIndex: 'detail', key: 'detail', width: 200, ellipsis: true },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 170 },
+  { title: '操作', key: 'action', width: 80, fixed: 'right' },
 ];
 
 const loadBuilds = async () => {
@@ -224,6 +241,28 @@ const loadBuilds = async () => {
     loading.value = false;
   }
 };
+
+async function handleDownload(record: AgentBuildRecord) {
+  const store = useConnectionStore();
+  const profile = store.activeProfile;
+  if (!profile) return;
+  try {
+    const url = getBuildDownloadUrl(record.build_id);
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${profile.api_token}` }
+    });
+    if (!res.ok) throw new Error('下载失败');
+    const blob = await res.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = record.artifact_name || `agent-build-${record.build_id}`;
+    link.click();
+    URL.revokeObjectURL(downloadUrl);
+  } catch (e: any) {
+    message.error(e.message || '下载失败');
+  }
+}
 
 const loadListeners = async () => {
   listenersLoading.value = true;
