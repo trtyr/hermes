@@ -34,8 +34,8 @@ const __VLS_1 = __VLS_asFunctionalComponent1(__VLS_0, new __VLS_0({
     theme: "dark",
     width: "200",
     collapsedWidth: "64",
-    ...{ class: "h-screen z-20 relative border-r border-[#14161A] dark:border-[#14161A]" },
-    ...{ style: ({ background: __VLS_ctx.appStore.isDark ? '#1C1E22' : '#001529' }) },
+    ...{ class: "h-screen z-20 relative border-r border-[var(--border-default)] dark:border-[var(--border-default)]" },
+    ...{ style: ({ background: __VLS_ctx.appStore.isDark ? 'var(--bg-sidebar)' : 'var(--bg-sidebar)' }) },
 }));
 const __VLS_2 = __VLS_1({
     collapsed: (__VLS_ctx.appStore.sidebarCollapsed),
@@ -44,16 +44,16 @@ const __VLS_2 = __VLS_1({
     theme: "dark",
     width: "200",
     collapsedWidth: "64",
-    ...{ class: "h-screen z-20 relative border-r border-[#14161A] dark:border-[#14161A]" },
-    ...{ style: ({ background: __VLS_ctx.appStore.isDark ? '#1C1E22' : '#001529' }) },
+    ...{ class: "h-screen z-20 relative border-r border-[var(--border-default)] dark:border-[var(--border-default)]" },
+    ...{ style: ({ background: __VLS_ctx.appStore.isDark ? 'var(--bg-sidebar)' : 'var(--bg-sidebar)' }) },
 }, ...__VLS_functionalComponentArgsRest(__VLS_1));
 var __VLS_5 = {};
 /** @type {__VLS_StyleScopedClasses['h-screen']} */ ;
 /** @type {__VLS_StyleScopedClasses['z-20']} */ ;
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-r']} */ ;
-/** @type {__VLS_StyleScopedClasses['border-[#14161A]']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['border-[var(--border-default)]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 const { default: __VLS_6 } = __VLS_3.slots;
 const __VLS_7 = AppLogo;
 // @ts-ignore

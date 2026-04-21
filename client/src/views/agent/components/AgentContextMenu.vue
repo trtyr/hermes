@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div
       v-if="visible"
-      class="fixed z-50 bg-white dark:bg-[#1C1E22] border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[160px]"
+      class="fixed z-50 bg-white dark:bg-[var(--bg-card)] border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[160px]"
       :style="{ top: `${y}px`, left: `${x}px` }"
       @click.stop
     >
@@ -11,7 +11,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('open-task')"
       >
@@ -19,7 +19,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('open-terminal')"
       >
@@ -27,7 +27,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('open-file-ops')"
       >
@@ -35,7 +35,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('screenshot')"
       >
@@ -43,7 +43,7 @@
       </div>
 
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('ps')"
       >

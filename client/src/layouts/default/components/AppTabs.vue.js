@@ -41,15 +41,15 @@ let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-shrink-0 w-full bg-slate-100 dark:bg-[#14161A] border-b border-gray-200 dark:border-[#14161A] pt-2 px-2 flex items-end space-x-1 overflow-x-auto z-10 transition-colors duration-300 h-[42px]" },
+    ...{ class: "flex-shrink-0 w-full bg-slate-100 dark:bg-[var(--bg-page)] border-b border-gray-200 dark:border-[var(--border-default)] pt-2 px-2 flex items-end space-x-1 overflow-x-auto z-10 transition-colors duration-300 h-[42px]" },
 });
 /** @type {__VLS_StyleScopedClasses['flex-shrink-0']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-slate-100']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-page)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-b']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['pt-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
@@ -72,8 +72,8 @@ for (const [tab] of __VLS_vFor((__VLS_ctx.appStore.visitedViews))) {
                 'group relative flex items-center h-[34px] px-4 min-w-[120px] max-w-[200px] cursor-pointer select-none transition-all duration-200',
                 'rounded-t-lg mx-[-1px]',
                 __VLS_ctx.route.path === tab.path
-                    ? 'bg-white dark:bg-[#1C1E22] text-primary font-medium z-10'
-                    : 'bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-[#1C1E22]/50'
+                    ? 'bg-white dark:bg-[var(--bg-card)] text-primary font-medium z-10'
+                    : 'bg-transparent text-slate-500 hover:text-slate-700 dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-slate-200/50 dark:hover:bg-[var(--bg-card)]/50'
             ]) },
     });
     /** @type {__VLS_StyleScopedClasses['group']} */ ;

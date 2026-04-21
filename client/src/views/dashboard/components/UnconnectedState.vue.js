@@ -51,18 +51,18 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.path, __VLS_intrinsics.path)({
     d: "M13 10V3L4 14h7v7l9-11h-7z",
 });
 __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-2" },
+    ...{ class: "text-2xl font-semibold text-slate-800 dark:text-[var(--text-primary)] mb-2" },
 });
 /** @type {__VLS_StyleScopedClasses['text-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-    ...{ class: "text-slate-500 dark:text-slate-400 mb-8" },
+    ...{ class: "text-slate-500 dark:text-[var(--text-secondary)] mb-8" },
 });
 /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-8']} */ ;
 let __VLS_0;
 /** @ts-ignore @type {typeof __VLS_components.aButton | typeof __VLS_components.AButton | typeof __VLS_components.aButton | typeof __VLS_components.AButton} */

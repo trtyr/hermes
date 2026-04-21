@@ -3,69 +3,70 @@
 import loginBoxBg from '@/assets/login-box-bg.svg';
 import { reactive, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
-import { message } from 'ant-design-vue';
+import { UserOutlined, LockOutlined, GlobalOutlined, ExclamationCircleOutlined, } from '@ant-design/icons-vue';
 import { useAppStore } from '@/store/app';
-import { parse } from 'smol-toml';
+import { useConnectionStore } from '@/store/connection';
+import { loginToBackend } from '@/api/connection';
 const router = useRouter();
 const loading = ref(false);
+const errorMsg = ref('');
 const appStore = useAppStore();
+const connectionStore = useConnectionStore();
 const formState = reactive({
+    serverUrl: '',
     username: '',
     password: '',
 });
-const rules = {
-    username: [{ required: true, message: '请输入用户名！', trigger: 'blur' }],
-    password: [{ required: true, message: '请输入密码！', trigger: 'blur' }],
-};
 const toggleDark = () => {
     appStore.toggleTheme();
 };
 onMounted(() => {
-    // Check system preference but don't force toggle if it conflicts with store
+    // Auto-dark for login page
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         if (!appStore.isDark) {
             appStore.toggleTheme();
         }
     }
+    // Pre-fill from last active profile
+    if (connectionStore.activeProfile) {
+        formState.serverUrl = connectionStore.activeProfile.server_url;
+    }
 });
-// 使用原生的 Web Crypto API 生成密码的 SHA-256 哈希
-const hashPassword = async (password) => {
-    const msgBuffer = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-const handleFinish = async (values) => {
+const handleFinish = async () => {
+    errorMsg.value = '';
     loading.value = true;
     try {
-        // 读取位于 public/ 目录下的 config.toml
-        const response = await fetch('/config.toml');
-        if (!response.ok) {
-            throw new Error('网络请求失败：无法加载配置文件');
-        }
-        const tomlText = await response.text();
-        const config = parse(tomlText);
-        // 对用户输入的密码进行 Hash
-        const inputHash = await hashPassword(values.password);
-        // 验证账号与密码 Hash
-        setTimeout(() => {
+        const result = await loginToBackend(formState.serverUrl, formState.username, formState.password);
+        if (!result.success) {
+            errorMsg.value = result.error || '连接失败';
             loading.value = false;
-            if (config.auth &&
-                values.username === config.auth.username &&
-                inputHash === config.auth.password_hash) {
-                message.success('登录成功！');
-                router.push('/dashboard');
-            }
-            else {
-                message.error('用户名或密码错误！');
-            }
-        }, 800); // 模拟网络延迟
+            return;
+        }
+        // Save or update connection profile with session token
+        const normalizedUrl = connectionStore.normalizeUrl(formState.serverUrl);
+        const existing = connectionStore.profiles.find((p) => p.server_url === normalizedUrl);
+        if (existing) {
+            connectionStore.updateProfile(existing.id, {
+                api_token: result.session_token || '',
+                connection_name: formState.username,
+            });
+            connectionStore.setActiveProfile(existing.id);
+        }
+        else {
+            const profile = connectionStore.addProfile({
+                connection_name: formState.username,
+                server_url: normalizedUrl,
+                api_token: result.session_token || '',
+            });
+            connectionStore.setActiveProfile(profile.id);
+        }
+        router.push('/dashboard');
     }
-    catch (error) {
-        console.error('配置读取失败:', error);
+    catch {
+        errorMsg.value = '连接异常，请检查服务器地址';
+    }
+    finally {
         loading.value = false;
-        message.error('无法读取本地配置文件！');
     }
 };
 const __VLS_ctx = {
@@ -76,14 +77,14 @@ let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "relative w-full h-screen overflow-hidden bg-white dark:bg-[#14161A] flex justify-center" },
+    ...{ class: "relative w-full h-screen overflow-hidden bg-white dark:bg-[var(--bg-page)] flex justify-center" },
 });
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-screen']} */ ;
 /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-page)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['justify-center']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
@@ -108,15 +109,14 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
 if (!__VLS_ctx.appStore.isDark) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
-        ...{ class: "w-6 h-6" },
+        ...{ class: "w-5 h-5" },
         fill: "none",
         stroke: "currentColor",
         viewBox: "0 0 24 24",
-        xmlns: "http://www.w3.org/2000/svg",
     });
-    /** @type {__VLS_StyleScopedClasses['w-6']} */ ;
-    /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.path, __VLS_intrinsics.path)({
+    /** @type {__VLS_StyleScopedClasses['w-5']} */ ;
+    /** @type {__VLS_StyleScopedClasses['h-5']} */ ;
+    __VLS_asFunctionalElement1(__VLS_intrinsics.path)({
         'stroke-linecap': "round",
         'stroke-linejoin': "round",
         'stroke-width': "2",
@@ -125,15 +125,14 @@ if (!__VLS_ctx.appStore.isDark) {
 }
 else {
     __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
-        ...{ class: "w-6 h-6" },
+        ...{ class: "w-5 h-5" },
         fill: "none",
         stroke: "currentColor",
         viewBox: "0 0 24 24",
-        xmlns: "http://www.w3.org/2000/svg",
     });
-    /** @type {__VLS_StyleScopedClasses['w-6']} */ ;
-    /** @type {__VLS_StyleScopedClasses['h-6']} */ ;
-    __VLS_asFunctionalElement1(__VLS_intrinsics.path, __VLS_intrinsics.path)({
+    /** @type {__VLS_StyleScopedClasses['w-5']} */ ;
+    /** @type {__VLS_StyleScopedClasses['h-5']} */ ;
+    __VLS_asFunctionalElement1(__VLS_intrinsics.path)({
         'stroke-linecap': "round",
         'stroke-linejoin': "round",
         'stroke-width': "2",
@@ -141,7 +140,7 @@ else {
     });
 }
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex w-full h-full max-w-[1200px] shadow-2xl overflow-hidden rounded-none md:rounded-2xl md:h-[600px] md:my-auto md:w-4/5 lg:w-[1000px] bg-white dark:bg-[#1C1E22]" },
+    ...{ class: "flex w-full h-full max-w-[1200px] shadow-2xl overflow-hidden rounded-none md:rounded-2xl md:h-[620px] md:my-auto md:w-4/5 lg:w-[1000px] bg-white dark:bg-[var(--bg-card)]" },
 });
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
@@ -151,12 +150,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-none']} */ ;
 /** @type {__VLS_StyleScopedClasses['md:rounded-2xl']} */ ;
-/** @type {__VLS_StyleScopedClasses['md:h-[600px]']} */ ;
+/** @type {__VLS_StyleScopedClasses['md:h-[620px]']} */ ;
 /** @type {__VLS_StyleScopedClasses['md:my-auto']} */ ;
 /** @type {__VLS_StyleScopedClasses['md:w-4/5']} */ ;
 /** @type {__VLS_StyleScopedClasses['lg:w-[1000px]']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
     ...{ class: "hidden md:flex flex-col justify-center items-center w-1/2 bg-blue-600 relative overflow-hidden text-white p-10" },
 });
@@ -220,12 +219,11 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
     fill: "none",
     stroke: "currentColor",
     viewBox: "0 0 24 24",
-    xmlns: "http://www.w3.org/2000/svg",
 });
 /** @type {__VLS_StyleScopedClasses['w-12']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-12']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-white']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.path, __VLS_intrinsics.path)({
+__VLS_asFunctionalElement1(__VLS_intrinsics.path)({
     'stroke-linecap': "round",
     'stroke-linejoin': "round",
     'stroke-width': "2",
@@ -264,7 +262,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.img)({
 /** @type {__VLS_StyleScopedClasses['object-contain']} */ ;
 /** @type {__VLS_StyleScopedClasses['opacity-90']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "w-full md:w-1/2 flex flex-col justify-center p-8 lg:p-14 bg-white dark:bg-[#1C1E22] transition-colors duration-300" },
+    ...{ class: "w-full md:w-1/2 flex flex-col justify-center p-8 lg:p-14 bg-white dark:bg-[var(--bg-card)] transition-colors duration-300" },
 });
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['md:w-1/2']} */ ;
@@ -274,7 +272,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['p-8']} */ ;
 /** @type {__VLS_StyleScopedClasses['lg:p-14']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
 /** @type {__VLS_StyleScopedClasses['duration-300']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
@@ -299,13 +297,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
     fill: "none",
     stroke: "currentColor",
     viewBox: "0 0 24 24",
-    xmlns: "http://www.w3.org/2000/svg",
 });
 /** @type {__VLS_StyleScopedClasses['w-10']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-10']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-blue-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:text-blue-400']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.path, __VLS_intrinsics.path)({
+__VLS_asFunctionalElement1(__VLS_intrinsics.path)({
     'stroke-linecap': "round",
     'stroke-linejoin': "round",
     'stroke-width': "2",
@@ -338,14 +335,12 @@ aForm;
 const __VLS_1 = __VLS_asFunctionalComponent1(__VLS_0, new __VLS_0({
     ...{ 'onFinish': {} },
     model: (__VLS_ctx.formState),
-    rules: (__VLS_ctx.rules),
     layout: "vertical",
     ...{ class: "w-full" },
 }));
 const __VLS_2 = __VLS_1({
     ...{ 'onFinish': {} },
     model: (__VLS_ctx.formState),
-    rules: (__VLS_ctx.rules),
     layout: "vertical",
     ...{ class: "w-full" },
 }, ...__VLS_functionalComponentArgsRest(__VLS_1));
@@ -359,10 +354,14 @@ let __VLS_8;
 aFormItem;
 // @ts-ignore
 const __VLS_9 = __VLS_asFunctionalComponent1(__VLS_8, new __VLS_8({
-    name: "username",
+    label: "服务器地址",
+    name: "serverUrl",
+    rules: ([{ required: true, message: '请输入服务器地址' }]),
 }));
 const __VLS_10 = __VLS_9({
-    name: "username",
+    label: "服务器地址",
+    name: "serverUrl",
+    rules: ([{ required: true, message: '请输入服务器地址' }]),
 }, ...__VLS_functionalComponentArgsRest(__VLS_9));
 const { default: __VLS_13 } = __VLS_11.slots;
 let __VLS_14;
@@ -370,24 +369,21 @@ let __VLS_14;
 aInput;
 // @ts-ignore
 const __VLS_15 = __VLS_asFunctionalComponent1(__VLS_14, new __VLS_14({
-    value: (__VLS_ctx.formState.username),
+    value: (__VLS_ctx.formState.serverUrl),
     size: "large",
-    placeholder: "用户名",
-    ...{ class: "py-2" },
+    placeholder: "127.0.0.1:3000",
 }));
 const __VLS_16 = __VLS_15({
-    value: (__VLS_ctx.formState.username),
+    value: (__VLS_ctx.formState.serverUrl),
     size: "large",
-    placeholder: "用户名",
-    ...{ class: "py-2" },
+    placeholder: "127.0.0.1:3000",
 }, ...__VLS_functionalComponentArgsRest(__VLS_15));
-/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 const { default: __VLS_19 } = __VLS_17.slots;
 {
     const { prefix: __VLS_20 } = __VLS_17.slots;
     let __VLS_21;
-    /** @ts-ignore @type {typeof __VLS_components.UserOutlined} */
-    UserOutlined;
+    /** @ts-ignore @type {typeof __VLS_components.GlobalOutlined} */
+    GlobalOutlined;
     // @ts-ignore
     const __VLS_22 = __VLS_asFunctionalComponent1(__VLS_21, new __VLS_21({
         ...{ class: "text-gray-400" },
@@ -397,7 +393,7 @@ const { default: __VLS_19 } = __VLS_17.slots;
     }, ...__VLS_functionalComponentArgsRest(__VLS_22));
     /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
     // @ts-ignore
-    [toggleDark, appStore, loginBoxBg, formState, formState, rules, handleFinish,];
+    [toggleDark, appStore, loginBoxBg, formState, formState, handleFinish,];
 }
 // @ts-ignore
 [];
@@ -410,38 +406,36 @@ let __VLS_26;
 aFormItem;
 // @ts-ignore
 const __VLS_27 = __VLS_asFunctionalComponent1(__VLS_26, new __VLS_26({
-    name: "password",
-    ...{ class: "mb-8" },
+    label: "用户名",
+    name: "username",
+    rules: ([{ required: true, message: '请输入用户名' }]),
 }));
 const __VLS_28 = __VLS_27({
-    name: "password",
-    ...{ class: "mb-8" },
+    label: "用户名",
+    name: "username",
+    rules: ([{ required: true, message: '请输入用户名' }]),
 }, ...__VLS_functionalComponentArgsRest(__VLS_27));
-/** @type {__VLS_StyleScopedClasses['mb-8']} */ ;
 const { default: __VLS_31 } = __VLS_29.slots;
 let __VLS_32;
-/** @ts-ignore @type {typeof __VLS_components.aInputPassword | typeof __VLS_components.AInputPassword | typeof __VLS_components.aInputPassword | typeof __VLS_components.AInputPassword} */
-aInputPassword;
+/** @ts-ignore @type {typeof __VLS_components.aInput | typeof __VLS_components.AInput | typeof __VLS_components.aInput | typeof __VLS_components.AInput} */
+aInput;
 // @ts-ignore
 const __VLS_33 = __VLS_asFunctionalComponent1(__VLS_32, new __VLS_32({
-    value: (__VLS_ctx.formState.password),
+    value: (__VLS_ctx.formState.username),
     size: "large",
-    placeholder: "密码",
-    ...{ class: "py-2" },
+    placeholder: "admin",
 }));
 const __VLS_34 = __VLS_33({
-    value: (__VLS_ctx.formState.password),
+    value: (__VLS_ctx.formState.username),
     size: "large",
-    placeholder: "密码",
-    ...{ class: "py-2" },
+    placeholder: "admin",
 }, ...__VLS_functionalComponentArgsRest(__VLS_33));
-/** @type {__VLS_StyleScopedClasses['py-2']} */ ;
 const { default: __VLS_37 } = __VLS_35.slots;
 {
     const { prefix: __VLS_38 } = __VLS_35.slots;
     let __VLS_39;
-    /** @ts-ignore @type {typeof __VLS_components.LockOutlined} */
-    LockOutlined;
+    /** @ts-ignore @type {typeof __VLS_components.UserOutlined} */
+    UserOutlined;
     // @ts-ignore
     const __VLS_40 = __VLS_asFunctionalComponent1(__VLS_39, new __VLS_39({
         ...{ class: "text-gray-400" },
@@ -463,38 +457,124 @@ let __VLS_44;
 /** @ts-ignore @type {typeof __VLS_components.aFormItem | typeof __VLS_components.AFormItem | typeof __VLS_components.aFormItem | typeof __VLS_components.AFormItem} */
 aFormItem;
 // @ts-ignore
-const __VLS_45 = __VLS_asFunctionalComponent1(__VLS_44, new __VLS_44({}));
-const __VLS_46 = __VLS_45({}, ...__VLS_functionalComponentArgsRest(__VLS_45));
+const __VLS_45 = __VLS_asFunctionalComponent1(__VLS_44, new __VLS_44({
+    label: "密码",
+    name: "password",
+    rules: ([{ required: true, message: '请输入密码' }]),
+}));
+const __VLS_46 = __VLS_45({
+    label: "密码",
+    name: "password",
+    rules: ([{ required: true, message: '请输入密码' }]),
+}, ...__VLS_functionalComponentArgsRest(__VLS_45));
 const { default: __VLS_49 } = __VLS_47.slots;
 let __VLS_50;
+/** @ts-ignore @type {typeof __VLS_components.aInputPassword | typeof __VLS_components.AInputPassword | typeof __VLS_components.aInputPassword | typeof __VLS_components.AInputPassword} */
+aInputPassword;
+// @ts-ignore
+const __VLS_51 = __VLS_asFunctionalComponent1(__VLS_50, new __VLS_50({
+    ...{ 'onPressEnter': {} },
+    value: (__VLS_ctx.formState.password),
+    size: "large",
+    placeholder: "••••••",
+}));
+const __VLS_52 = __VLS_51({
+    ...{ 'onPressEnter': {} },
+    value: (__VLS_ctx.formState.password),
+    size: "large",
+    placeholder: "••••••",
+}, ...__VLS_functionalComponentArgsRest(__VLS_51));
+let __VLS_55;
+const __VLS_56 = ({ pressEnter: {} },
+    { onPressEnter: (__VLS_ctx.handleFinish) });
+const { default: __VLS_57 } = __VLS_53.slots;
+{
+    const { prefix: __VLS_58 } = __VLS_53.slots;
+    let __VLS_59;
+    /** @ts-ignore @type {typeof __VLS_components.LockOutlined} */
+    LockOutlined;
+    // @ts-ignore
+    const __VLS_60 = __VLS_asFunctionalComponent1(__VLS_59, new __VLS_59({
+        ...{ class: "text-gray-400" },
+    }));
+    const __VLS_61 = __VLS_60({
+        ...{ class: "text-gray-400" },
+    }, ...__VLS_functionalComponentArgsRest(__VLS_60));
+    /** @type {__VLS_StyleScopedClasses['text-gray-400']} */ ;
+    // @ts-ignore
+    [formState, handleFinish,];
+}
+// @ts-ignore
+[];
+var __VLS_53;
+var __VLS_54;
+// @ts-ignore
+[];
+var __VLS_47;
+if (__VLS_ctx.errorMsg) {
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
+        ...{ class: "text-red-500 text-sm mb-4 flex items-center" },
+    });
+    /** @type {__VLS_StyleScopedClasses['text-red-500']} */ ;
+    /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
+    /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
+    /** @type {__VLS_StyleScopedClasses['flex']} */ ;
+    /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
+    let __VLS_64;
+    /** @ts-ignore @type {typeof __VLS_components.ExclamationCircleOutlined} */
+    ExclamationCircleOutlined;
+    // @ts-ignore
+    const __VLS_65 = __VLS_asFunctionalComponent1(__VLS_64, new __VLS_64({
+        ...{ class: "mr-1.5" },
+    }));
+    const __VLS_66 = __VLS_65({
+        ...{ class: "mr-1.5" },
+    }, ...__VLS_functionalComponentArgsRest(__VLS_65));
+    /** @type {__VLS_StyleScopedClasses['mr-1.5']} */ ;
+    (__VLS_ctx.errorMsg);
+}
+let __VLS_69;
+/** @ts-ignore @type {typeof __VLS_components.aFormItem | typeof __VLS_components.AFormItem | typeof __VLS_components.aFormItem | typeof __VLS_components.AFormItem} */
+aFormItem;
+// @ts-ignore
+const __VLS_70 = __VLS_asFunctionalComponent1(__VLS_69, new __VLS_69({
+    ...{ class: "mb-0 mt-6" },
+}));
+const __VLS_71 = __VLS_70({
+    ...{ class: "mb-0 mt-6" },
+}, ...__VLS_functionalComponentArgsRest(__VLS_70));
+/** @type {__VLS_StyleScopedClasses['mb-0']} */ ;
+/** @type {__VLS_StyleScopedClasses['mt-6']} */ ;
+const { default: __VLS_74 } = __VLS_72.slots;
+let __VLS_75;
 /** @ts-ignore @type {typeof __VLS_components.aButton | typeof __VLS_components.AButton | typeof __VLS_components.aButton | typeof __VLS_components.AButton} */
 aButton;
 // @ts-ignore
-const __VLS_51 = __VLS_asFunctionalComponent1(__VLS_50, new __VLS_50({
+const __VLS_76 = __VLS_asFunctionalComponent1(__VLS_75, new __VLS_75({
     type: "primary",
     htmlType: "submit",
     size: "large",
     ...{ class: "w-full h-12 text-lg tracking-widest" },
     loading: (__VLS_ctx.loading),
 }));
-const __VLS_52 = __VLS_51({
+const __VLS_77 = __VLS_76({
     type: "primary",
     htmlType: "submit",
     size: "large",
     ...{ class: "w-full h-12 text-lg tracking-widest" },
     loading: (__VLS_ctx.loading),
-}, ...__VLS_functionalComponentArgsRest(__VLS_51));
+}, ...__VLS_functionalComponentArgsRest(__VLS_76));
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['h-12']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['tracking-widest']} */ ;
-const { default: __VLS_55 } = __VLS_53.slots;
+const { default: __VLS_80 } = __VLS_78.slots;
 // @ts-ignore
-[loading,];
-var __VLS_53;
+[errorMsg, errorMsg, loading,];
+var __VLS_78;
 // @ts-ignore
 [];
-var __VLS_47;
+var __VLS_72;
 // @ts-ignore
 [];
 var __VLS_3;

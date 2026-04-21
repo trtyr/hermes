@@ -11,11 +11,11 @@
       <!-- Profile List -->
       <div class="mb-6">
         <div class="flex justify-between items-center mb-2">
-          <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300">已保存的连接</h3>
+          <h3 class="text-sm font-medium text-slate-700 dark:text-[var(--text-secondary)]">已保存的连接</h3>
           <a-button type="link" size="small" @click="startNewConnection">添加新连接</a-button>
         </div>
         
-        <div v-if="connectionStore.profiles.length === 0" class="text-center py-4 text-slate-400 bg-slate-50 dark:bg-[#14161A] rounded-md border border-dashed border-slate-200 dark:border-slate-700">
+        <div v-if="connectionStore.profiles.length === 0" class="text-center py-4 text-slate-400 bg-slate-50 dark:bg-[var(--bg-sub)] rounded-md border border-dashed border-slate-200 dark:border-slate-700">
           暂无保存的连接配置
         </div>
         
@@ -24,12 +24,12 @@
             v-for="profile in connectionStore.profiles" 
             :key="profile.id"
             class="flex items-center justify-between p-3 rounded-md border transition-colors cursor-pointer"
-            :class="connectionStore.activeProfileId === profile.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-[#14161A] bg-white dark:bg-[#1C1E22] hover:border-blue-300'"
+            :class="connectionStore.activeProfileId === profile.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-[var(--border-default)] bg-white dark:bg-[var(--bg-card)] hover:border-blue-300'"
             @click="selectAndConnect(profile.id)"
           >
             <div class="flex-1 min-w-0">
               <div class="flex items-center space-x-2">
-                <span class="font-medium text-slate-800 dark:text-slate-100 truncate">{{ profile.connection_name || '未命名连接' }}</span>
+                <span class="font-medium text-slate-800 dark:text-[var(--text-primary)] truncate">{{ profile.connection_name || '未命名连接' }}</span>
                 <span v-if="connectionStore.activeProfileId === profile.id" class="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300 rounded text-nowrap">当前使用</span>
               </div>
               <div class="text-xs text-slate-500 truncate mt-1">{{ profile.server_url }}</div>
@@ -51,7 +51,7 @@
 
       <!-- Edit/Add Form -->
       <div v-if="isEditing || connectionStore.profiles.length === 0">
-        <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">{{ editingId ? '编辑连接' : '新建后端连接' }}</h3>
+        <h3 class="text-sm font-medium text-slate-700 dark:text-[var(--text-secondary)] mb-4">{{ editingId ? '编辑连接' : '新建后端连接' }}</h3>
         
         <a-form :model="formState" layout="vertical">
           <a-form-item label="连接名称 (可选)">
@@ -66,8 +66,8 @@
             <a-input-password v-model:value="formState.api_token" placeholder="输入服务端的 config.toml 中的 api_token" />
           </a-form-item>
           
-          <div class="bg-slate-50 dark:bg-[#14161A] p-3 rounded-md mb-4 text-xs text-slate-500 dark:text-slate-400">
-            <div class="mb-1 text-slate-700 dark:text-slate-300 flex items-center space-x-1.5 font-medium">
+          <div class="bg-slate-50 dark:bg-[var(--bg-sub)] p-3 rounded-md mb-4 text-xs text-slate-500 dark:text-[var(--text-secondary)]">
+            <div class="mb-1 text-slate-700 dark:text-[var(--text-secondary)] flex items-center space-x-1.5 font-medium">
               <InfoCircleOutlined /> <span>测试状态</span>
             </div>
             <div class="flex flex-col space-y-1 mt-2">

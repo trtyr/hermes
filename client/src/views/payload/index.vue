@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 m-0">
+      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0">
         <RocketOutlined class="text-orange-500" />
         载荷生成
       </h2>
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Table Container -->
-    <div class="flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden">
       <a-table
         :columns="columns"
         :data-source="builds"
@@ -36,7 +36,7 @@
           </template>
 
           <template v-else-if="column.key === 'target_triple'">
-            <span class="font-mono text-sm text-slate-600 dark:text-slate-300">
+            <span class="font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]">
               {{ record.target_triple }}
             </span>
           </template>
@@ -68,7 +68,7 @@
           </template>
 
           <template v-else-if="column.key === 'server_addr'">
-            <span class="font-mono text-sm text-slate-600 dark:text-slate-300">
+            <span class="font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]">
               {{ record.server_addr || '-' }}
             </span>
           </template>
@@ -79,7 +79,7 @@
 
           <template v-else-if="column.key === 'detail'">
             <a-tooltip v-if="record.detail" :title="record.detail">
-              <span class="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[200px] inline-block align-bottom">
+              <span class="text-sm text-slate-500 dark:text-[var(--text-secondary)] truncate max-w-[200px] inline-block align-bottom">
                 {{ record.detail }}
               </span>
             </a-tooltip>
@@ -347,7 +347,7 @@ const getStatusTextColor = (status: string) => {
   if (status === 'succeeded') return 'text-green-600 dark:text-green-500 font-medium';
   if (status === 'pending') return 'text-blue-600 dark:text-blue-400 font-medium';
   if (status === 'failed') return 'text-red-600 dark:text-red-500 font-medium';
-  return 'text-slate-500 dark:text-slate-400';
+  return 'text-slate-500 dark:text-[var(--text-secondary)]';
 };
 
 const getStatusLabel = (status: string) => {

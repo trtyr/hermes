@@ -47,3 +47,6 @@ export async function fetchAgentBuild(buildId) {
         throw new Error('获取构建详情失败: ' + res.statusText);
     return res.json();
 }
+export function getBuildDownloadUrl(buildId) {
+    return `${getBaseUrl()}/agent-builds/${buildId}/download`;
+}

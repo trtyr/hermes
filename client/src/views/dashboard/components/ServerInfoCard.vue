@@ -1,27 +1,27 @@
 <template>
-  <div class="bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm p-6 lg:col-span-1">
+  <div class="bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm p-6 lg:col-span-1">
     <div class="flex items-center space-x-2 mb-6">
-      <DesktopOutlined class="text-lg text-slate-700 dark:text-slate-300" />
-      <h3 class="text-lg font-medium text-slate-800 dark:text-slate-100">服务器状态</h3>
+      <DesktopOutlined class="text-lg text-slate-700 dark:text-[var(--text-secondary)]" />
+      <h3 class="text-lg font-medium text-slate-800 dark:text-[var(--text-primary)]">服务器状态</h3>
     </div>
     
     <div class="space-y-5">
       <div>
-        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">主机信息</div>
-        <div class="text-base text-slate-800 dark:text-slate-200 font-medium break-all">
+        <div class="text-sm text-slate-500 dark:text-[var(--text-secondary)] mb-1">主机信息</div>
+        <div class="text-base text-slate-800 dark:text-[var(--text-primary)] font-medium break-all">
           {{ stats.server.hostname || '未知主机名' }}
         </div>
-        <div class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+        <div class="text-sm text-slate-500 dark:text-[var(--text-secondary)] mt-0.5">
           {{ stats.server.os_name || 'OS' }} {{ stats.server.os_version || '' }}
           <span v-if="stats.server.kernel_version" class="text-xs ml-1 opacity-70">({{ stats.server.kernel_version }})</span>
         </div>
       </div>
       
-      <a-divider style="margin: 12px 0" class="dark:border-[#2A2D33]" />
+      <a-divider style="margin: 12px 0" class="dark:border-[var(--border-default)]" />
       
       <div>
         <div class="flex justify-between items-end mb-2">
-          <div class="text-sm text-slate-500 dark:text-slate-400">内存使用 ({{ formatBytes(stats.server.memory.used_bytes) }} / {{ formatBytes(stats.server.memory.total_bytes) }})</div>
+          <div class="text-sm text-slate-500 dark:text-[var(--text-secondary)]">内存使用 ({{ formatBytes(stats.server.memory.used_bytes) }} / {{ formatBytes(stats.server.memory.total_bytes) }})</div>
           <div class="text-sm font-medium" :class="memoryPercent > 80 ? 'text-red-500' : memoryPercent > 60 ? 'text-orange-500' : 'text-green-500'">
             {{ memoryPercent }}%
           </div>
@@ -36,19 +36,19 @@
       </div>
 
       <div>
-        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">负载均衡 (Load Average)</div>
+        <div class="text-sm text-slate-500 dark:text-[var(--text-secondary)] mb-1">负载均衡 (Load Average)</div>
         <div class="flex justify-between">
           <div class="text-center">
             <div class="text-xs text-slate-400 mb-0.5">1 分钟</div>
-            <div class="text-base font-medium text-slate-700 dark:text-slate-300">{{ stats.server.load_average.one.toFixed(2) }}</div>
+            <div class="text-base font-medium text-slate-700 dark:text-[var(--text-secondary)]">{{ stats.server.load_average.one.toFixed(2) }}</div>
           </div>
           <div class="text-center">
             <div class="text-xs text-slate-400 mb-0.5">5 分钟</div>
-            <div class="text-base font-medium text-slate-700 dark:text-slate-300">{{ stats.server.load_average.five.toFixed(2) }}</div>
+            <div class="text-base font-medium text-slate-700 dark:text-[var(--text-secondary)]">{{ stats.server.load_average.five.toFixed(2) }}</div>
           </div>
           <div class="text-center">
             <div class="text-xs text-slate-400 mb-0.5">15 分钟</div>
-            <div class="text-base font-medium text-slate-700 dark:text-slate-300">{{ stats.server.load_average.fifteen.toFixed(2) }}</div>
+            <div class="text-base font-medium text-slate-700 dark:text-[var(--text-secondary)]">{{ stats.server.load_average.fifteen.toFixed(2) }}</div>
           </div>
         </div>
       </div>

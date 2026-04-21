@@ -176,12 +176,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-    ...{ class: "text-sm font-medium text-slate-700 dark:text-slate-300" },
+    ...{ class: "text-sm font-medium text-slate-700 dark:text-[var(--text-secondary)]" },
 });
 /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-300']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
 let __VLS_9;
 /** @ts-ignore @type {typeof __VLS_components.aButton | typeof __VLS_components.AButton | typeof __VLS_components.aButton | typeof __VLS_components.AButton} */
 aButton;
@@ -206,13 +206,13 @@ var __VLS_12;
 var __VLS_13;
 if (__VLS_ctx.connectionStore.profiles.length === 0) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "text-center py-4 text-slate-400 bg-slate-50 dark:bg-[#14161A] rounded-md border border-dashed border-slate-200 dark:border-slate-700" },
+        ...{ class: "text-center py-4 text-slate-400 bg-slate-50 dark:bg-[var(--bg-sub)] rounded-md border border-dashed border-slate-200 dark:border-slate-700" },
     });
     /** @type {__VLS_StyleScopedClasses['text-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-400']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-slate-50']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:bg-[#14161A]']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-sub)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-md']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-dashed']} */ ;
@@ -238,7 +238,7 @@ else {
                 } },
             key: (profile.id),
             ...{ class: "flex items-center justify-between p-3 rounded-md border transition-colors cursor-pointer" },
-            ...{ class: (__VLS_ctx.connectionStore.activeProfileId === profile.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-[#14161A] bg-white dark:bg-[#1C1E22] hover:border-blue-300') },
+            ...{ class: (__VLS_ctx.connectionStore.activeProfileId === profile.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-[var(--border-default)] bg-white dark:bg-[var(--bg-card)] hover:border-blue-300') },
         });
         /** @type {__VLS_StyleScopedClasses['flex']} */ ;
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
@@ -260,11 +260,11 @@ else {
         /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
         /** @type {__VLS_StyleScopedClasses['space-x-2']} */ ;
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "font-medium text-slate-800 dark:text-slate-100 truncate" },
+            ...{ class: "font-medium text-slate-800 dark:text-[var(--text-primary)] truncate" },
         });
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-        /** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+        /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
         /** @type {__VLS_StyleScopedClasses['truncate']} */ ;
         (profile.connection_name || '未命名连接');
         if (__VLS_ctx.connectionStore.activeProfileId === profile.id) {
@@ -401,12 +401,12 @@ if (__VLS_ctx.isEditing || __VLS_ctx.connectionStore.profiles.length === 0) {
 if (__VLS_ctx.isEditing || __VLS_ctx.connectionStore.profiles.length === 0) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({});
     __VLS_asFunctionalElement1(__VLS_intrinsics.h3, __VLS_intrinsics.h3)({
-        ...{ class: "text-sm font-medium text-slate-700 dark:text-slate-300 mb-4" },
+        ...{ class: "text-sm font-medium text-slate-700 dark:text-[var(--text-secondary)] mb-4" },
     });
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-300']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     (__VLS_ctx.editingId ? '编辑连接' : '新建后端连接');
     let __VLS_56;
@@ -505,22 +505,22 @@ if (__VLS_ctx.isEditing || __VLS_ctx.connectionStore.profiles.length === 0) {
     [formState,];
     var __VLS_87;
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "bg-slate-50 dark:bg-[#14161A] p-3 rounded-md mb-4 text-xs text-slate-500 dark:text-slate-400" },
+        ...{ class: "bg-slate-50 dark:bg-[var(--bg-sub)] p-3 rounded-md mb-4 text-xs text-slate-500 dark:text-[var(--text-secondary)]" },
     });
     /** @type {__VLS_StyleScopedClasses['bg-slate-50']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:bg-[#14161A]']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-sub)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['p-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['rounded-md']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "mb-1 text-slate-700 dark:text-slate-300 flex items-center space-x-1.5 font-medium" },
+        ...{ class: "mb-1 text-slate-700 dark:text-[var(--text-secondary)] flex items-center space-x-1.5 font-medium" },
     });
     /** @type {__VLS_StyleScopedClasses['mb-1']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-300']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['flex']} */ ;
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['space-x-1.5']} */ ;

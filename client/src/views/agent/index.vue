@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header Actions -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100">Agent管理</h2>
+      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)]">Agent管理</h2>
       <div class="flex items-center gap-2">
         <a-input-search
           v-model:value="searchKeyword"
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Table -->
-    <div class="flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm overflow-hidden flex flex-col">
+    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm overflow-hidden flex flex-col">
       <a-table
         :dataSource="agents"
         :columns="columns"

@@ -103,12 +103,12 @@ else {
     /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
     /** @type {__VLS_StyleScopedClasses['mb-6']} */ ;
     __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-        ...{ class: "text-2xl font-semibold text-slate-800 dark:text-slate-100" },
+        ...{ class: "text-2xl font-semibold text-slate-800 dark:text-[var(--text-primary)]" },
     });
     /** @type {__VLS_StyleScopedClasses['text-2xl']} */ ;
     /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
     const __VLS_7 = ConnectionBadge;
     // @ts-ignore
     const __VLS_8 = __VLS_asFunctionalComponent1(__VLS_7, new __VLS_7({
@@ -191,18 +191,18 @@ else {
             d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
         });
         __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-            ...{ class: "text-xl font-semibold text-slate-800 dark:text-slate-100 mb-2" },
+            ...{ class: "text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] mb-2" },
         });
         /** @type {__VLS_StyleScopedClasses['text-xl']} */ ;
         /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-        /** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+        /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
         /** @type {__VLS_StyleScopedClasses['mb-2']} */ ;
         __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
-            ...{ class: "text-slate-500 dark:text-slate-400 mb-4 max-w-md" },
+            ...{ class: "text-slate-500 dark:text-[var(--text-secondary)] mb-4 max-w-md" },
         });
         /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
-        /** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
+        /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
         /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
         /** @type {__VLS_StyleScopedClasses['max-w-md']} */ ;
         (__VLS_ctx.error);

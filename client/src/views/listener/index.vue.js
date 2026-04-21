@@ -111,10 +111,10 @@ const getStatusTextColor = (status) => {
     if (status === 'running')
         return 'text-green-600 dark:text-green-500 font-medium';
     if (status === 'stopped')
-        return 'text-slate-500 dark:text-slate-400';
+        return 'text-slate-500 dark:text-[var(--text-secondary)]';
     if (status === 'error')
         return 'text-red-600 dark:text-red-500 font-medium';
-    return 'text-slate-700 dark:text-slate-300';
+    return 'text-slate-700 dark:text-[var(--text-secondary)]';
 };
 const __VLS_ctx = {
     ...{},
@@ -140,12 +140,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 m-0" },
+    ...{ class: "text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0" },
 });
 /** @type {__VLS_StyleScopedClasses['text-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
@@ -233,15 +233,15 @@ const { default: __VLS_26 } = __VLS_22.slots;
 var __VLS_22;
 var __VLS_23;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm flex flex-col overflow-hidden" },
+    ...{ class: "flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden" },
 });
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-col']} */ ;
@@ -297,12 +297,12 @@ const { default: __VLS_38 } = __VLS_36.slots;
     }
     else if (column.key === 'address') {
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "font-mono text-sm text-slate-600 dark:text-slate-300" },
+            ...{ class: "font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]" },
         });
         /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-slate-600']} */ ;
-        /** @type {__VLS_StyleScopedClasses['dark:text-slate-300']} */ ;
+        /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
         (record.bind_host);
         (record.bind_port);
     }

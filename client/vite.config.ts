@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
   },
   build: {
     sourcemap: false, // 强制关闭 sourcemap 以防止生产环境路径泄露

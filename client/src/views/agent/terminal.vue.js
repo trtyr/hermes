@@ -33,7 +33,7 @@ let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "h-full w-full flex flex-col p-4 relative bg-[#f0f2f5] dark:bg-[#14161A] transition-colors duration-300" },
+    ...{ class: "h-full w-full flex flex-col p-4 relative bg-[#f0f2f5] dark:bg-[var(--bg-page)] transition-colors duration-300" },
 });
 /** @type {__VLS_StyleScopedClasses['h-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
@@ -42,7 +42,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['p-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-[#f0f2f5]']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-page)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['transition-colors']} */ ;
 /** @type {__VLS_StyleScopedClasses['duration-300']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
@@ -53,12 +53,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 m-0" },
+    ...{ class: "text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0" },
 });
 /** @type {__VLS_StyleScopedClasses['text-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
@@ -96,7 +96,7 @@ const { default: __VLS_10 } = __VLS_8.slots;
 [agentId, wsConnected, wsConnected, sessionId, sessionId,];
 var __VLS_8;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-1 bg-[#1e1e1e] dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-[#2A2D33] shadow-sm overflow-hidden relative" },
+    ...{ class: "flex-1 bg-[#1e1e1e] dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm overflow-hidden relative" },
 });
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-[#1e1e1e]']} */ ;
@@ -104,7 +104,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#2A2D33]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;

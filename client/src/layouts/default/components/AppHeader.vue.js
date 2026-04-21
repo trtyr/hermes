@@ -2,12 +2,14 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAppStore } from '@/store/app';
+import { useConnectionStore } from '@/store/connection';
 import { DashboardOutlined, RobotOutlined, ApiOutlined, CodeOutlined, FileTextOutlined, UserOutlined, SettingOutlined, LogoutOutlined } from '@ant-design/icons-vue';
 const props = defineProps();
 const emit = defineEmits(['refresh']);
 const router = useRouter();
 const route = useRoute();
 const appStore = useAppStore();
+const connectionStore = useConnectionStore();
 const routeIcons = {
     dashboard: DashboardOutlined,
     agent: RobotOutlined,
@@ -32,6 +34,10 @@ const toggleFullscreen = async () => {
 const openAction = (name) => {
     message.info(`${name} 入口已预留`);
 };
+const handleLogout = () => {
+    connectionStore.setActiveProfile(null);
+    router.push('/login');
+};
 const __VLS_ctx = {
     ...{},
     ...{},
@@ -43,7 +49,7 @@ let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
 __VLS_asFunctionalElement1(__VLS_intrinsics.header, __VLS_intrinsics.header)({
-    ...{ class: "top-0 flex w-full flex-[0_0_auto] items-center border-b border-gray-200 bg-white pl-2 transition-[margin-top] duration-200 dark:border-[#14161A] dark:bg-[#1C1E22]" },
+    ...{ class: "top-0 flex w-full flex-[0_0_auto] items-center border-b border-gray-200 bg-white pl-2 transition-[margin-top] duration-200 dark:border-[var(--border-default)] dark:bg-[var(--bg-card)]" },
     ...{ style: {} },
 });
 /** @type {__VLS_StyleScopedClasses['top-0']} */ ;
@@ -57,12 +63,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.header, __VLS_intrinsics.header)({
 /** @type {__VLS_StyleScopedClasses['pl-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['transition-[margin-top]']} */ ;
 /** @type {__VLS_StyleScopedClasses['duration-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
     ...{ onClick: (__VLS_ctx.appStore.toggleCollapse) },
     type: "button",
-    ...{ class: "inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#2A2D33] rounded-md mr-1" },
+    ...{ class: "inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-accent)] rounded-md mr-1" },
 });
 /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
@@ -75,8 +81,8 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['text-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:bg-slate-100']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:hover:bg-[#2A2D33]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:hover:bg-[var(--bg-accent)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-md']} */ ;
 /** @type {__VLS_StyleScopedClasses['mr-1']} */ ;
 if (__VLS_ctx.appStore.sidebarCollapsed) {
@@ -110,7 +116,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
             [appStore, appStore, emit,];
         } },
     type: "button",
-    ...{ class: "inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#2A2D33] rounded-md mr-1" },
+    ...{ class: "inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-accent)] rounded-md mr-1" },
 });
 /** @type {__VLS_StyleScopedClasses['inline-flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
@@ -123,8 +129,8 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.button, __VLS_intrinsics.button)({
 /** @type {__VLS_StyleScopedClasses['text-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:bg-slate-100']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:hover:bg-[#2A2D33]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:hover:bg-[var(--bg-accent)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-md']} */ ;
 /** @type {__VLS_StyleScopedClasses['mr-1']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
@@ -224,10 +230,10 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
 });
 /** @type {__VLS_StyleScopedClasses['translate-y-[0.5px]']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "text-slate-300 dark:text-slate-600 flex items-center" },
+    ...{ class: "text-slate-300 dark:text-[var(--text-muted)] flex items-center" },
 });
 /** @type {__VLS_StyleScopedClasses['text-slate-300']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-600']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-muted)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
@@ -244,10 +250,10 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.path, __VLS_intrinsics.path)({
     d: "m9 18 6-6-6-6",
 });
 __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "text-slate-900 dark:text-slate-100 flex items-center leading-none" },
+    ...{ class: "text-slate-900 dark:text-[var(--text-primary)] flex items-center leading-none" },
 });
 /** @type {__VLS_StyleScopedClasses['text-slate-900']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['leading-none']} */ ;
@@ -283,7 +289,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
             // @ts-ignore
             [currentRouteIcon, routeMetaTitle, openAction,];
         } },
-    ...{ class: "mr-1 sm:mr-4 flex items-center gap-3 cursor-pointer rounded-2xl md:bg-slate-100 dark:md:bg-[#2A2D33] px-2 py-0.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" },
+    ...{ class: "mr-1 sm:mr-4 flex items-center gap-3 cursor-pointer rounded-2xl md:bg-slate-100 dark:md:bg-[var(--bg-accent)] px-2 py-0.5 text-slate-500 hover:text-slate-900 dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]" },
 });
 /** @type {__VLS_StyleScopedClasses['mr-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['sm:mr-4']} */ ;
@@ -293,13 +299,13 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['cursor-pointer']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-2xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['md:bg-slate-100']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:md:bg-[#2A2D33]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:md:bg-[var(--bg-accent)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['px-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['py-0.5']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:text-slate-900']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:hover:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:hover:text-[var(--text-primary)]']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.svg, __VLS_intrinsics.svg)({
     viewBox: "0 0 24 24",
     ...{ class: "size-4 fill-none stroke-current stroke-2" },
@@ -325,13 +331,13 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
 /** @type {__VLS_StyleScopedClasses['md:block']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-xs']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "hidden md:block border bg-white dark:bg-[#1C1E22] border-slate-300 dark:border-slate-600 px-1.5 py-1 text-xs rounded-r-xl" },
+    ...{ class: "hidden md:block border bg-white dark:bg-[var(--bg-card)] border-slate-300 dark:border-slate-600 px-1.5 py-1 text-xs rounded-r-xl" },
 });
 /** @type {__VLS_StyleScopedClasses['hidden']} */ ;
 /** @type {__VLS_StyleScopedClasses['md:block']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-slate-300']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:border-slate-600']} */ ;
 /** @type {__VLS_StyleScopedClasses['px-1.5']} */ ;
@@ -556,14 +562,14 @@ const __VLS_7 = __VLS_6({
 }, ...__VLS_functionalComponentArgsRest(__VLS_6));
 const { default: __VLS_10 } = __VLS_8.slots;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "mr-2 cursor-pointer rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-[#2A2D33]" },
+    ...{ class: "mr-2 cursor-pointer rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-[var(--bg-accent)]" },
 });
 /** @type {__VLS_StyleScopedClasses['mr-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['cursor-pointer']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['p-1.5']} */ ;
 /** @type {__VLS_StyleScopedClasses['hover:bg-slate-100']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:hover:bg-[#2A2D33]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:hover:bg-[var(--bg-accent)]']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
     ...{ class: "relative flex items-center h-8 w-8 shrink-0" },
 });
@@ -579,18 +585,18 @@ aAvatar;
 // @ts-ignore
 const __VLS_12 = __VLS_asFunctionalComponent1(__VLS_11, new __VLS_11({
     size: "small",
-    ...{ class: "!h-8 !w-8 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100 rounded-full" },
+    ...{ class: "!h-8 !w-8 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-[var(--text-primary)] rounded-full" },
 }));
 const __VLS_13 = __VLS_12({
     size: "small",
-    ...{ class: "!h-8 !w-8 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100 rounded-full" },
+    ...{ class: "!h-8 !w-8 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-[var(--text-primary)] rounded-full" },
 }, ...__VLS_functionalComponentArgsRest(__VLS_12));
 /** @type {__VLS_StyleScopedClasses['!h-8']} */ ;
 /** @type {__VLS_StyleScopedClasses['!w-8']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-slate-200']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
 /** @type {__VLS_StyleScopedClasses['dark:bg-slate-700']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-full']} */ ;
 const { default: __VLS_16 } = __VLS_14.slots;
 {
@@ -613,7 +619,7 @@ const { default: __VLS_16 } = __VLS_14.slots;
 [];
 var __VLS_14;
 __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-    ...{ class: "absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-[#1C1E22]" },
+    ...{ class: "absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-[var(--bg-card)]" },
 });
 /** @type {__VLS_StyleScopedClasses['absolute']} */ ;
 /** @type {__VLS_StyleScopedClasses['right-0']} */ ;
@@ -624,7 +630,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
 /** @type {__VLS_StyleScopedClasses['border-2']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-white']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-green-500']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--bg-card)]']} */ ;
 {
     const { overlay: __VLS_23 } = __VLS_8.slots;
     let __VLS_24;
@@ -683,11 +689,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
     }, ...__VLS_functionalComponentArgsRest(__VLS_45));
     let __VLS_49;
     const __VLS_50 = ({ click: {} },
-        { onClick: (...[$event]) => {
-                __VLS_ctx.router.push('/login');
-                // @ts-ignore
-                [router,];
-            } });
+        { onClick: (__VLS_ctx.handleLogout) });
     const { default: __VLS_51 } = __VLS_47.slots;
     {
         const { icon: __VLS_52 } = __VLS_47.slots;
@@ -698,7 +700,7 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
         const __VLS_54 = __VLS_asFunctionalComponent1(__VLS_53, new __VLS_53({}));
         const __VLS_55 = __VLS_54({}, ...__VLS_functionalComponentArgsRest(__VLS_54));
         // @ts-ignore
-        [];
+        [handleLogout,];
     }
     // @ts-ignore
     [];

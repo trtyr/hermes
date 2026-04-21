@@ -1,13 +1,13 @@
 <template>
-  <header class="top-0 flex w-full flex-[0_0_auto] items-center border-b border-gray-200 bg-white pl-2 transition-[margin-top] duration-200 dark:border-[#14161A] dark:bg-[#1C1E22]" style="height: 50px;">
+  <header class="top-0 flex w-full flex-[0_0_auto] items-center border-b border-gray-200 bg-white pl-2 transition-[margin-top] duration-200 dark:border-[var(--border-default)] dark:bg-[var(--bg-card)]" style="height: 50px;">
     <!-- Toggle Sidebar Button -->
-    <button type="button" class="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#2A2D33] rounded-md mr-1" @click="appStore.toggleCollapse">
+    <button type="button" class="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-accent)] rounded-md mr-1" @click="appStore.toggleCollapse">
       <svg v-if="appStore.sidebarCollapsed" aria-hidden="true" viewBox="0 0 1024 1024" class="size-4 fill-current"><path d="M128 192h768v128H128zm256 256h512v128H384zm-256 256h768v128H128zm576-320 192 128-192 128z"></path></svg>
       <svg v-else aria-hidden="true" viewBox="0 0 1024 1024" class="size-4 fill-current"><path d="M896 192H128v128h768zm0 256H384v128h512zm0 256H128v128h768zM320 384L128 512l192 128z"></path></svg>
     </button>
 
     <!-- Content Refresh Button -->
-    <button type="button" class="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#2A2D33] rounded-md mr-1" @click="emit('refresh')">
+    <button type="button" class="inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors h-8 w-8 text-lg text-slate-500 hover:bg-slate-100 dark:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-accent)] rounded-md mr-1" @click="emit('refresh')">
       <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4 fill-none stroke-current stroke-2" :class="{ 'animate-spin': isRefreshing }">
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 3v5h-5"></path>
@@ -21,10 +21,10 @@
           <svg viewBox="0 0 24 24" class="mr-1 size-4 fill-none stroke-current stroke-2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
           <span class="translate-y-[0.5px]">概览</span>
         </a>
-        <span class="text-slate-300 dark:text-slate-600 flex items-center">
+        <span class="text-slate-300 dark:text-[var(--text-muted)] flex items-center">
           <svg viewBox="0 0 24 24" class="size-3.5 fill-none stroke-current stroke-2"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"></path></svg>
         </span>
-        <span class="text-slate-900 dark:text-slate-100 flex items-center leading-none">
+        <span class="text-slate-900 dark:text-[var(--text-primary)] flex items-center leading-none">
           <span class="mr-1 text-[16px] leading-none flex items-center"><component :is="currentRouteIcon" /></span>
           <span class="translate-y-[0.5px]">{{ routeMetaTitle }}</span>
         </span>
@@ -35,10 +35,10 @@
 
     <!-- Right Side Tools -->
     <div class="flex items-center">
-      <div class="mr-1 sm:mr-4 flex items-center gap-3 cursor-pointer rounded-2xl md:bg-slate-100 dark:md:bg-[#2A2D33] px-2 py-0.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" @click="openAction('全局搜索')">
+      <div class="mr-1 sm:mr-4 flex items-center gap-3 cursor-pointer rounded-2xl md:bg-slate-100 dark:md:bg-[var(--bg-accent)] px-2 py-0.5 text-slate-500 hover:text-slate-900 dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)]" @click="openAction('全局搜索')">
         <svg viewBox="0 0 24 24" class="size-4 fill-none stroke-current stroke-2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
         <span class="hidden md:block text-xs">搜索</span>
-        <span class="hidden md:block border bg-white dark:bg-[#1C1E22] border-slate-300 dark:border-slate-600 px-1.5 py-1 text-xs rounded-r-xl">⌘ K</span>
+        <span class="hidden md:block border bg-white dark:bg-[var(--bg-card)] border-slate-300 dark:border-slate-600 px-1.5 py-1 text-xs rounded-r-xl">⌘ K</span>
       </div>
 
       <button class="menu-btn" @click="openAction('偏好设置')">
@@ -63,18 +63,18 @@
 
       <!-- Profile Dropdown -->
       <a-dropdown placement="bottomRight">
-        <div class="mr-2 cursor-pointer rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-[#2A2D33]">
+        <div class="mr-2 cursor-pointer rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-[var(--bg-accent)]">
           <div class="relative flex items-center h-8 w-8 shrink-0">
-            <a-avatar size="small" class="!h-8 !w-8 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100 rounded-full">
+            <a-avatar size="small" class="!h-8 !w-8 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-[var(--text-primary)] rounded-full">
               <template #icon><UserOutlined class="text-[13px]" /></template>
             </a-avatar>
-            <span class="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-[#1C1E22]"></span>
+            <span class="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-[var(--bg-card)]"></span>
           </div>
         </div>
         <template #overlay>
           <a-menu>
             <a-menu-item key="preferences" @click="openAction('偏好设置')"><template #icon><SettingOutlined /></template>控制台设置</a-menu-item>
-            <a-menu-item key="logout" @click="router.push('/login')"><template #icon><LogoutOutlined /></template>退出 UI 会话</a-menu-item>
+            <a-menu-item key="logout" @click="handleLogout"><template #icon><LogoutOutlined /></template>退出登录</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>
@@ -87,6 +87,7 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { useAppStore } from '@/store/app';
+import { useConnectionStore } from '@/store/connection';
 import {
   DashboardOutlined, RobotOutlined, ApiOutlined, CodeOutlined, FileTextOutlined,
   UserOutlined, SettingOutlined, LogoutOutlined
@@ -98,6 +99,7 @@ const emit = defineEmits(['refresh']);
 const router = useRouter();
 const route = useRoute();
 const appStore = useAppStore();
+const connectionStore = useConnectionStore();
 
 const routeIcons = {
   dashboard: DashboardOutlined,
@@ -123,11 +125,16 @@ const toggleFullscreen = async () => {
 const openAction = (name: string) => {
   message.info(`${name} 入口已预留`);
 };
+
+const handleLogout = () => {
+  connectionStore.setActiveProfile(null);
+  router.push('/login');
+};
 </script>
 
 <style scoped>
 @reference "tailwindcss";
 .menu-btn {
-  @apply inline-flex items-center justify-center h-8 w-8 text-lg rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#2A2D33] dark:hover:text-slate-100 mr-1 transition-colors;
+  @apply inline-flex items-center justify-center h-8 w-8 text-lg rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-[var(--text-secondary)] dark:hover:bg-[var(--bg-accent)] dark:hover:text-[var(--text-primary)] mr-1 transition-colors;
 }
 </style>

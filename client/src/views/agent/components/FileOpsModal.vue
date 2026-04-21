@@ -17,7 +17,7 @@
           <a-form-item label="选择文件">
             <input
               type="file"
-              class="block w-full text-sm text-slate-500 dark:text-slate-400
+              class="block w-full text-sm text-slate-500 dark:text-[var(--text-secondary)]
                 file:mr-3 file:py-1.5 file:px-3
                 file:rounded-md file:border-0
                 file:text-sm file:font-medium

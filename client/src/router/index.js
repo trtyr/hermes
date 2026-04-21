@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useConnectionStore } from '@/store/connection';
 const routes = [
     {
         path: '/login',
@@ -56,6 +57,20 @@ const routes = [
 export const router = createRouter({
     history: createWebHistory(),
     routes,
+});
+// Navigation guard: redirect to login if not authenticated
+router.beforeEach((to, _from, next) => {
+    const connectionStore = useConnectionStore();
+    const isAuthenticated = connectionStore.activeProfile !== null;
+    if (to.path !== '/login' && !isAuthenticated) {
+        next('/login');
+    }
+    else if (to.path === '/login' && isAuthenticated) {
+        next('/dashboard');
+    }
+    else {
+        next();
+    }
 });
 export function setupRouter(app) {
     app.use(router);

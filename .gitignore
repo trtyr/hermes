@@ -21,3 +21,10 @@ Thumbs.db
 # Environment
 .env
 *.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OpenCode local config
+.opencode/

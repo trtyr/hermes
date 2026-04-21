@@ -3,12 +3,13 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
-import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined } from '@ant-design/icons-vue';
-import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent, fetchAgentDetail } from '@/api/agent';
+import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons-vue';
+import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent, fetchAgentDetail, takeScreenshot, dispatchTask } from '@/api/agent';
 import { formatTimestamp } from '@/utils/format';
 import { useAgentWebSocket } from './hooks/useAgentWebSocket';
 import AgentDetailDrawer from './components/AgentDetailDrawer.vue';
 import AgentTaskModal from './components/AgentTaskModal.vue';
+import FileOpsModal from './components/FileOpsModal.vue';
 import AgentContextMenu from './components/AgentContextMenu.vue';
 const router = useRouter();
 // Core State
@@ -19,6 +20,7 @@ const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChange
 // UI Component State
 const detailVisible = ref(false);
 const taskModalVisible = ref(false);
+const fileOpsVisible = ref(false);
 const selectedAgent = ref(null);
 const actionAgent = ref(null);
 const contextMenuState = reactive({ visible: false, x: 0, y: 0, record: null });
@@ -68,6 +70,38 @@ function openDetail(agent) {
 function openTaskModal(agent) {
     actionAgent.value = agent;
     taskModalVisible.value = true;
+}
+function openFileOps(agent) {
+    actionAgent.value = agent;
+    fileOpsVisible.value = true;
+}
+async function handleScreenshot(agent) {
+    try {
+        const res = await takeScreenshot(agent.agent_id);
+        if (res.success) {
+            message.success(`截图任务已下发 (task: ${res.task_id})`);
+        }
+        else {
+            message.error(res.detail || '截图失败');
+        }
+    }
+    catch (e) {
+        message.error(e.message);
+    }
+}
+async function handlePs(agent) {
+    try {
+        const res = await dispatchTask(agent.agent_id, { command: 'ps' });
+        if (res.success) {
+            message.success(`进程列表任务已下发 (task: ${res.task_id})`);
+        }
+        else {
+            message.error(res.detail || '获取进程列表失败');
+        }
+    }
+    catch (e) {
+        message.error(e.message);
+    }
 }
 function openTerminal(agent) {
     router.push(`/agent/terminal/${agent.agent_id}`);
@@ -158,12 +192,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-xl font-semibold text-slate-800 dark:text-slate-100" },
+    ...{ class: "text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)]" },
 });
 /** @type {__VLS_StyleScopedClasses['text-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
     ...{ class: "flex items-center gap-2" },
 });
@@ -223,15 +257,15 @@ const { default: __VLS_14 } = __VLS_10.slots;
 var __VLS_10;
 var __VLS_11;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm overflow-hidden flex flex-col" },
+    ...{ class: "flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm overflow-hidden flex flex-col" },
 });
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['overflow-hidden']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
@@ -636,27 +670,78 @@ const { default: __VLS_28 } = __VLS_24.slots;
             var __VLS_112;
             var __VLS_113;
             let __VLS_123;
-            /** @ts-ignore @type {typeof __VLS_components.aMenuDivider | typeof __VLS_components.AMenuDivider} */
-            aMenuDivider;
-            // @ts-ignore
-            const __VLS_124 = __VLS_asFunctionalComponent1(__VLS_123, new __VLS_123({}));
-            const __VLS_125 = __VLS_124({}, ...__VLS_functionalComponentArgsRest(__VLS_124));
-            let __VLS_128;
             /** @ts-ignore @type {typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem | typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem} */
             aMenuItem;
             // @ts-ignore
-            const __VLS_129 = __VLS_asFunctionalComponent1(__VLS_128, new __VLS_128({
+            const __VLS_124 = __VLS_asFunctionalComponent1(__VLS_123, new __VLS_123({
+                ...{ 'onClick': {} },
+                key: "fileops",
+                disabled: (record.is_disabled),
+            }));
+            const __VLS_125 = __VLS_124({
+                ...{ 'onClick': {} },
+                key: "fileops",
+                disabled: (record.is_disabled),
+            }, ...__VLS_functionalComponentArgsRest(__VLS_124));
+            let __VLS_128;
+            const __VLS_129 = ({ click: {} },
+                { onClick: (...[$event]) => {
+                        if (!!(column.key === 'agent_id'))
+                            return;
+                        if (!!(column.key === 'status'))
+                            return;
+                        if (!!(column.key === 'platform'))
+                            return;
+                        if (!!(column.key === 'network'))
+                            return;
+                        if (!!(column.key === 'beacon'))
+                            return;
+                        if (!!(column.key === 'last_seen'))
+                            return;
+                        if (!(column.key === 'action'))
+                            return;
+                        __VLS_ctx.openFileOps(record);
+                        // @ts-ignore
+                        [openFileOps,];
+                    } });
+            const { default: __VLS_130 } = __VLS_126.slots;
+            {
+                const { icon: __VLS_131 } = __VLS_126.slots;
+                let __VLS_132;
+                /** @ts-ignore @type {typeof __VLS_components.FolderOpenOutlined} */
+                FolderOpenOutlined;
+                // @ts-ignore
+                const __VLS_133 = __VLS_asFunctionalComponent1(__VLS_132, new __VLS_132({}));
+                const __VLS_134 = __VLS_133({}, ...__VLS_functionalComponentArgsRest(__VLS_133));
+                // @ts-ignore
+                [];
+            }
+            // @ts-ignore
+            [];
+            var __VLS_126;
+            var __VLS_127;
+            let __VLS_137;
+            /** @ts-ignore @type {typeof __VLS_components.aMenuDivider | typeof __VLS_components.AMenuDivider} */
+            aMenuDivider;
+            // @ts-ignore
+            const __VLS_138 = __VLS_asFunctionalComponent1(__VLS_137, new __VLS_137({}));
+            const __VLS_139 = __VLS_138({}, ...__VLS_functionalComponentArgsRest(__VLS_138));
+            let __VLS_142;
+            /** @ts-ignore @type {typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem | typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem} */
+            aMenuItem;
+            // @ts-ignore
+            const __VLS_143 = __VLS_asFunctionalComponent1(__VLS_142, new __VLS_142({
                 ...{ 'onClick': {} },
                 key: "disconnect",
                 disabled: (!record.is_online),
             }));
-            const __VLS_130 = __VLS_129({
+            const __VLS_144 = __VLS_143({
                 ...{ 'onClick': {} },
                 key: "disconnect",
                 disabled: (!record.is_online),
-            }, ...__VLS_functionalComponentArgsRest(__VLS_129));
-            let __VLS_133;
-            const __VLS_134 = ({ click: {} },
+            }, ...__VLS_functionalComponentArgsRest(__VLS_143));
+            let __VLS_147;
+            const __VLS_148 = ({ click: {} },
                 { onClick: (...[$event]) => {
                         if (!!(column.key === 'agent_id'))
                             return;
@@ -676,37 +761,37 @@ const { default: __VLS_28 } = __VLS_24.slots;
                         // @ts-ignore
                         [handleAction,];
                     } });
-            const { default: __VLS_135 } = __VLS_131.slots;
+            const { default: __VLS_149 } = __VLS_145.slots;
             {
-                const { icon: __VLS_136 } = __VLS_131.slots;
-                let __VLS_137;
+                const { icon: __VLS_150 } = __VLS_145.slots;
+                let __VLS_151;
                 /** @ts-ignore @type {typeof __VLS_components.DisconnectOutlined} */
                 DisconnectOutlined;
                 // @ts-ignore
-                const __VLS_138 = __VLS_asFunctionalComponent1(__VLS_137, new __VLS_137({}));
-                const __VLS_139 = __VLS_138({}, ...__VLS_functionalComponentArgsRest(__VLS_138));
+                const __VLS_152 = __VLS_asFunctionalComponent1(__VLS_151, new __VLS_151({}));
+                const __VLS_153 = __VLS_152({}, ...__VLS_functionalComponentArgsRest(__VLS_152));
                 // @ts-ignore
                 [];
             }
             // @ts-ignore
             [];
-            var __VLS_131;
-            var __VLS_132;
+            var __VLS_145;
+            var __VLS_146;
             if (!record.is_disabled) {
-                let __VLS_142;
+                let __VLS_156;
                 /** @ts-ignore @type {typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem | typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem} */
                 aMenuItem;
                 // @ts-ignore
-                const __VLS_143 = __VLS_asFunctionalComponent1(__VLS_142, new __VLS_142({
+                const __VLS_157 = __VLS_asFunctionalComponent1(__VLS_156, new __VLS_156({
                     ...{ 'onClick': {} },
                     key: "disable",
                 }));
-                const __VLS_144 = __VLS_143({
+                const __VLS_158 = __VLS_157({
                     ...{ 'onClick': {} },
                     key: "disable",
-                }, ...__VLS_functionalComponentArgsRest(__VLS_143));
-                let __VLS_147;
-                const __VLS_148 = ({ click: {} },
+                }, ...__VLS_functionalComponentArgsRest(__VLS_157));
+                let __VLS_161;
+                const __VLS_162 = ({ click: {} },
                     { onClick: (...[$event]) => {
                             if (!!(column.key === 'agent_id'))
                                 return;
@@ -728,38 +813,38 @@ const { default: __VLS_28 } = __VLS_24.slots;
                             // @ts-ignore
                             [handleAction,];
                         } });
-                const { default: __VLS_149 } = __VLS_145.slots;
+                const { default: __VLS_163 } = __VLS_159.slots;
                 {
-                    const { icon: __VLS_150 } = __VLS_145.slots;
-                    let __VLS_151;
+                    const { icon: __VLS_164 } = __VLS_159.slots;
+                    let __VLS_165;
                     /** @ts-ignore @type {typeof __VLS_components.StopOutlined} */
                     StopOutlined;
                     // @ts-ignore
-                    const __VLS_152 = __VLS_asFunctionalComponent1(__VLS_151, new __VLS_151({}));
-                    const __VLS_153 = __VLS_152({}, ...__VLS_functionalComponentArgsRest(__VLS_152));
+                    const __VLS_166 = __VLS_asFunctionalComponent1(__VLS_165, new __VLS_165({}));
+                    const __VLS_167 = __VLS_166({}, ...__VLS_functionalComponentArgsRest(__VLS_166));
                     // @ts-ignore
                     [];
                 }
                 // @ts-ignore
                 [];
-                var __VLS_145;
-                var __VLS_146;
+                var __VLS_159;
+                var __VLS_160;
             }
             if (record.is_disabled) {
-                let __VLS_156;
+                let __VLS_170;
                 /** @ts-ignore @type {typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem | typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem} */
                 aMenuItem;
                 // @ts-ignore
-                const __VLS_157 = __VLS_asFunctionalComponent1(__VLS_156, new __VLS_156({
+                const __VLS_171 = __VLS_asFunctionalComponent1(__VLS_170, new __VLS_170({
                     ...{ 'onClick': {} },
                     key: "enable",
                 }));
-                const __VLS_158 = __VLS_157({
+                const __VLS_172 = __VLS_171({
                     ...{ 'onClick': {} },
                     key: "enable",
-                }, ...__VLS_functionalComponentArgsRest(__VLS_157));
-                let __VLS_161;
-                const __VLS_162 = ({ click: {} },
+                }, ...__VLS_functionalComponentArgsRest(__VLS_171));
+                let __VLS_175;
+                const __VLS_176 = ({ click: {} },
                     { onClick: (...[$event]) => {
                             if (!!(column.key === 'agent_id'))
                                 return;
@@ -781,47 +866,47 @@ const { default: __VLS_28 } = __VLS_24.slots;
                             // @ts-ignore
                             [handleAction,];
                         } });
-                const { default: __VLS_163 } = __VLS_159.slots;
+                const { default: __VLS_177 } = __VLS_173.slots;
                 {
-                    const { icon: __VLS_164 } = __VLS_159.slots;
-                    let __VLS_165;
+                    const { icon: __VLS_178 } = __VLS_173.slots;
+                    let __VLS_179;
                     /** @ts-ignore @type {typeof __VLS_components.CheckCircleOutlined} */
                     CheckCircleOutlined;
                     // @ts-ignore
-                    const __VLS_166 = __VLS_asFunctionalComponent1(__VLS_165, new __VLS_165({}));
-                    const __VLS_167 = __VLS_166({}, ...__VLS_functionalComponentArgsRest(__VLS_166));
+                    const __VLS_180 = __VLS_asFunctionalComponent1(__VLS_179, new __VLS_179({}));
+                    const __VLS_181 = __VLS_180({}, ...__VLS_functionalComponentArgsRest(__VLS_180));
                     // @ts-ignore
                     [];
                 }
                 // @ts-ignore
                 [];
-                var __VLS_159;
-                var __VLS_160;
+                var __VLS_173;
+                var __VLS_174;
             }
-            let __VLS_170;
+            let __VLS_184;
             /** @ts-ignore @type {typeof __VLS_components.aMenuDivider | typeof __VLS_components.AMenuDivider} */
             aMenuDivider;
             // @ts-ignore
-            const __VLS_171 = __VLS_asFunctionalComponent1(__VLS_170, new __VLS_170({}));
-            const __VLS_172 = __VLS_171({}, ...__VLS_functionalComponentArgsRest(__VLS_171));
-            let __VLS_175;
+            const __VLS_185 = __VLS_asFunctionalComponent1(__VLS_184, new __VLS_184({}));
+            const __VLS_186 = __VLS_185({}, ...__VLS_functionalComponentArgsRest(__VLS_185));
+            let __VLS_189;
             /** @ts-ignore @type {typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem | typeof __VLS_components.aMenuItem | typeof __VLS_components.AMenuItem} */
             aMenuItem;
             // @ts-ignore
-            const __VLS_176 = __VLS_asFunctionalComponent1(__VLS_175, new __VLS_175({
+            const __VLS_190 = __VLS_asFunctionalComponent1(__VLS_189, new __VLS_189({
                 ...{ 'onClick': {} },
                 key: "delete",
                 disabled: (record.is_online),
                 danger: true,
             }));
-            const __VLS_177 = __VLS_176({
+            const __VLS_191 = __VLS_190({
                 ...{ 'onClick': {} },
                 key: "delete",
                 disabled: (record.is_online),
                 danger: true,
-            }, ...__VLS_functionalComponentArgsRest(__VLS_176));
-            let __VLS_180;
-            const __VLS_181 = ({ click: {} },
+            }, ...__VLS_functionalComponentArgsRest(__VLS_190));
+            let __VLS_194;
+            const __VLS_195 = ({ click: {} },
                 { onClick: (...[$event]) => {
                         if (!!(column.key === 'agent_id'))
                             return;
@@ -841,22 +926,22 @@ const { default: __VLS_28 } = __VLS_24.slots;
                         // @ts-ignore
                         [handleAction,];
                     } });
-            const { default: __VLS_182 } = __VLS_178.slots;
+            const { default: __VLS_196 } = __VLS_192.slots;
             {
-                const { icon: __VLS_183 } = __VLS_178.slots;
-                let __VLS_184;
+                const { icon: __VLS_197 } = __VLS_192.slots;
+                let __VLS_198;
                 /** @ts-ignore @type {typeof __VLS_components.DeleteOutlined} */
                 DeleteOutlined;
                 // @ts-ignore
-                const __VLS_185 = __VLS_asFunctionalComponent1(__VLS_184, new __VLS_184({}));
-                const __VLS_186 = __VLS_185({}, ...__VLS_functionalComponentArgsRest(__VLS_185));
+                const __VLS_199 = __VLS_asFunctionalComponent1(__VLS_198, new __VLS_198({}));
+                const __VLS_200 = __VLS_199({}, ...__VLS_functionalComponentArgsRest(__VLS_199));
                 // @ts-ignore
                 [];
             }
             // @ts-ignore
             [];
-            var __VLS_178;
-            var __VLS_179;
+            var __VLS_192;
+            var __VLS_193;
             // @ts-ignore
             [];
             var __VLS_92;
@@ -874,79 +959,101 @@ const { default: __VLS_28 } = __VLS_24.slots;
 [];
 var __VLS_24;
 var __VLS_25;
-const __VLS_189 = AgentDetailDrawer;
-// @ts-ignore
-const __VLS_190 = __VLS_asFunctionalComponent1(__VLS_189, new __VLS_189({
-    ...{ 'onUpdate:agent': {} },
-    ...{ 'onOpenTask': {} },
-    ...{ 'onAction': {} },
-    visible: (__VLS_ctx.detailVisible),
-    agent: (__VLS_ctx.selectedAgent),
-}));
-const __VLS_191 = __VLS_190({
-    ...{ 'onUpdate:agent': {} },
-    ...{ 'onOpenTask': {} },
-    ...{ 'onAction': {} },
-    visible: (__VLS_ctx.detailVisible),
-    agent: (__VLS_ctx.selectedAgent),
-}, ...__VLS_functionalComponentArgsRest(__VLS_190));
-let __VLS_194;
-const __VLS_195 = ({ 'update:agent': {} },
-    { 'onUpdate:agent': (__VLS_ctx.handleAgentStoreUpdate) });
-const __VLS_196 = ({ openTask: {} },
-    { onOpenTask: (__VLS_ctx.openTaskModal) });
-const __VLS_197 = ({ action: {} },
-    { onAction: (__VLS_ctx.handleAction) });
-var __VLS_192;
-var __VLS_193;
-const __VLS_198 = AgentTaskModal;
-// @ts-ignore
-const __VLS_199 = __VLS_asFunctionalComponent1(__VLS_198, new __VLS_198({
-    visible: (__VLS_ctx.taskModalVisible),
-    agent: (__VLS_ctx.actionAgent),
-}));
-const __VLS_200 = __VLS_199({
-    visible: (__VLS_ctx.taskModalVisible),
-    agent: (__VLS_ctx.actionAgent),
-}, ...__VLS_functionalComponentArgsRest(__VLS_199));
-const __VLS_203 = AgentContextMenu;
+const __VLS_203 = AgentDetailDrawer;
 // @ts-ignore
 const __VLS_204 = __VLS_asFunctionalComponent1(__VLS_203, new __VLS_203({
-    ...{ 'onClose': {} },
+    ...{ 'onUpdate:agent': {} },
     ...{ 'onOpenTask': {} },
-    ...{ 'onOpenTerminal': {} },
     ...{ 'onAction': {} },
-    visible: (__VLS_ctx.contextMenuState.visible),
-    x: (__VLS_ctx.contextMenuState.x),
-    y: (__VLS_ctx.contextMenuState.y),
-    agent: (__VLS_ctx.contextMenuState.record),
+    visible: (__VLS_ctx.detailVisible),
+    agent: (__VLS_ctx.selectedAgent),
 }));
 const __VLS_205 = __VLS_204({
-    ...{ 'onClose': {} },
+    ...{ 'onUpdate:agent': {} },
     ...{ 'onOpenTask': {} },
-    ...{ 'onOpenTerminal': {} },
     ...{ 'onAction': {} },
-    visible: (__VLS_ctx.contextMenuState.visible),
-    x: (__VLS_ctx.contextMenuState.x),
-    y: (__VLS_ctx.contextMenuState.y),
-    agent: (__VLS_ctx.contextMenuState.record),
+    visible: (__VLS_ctx.detailVisible),
+    agent: (__VLS_ctx.selectedAgent),
 }, ...__VLS_functionalComponentArgsRest(__VLS_204));
 let __VLS_208;
-const __VLS_209 = ({ close: {} },
-    { onClose: (...[$event]) => {
-            __VLS_ctx.contextMenuState.visible = false;
-            // @ts-ignore
-            [openTaskModal, handleAction, detailVisible, selectedAgent, handleAgentStoreUpdate, taskModalVisible, actionAgent, contextMenuState, contextMenuState, contextMenuState, contextMenuState, contextMenuState,];
-        } });
+const __VLS_209 = ({ 'update:agent': {} },
+    { 'onUpdate:agent': (__VLS_ctx.handleAgentStoreUpdate) });
 const __VLS_210 = ({ openTask: {} },
     { onOpenTask: (__VLS_ctx.openTaskModal) });
-const __VLS_211 = ({ openTerminal: {} },
-    { onOpenTerminal: (__VLS_ctx.openTerminal) });
-const __VLS_212 = ({ action: {} },
+const __VLS_211 = ({ action: {} },
     { onAction: (__VLS_ctx.handleAction) });
 var __VLS_206;
 var __VLS_207;
+const __VLS_212 = AgentTaskModal;
 // @ts-ignore
-[openTaskModal, openTerminal, handleAction,];
+const __VLS_213 = __VLS_asFunctionalComponent1(__VLS_212, new __VLS_212({
+    visible: (__VLS_ctx.taskModalVisible),
+    agent: (__VLS_ctx.actionAgent),
+}));
+const __VLS_214 = __VLS_213({
+    visible: (__VLS_ctx.taskModalVisible),
+    agent: (__VLS_ctx.actionAgent),
+}, ...__VLS_functionalComponentArgsRest(__VLS_213));
+const __VLS_217 = FileOpsModal;
+// @ts-ignore
+const __VLS_218 = __VLS_asFunctionalComponent1(__VLS_217, new __VLS_217({
+    visible: (__VLS_ctx.fileOpsVisible),
+    agent: (__VLS_ctx.actionAgent),
+}));
+const __VLS_219 = __VLS_218({
+    visible: (__VLS_ctx.fileOpsVisible),
+    agent: (__VLS_ctx.actionAgent),
+}, ...__VLS_functionalComponentArgsRest(__VLS_218));
+const __VLS_222 = AgentContextMenu;
+// @ts-ignore
+const __VLS_223 = __VLS_asFunctionalComponent1(__VLS_222, new __VLS_222({
+    ...{ 'onClose': {} },
+    ...{ 'onOpenTask': {} },
+    ...{ 'onOpenTerminal': {} },
+    ...{ 'onOpenFileOps': {} },
+    ...{ 'onScreenshot': {} },
+    ...{ 'onPs': {} },
+    ...{ 'onAction': {} },
+    visible: (__VLS_ctx.contextMenuState.visible),
+    x: (__VLS_ctx.contextMenuState.x),
+    y: (__VLS_ctx.contextMenuState.y),
+    agent: (__VLS_ctx.contextMenuState.record),
+}));
+const __VLS_224 = __VLS_223({
+    ...{ 'onClose': {} },
+    ...{ 'onOpenTask': {} },
+    ...{ 'onOpenTerminal': {} },
+    ...{ 'onOpenFileOps': {} },
+    ...{ 'onScreenshot': {} },
+    ...{ 'onPs': {} },
+    ...{ 'onAction': {} },
+    visible: (__VLS_ctx.contextMenuState.visible),
+    x: (__VLS_ctx.contextMenuState.x),
+    y: (__VLS_ctx.contextMenuState.y),
+    agent: (__VLS_ctx.contextMenuState.record),
+}, ...__VLS_functionalComponentArgsRest(__VLS_223));
+let __VLS_227;
+const __VLS_228 = ({ close: {} },
+    { onClose: (...[$event]) => {
+            __VLS_ctx.contextMenuState.visible = false;
+            // @ts-ignore
+            [openTaskModal, handleAction, detailVisible, selectedAgent, handleAgentStoreUpdate, taskModalVisible, actionAgent, actionAgent, fileOpsVisible, contextMenuState, contextMenuState, contextMenuState, contextMenuState, contextMenuState,];
+        } });
+const __VLS_229 = ({ openTask: {} },
+    { onOpenTask: (__VLS_ctx.openTaskModal) });
+const __VLS_230 = ({ openTerminal: {} },
+    { onOpenTerminal: (__VLS_ctx.openTerminal) });
+const __VLS_231 = ({ openFileOps: {} },
+    { onOpenFileOps: (__VLS_ctx.openFileOps) });
+const __VLS_232 = ({ screenshot: {} },
+    { onScreenshot: (__VLS_ctx.handleScreenshot) });
+const __VLS_233 = ({ ps: {} },
+    { onPs: (__VLS_ctx.handlePs) });
+const __VLS_234 = ({ action: {} },
+    { onAction: (__VLS_ctx.handleAction) });
+var __VLS_225;
+var __VLS_226;
+// @ts-ignore
+[openTaskModal, openTerminal, openFileOps, handleAction, handleScreenshot, handlePs,];
 const __VLS_export = (await import('vue')).defineComponent({});
 export default {};

@@ -1,14 +1,23 @@
 /// <reference types="../../../../node_modules/@vue/language-core/types/template-helpers.d.ts" />
 /// <reference types="../../../../node_modules/@vue/language-core/types/props-fallback.d.ts" />
-import { DesktopOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, CodeOutlined, FolderOpenOutlined, CameraOutlined } from '@ant-design/icons-vue';
+import { DesktopOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, CodeOutlined, FolderOpenOutlined, CameraOutlined, UnorderedListOutlined } from '@ant-design/icons-vue';
 const props = defineProps();
-const emit = defineEmits(['action', 'open-task', 'open-terminal', 'close']);
+const emit = defineEmits(['action', 'open-task', 'open-terminal', 'open-file-ops', 'screenshot', 'ps', 'close']);
 function emitAction(type, act) {
     if (type === 'action') {
         emit('action', { action: act, agent: props.agent });
     }
     else if (type === 'open-task') {
         emit('open-task', props.agent);
+    }
+    else if (type === 'open-file-ops') {
+        emit('open-file-ops', props.agent);
+    }
+    else if (type === 'screenshot') {
+        emit('screenshot', props.agent);
+    }
+    else if (type === 'ps') {
+        emit('ps', props.agent);
     }
     else {
         emit('open-terminal', props.agent);
@@ -39,13 +48,13 @@ const { default: __VLS_5 } = __VLS_3.slots;
 if (__VLS_ctx.visible) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
         ...{ onClick: () => { } },
-        ...{ class: "fixed z-50 bg-white dark:bg-[#1C1E22] border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[160px]" },
+        ...{ class: "fixed z-50 bg-white dark:bg-[var(--bg-card)] border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[160px]" },
         ...{ style: ({ top: `${__VLS_ctx.y}px`, left: `${__VLS_ctx.x}px` }) },
     });
     /** @type {__VLS_StyleScopedClasses['fixed']} */ ;
     /** @type {__VLS_StyleScopedClasses['z-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['border']} */ ;
     /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
     /** @type {__VLS_StyleScopedClasses['dark:border-gray-700']} */ ;
@@ -73,7 +82,7 @@ if (__VLS_ctx.visible) {
                 // @ts-ignore
                 [visible, y, x, agent, agent, emitAction,];
             } },
-        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200" },
+        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]" },
         ...{ class: ({ 'opacity-50 cursor-not-allowed': __VLS_ctx.agent?.is_disabled }) },
     });
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
@@ -86,7 +95,7 @@ if (__VLS_ctx.visible) {
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-200']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['opacity-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
     let __VLS_6;
@@ -103,7 +112,7 @@ if (__VLS_ctx.visible) {
                 // @ts-ignore
                 [agent, agent, emitAction,];
             } },
-        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200" },
+        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]" },
         ...{ class: ({ 'opacity-50 cursor-not-allowed': __VLS_ctx.agent?.is_disabled }) },
     });
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
@@ -116,7 +125,7 @@ if (__VLS_ctx.visible) {
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-200']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['opacity-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
     let __VLS_11;
@@ -126,8 +135,15 @@ if (__VLS_ctx.visible) {
     const __VLS_12 = __VLS_asFunctionalComponent1(__VLS_11, new __VLS_11({}));
     const __VLS_13 = __VLS_12({}, ...__VLS_functionalComponentArgsRest(__VLS_12));
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 opacity-50 cursor-not-allowed" },
-        title: "功能开发中",
+        ...{ onClick: (...[$event]) => {
+                if (!(__VLS_ctx.visible))
+                    return;
+                !__VLS_ctx.agent?.is_disabled && __VLS_ctx.emitAction('open-file-ops');
+                // @ts-ignore
+                [agent, agent, emitAction,];
+            } },
+        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]" },
+        ...{ class: ({ 'opacity-50 cursor-not-allowed': __VLS_ctx.agent?.is_disabled }) },
     });
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
@@ -139,7 +155,7 @@ if (__VLS_ctx.visible) {
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-200']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['opacity-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
     let __VLS_16;
@@ -149,8 +165,15 @@ if (__VLS_ctx.visible) {
     const __VLS_17 = __VLS_asFunctionalComponent1(__VLS_16, new __VLS_16({}));
     const __VLS_18 = __VLS_17({}, ...__VLS_functionalComponentArgsRest(__VLS_17));
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 opacity-50 cursor-not-allowed" },
-        title: "功能开发中",
+        ...{ onClick: (...[$event]) => {
+                if (!(__VLS_ctx.visible))
+                    return;
+                !__VLS_ctx.agent?.is_disabled && __VLS_ctx.emitAction('screenshot');
+                // @ts-ignore
+                [agent, agent, emitAction,];
+            } },
+        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]" },
+        ...{ class: ({ 'opacity-50 cursor-not-allowed': __VLS_ctx.agent?.is_disabled }) },
     });
     /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
     /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
@@ -162,7 +185,7 @@ if (__VLS_ctx.visible) {
     /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
     /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-    /** @type {__VLS_StyleScopedClasses['dark:text-slate-200']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
     /** @type {__VLS_StyleScopedClasses['opacity-50']} */ ;
     /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
     let __VLS_21;
@@ -171,6 +194,36 @@ if (__VLS_ctx.visible) {
     // @ts-ignore
     const __VLS_22 = __VLS_asFunctionalComponent1(__VLS_21, new __VLS_21({}));
     const __VLS_23 = __VLS_22({}, ...__VLS_functionalComponentArgsRest(__VLS_22));
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
+        ...{ onClick: (...[$event]) => {
+                if (!(__VLS_ctx.visible))
+                    return;
+                !__VLS_ctx.agent?.is_disabled && __VLS_ctx.emitAction('ps');
+                // @ts-ignore
+                [agent, agent, emitAction,];
+            } },
+        ...{ class: "px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]" },
+        ...{ class: ({ 'opacity-50 cursor-not-allowed': __VLS_ctx.agent?.is_disabled }) },
+    });
+    /** @type {__VLS_StyleScopedClasses['px-3']} */ ;
+    /** @type {__VLS_StyleScopedClasses['py-2']} */ ;
+    /** @type {__VLS_StyleScopedClasses['hover:bg-blue-50']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:hover:bg-blue-900/20']} */ ;
+    /** @type {__VLS_StyleScopedClasses['cursor-pointer']} */ ;
+    /** @type {__VLS_StyleScopedClasses['flex']} */ ;
+    /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
+    /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
+    /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
+    /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
+    /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
+    /** @type {__VLS_StyleScopedClasses['opacity-50']} */ ;
+    /** @type {__VLS_StyleScopedClasses['cursor-not-allowed']} */ ;
+    let __VLS_26;
+    /** @ts-ignore @type {typeof __VLS_components.UnorderedListOutlined} */
+    UnorderedListOutlined;
+    // @ts-ignore
+    const __VLS_27 = __VLS_asFunctionalComponent1(__VLS_26, new __VLS_26({}));
+    const __VLS_28 = __VLS_27({}, ...__VLS_functionalComponentArgsRest(__VLS_27));
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
         ...{ class: "h-[1px] bg-gray-100 dark:bg-gray-800 my-1" },
     });
@@ -202,12 +255,12 @@ if (__VLS_ctx.visible) {
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-orange-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-orange-400']} */ ;
-        let __VLS_26;
+        let __VLS_31;
         /** @ts-ignore @type {typeof __VLS_components.StopOutlined} */
         StopOutlined;
         // @ts-ignore
-        const __VLS_27 = __VLS_asFunctionalComponent1(__VLS_26, new __VLS_26({}));
-        const __VLS_28 = __VLS_27({}, ...__VLS_functionalComponentArgsRest(__VLS_27));
+        const __VLS_32 = __VLS_asFunctionalComponent1(__VLS_31, new __VLS_31({}));
+        const __VLS_33 = __VLS_32({}, ...__VLS_functionalComponentArgsRest(__VLS_32));
     }
     if (__VLS_ctx.agent?.is_disabled) {
         __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
@@ -233,12 +286,12 @@ if (__VLS_ctx.visible) {
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-green-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-green-400']} */ ;
-        let __VLS_31;
+        let __VLS_36;
         /** @ts-ignore @type {typeof __VLS_components.CheckCircleOutlined} */
         CheckCircleOutlined;
         // @ts-ignore
-        const __VLS_32 = __VLS_asFunctionalComponent1(__VLS_31, new __VLS_31({}));
-        const __VLS_33 = __VLS_32({}, ...__VLS_functionalComponentArgsRest(__VLS_32));
+        const __VLS_37 = __VLS_asFunctionalComponent1(__VLS_36, new __VLS_36({}));
+        const __VLS_38 = __VLS_37({}, ...__VLS_functionalComponentArgsRest(__VLS_37));
     }
     if (__VLS_ctx.agent?.is_online) {
         __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
@@ -264,12 +317,12 @@ if (__VLS_ctx.visible) {
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-red-400']} */ ;
-        let __VLS_36;
+        let __VLS_41;
         /** @ts-ignore @type {typeof __VLS_components.DisconnectOutlined} */
         DisconnectOutlined;
         // @ts-ignore
-        const __VLS_37 = __VLS_asFunctionalComponent1(__VLS_36, new __VLS_36({}));
-        const __VLS_38 = __VLS_37({}, ...__VLS_functionalComponentArgsRest(__VLS_37));
+        const __VLS_42 = __VLS_asFunctionalComponent1(__VLS_41, new __VLS_41({}));
+        const __VLS_43 = __VLS_42({}, ...__VLS_functionalComponentArgsRest(__VLS_42));
     }
     if (!__VLS_ctx.agent?.is_online) {
         __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
@@ -295,12 +348,12 @@ if (__VLS_ctx.visible) {
         /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-red-600']} */ ;
         /** @type {__VLS_StyleScopedClasses['dark:text-red-400']} */ ;
-        let __VLS_41;
+        let __VLS_46;
         /** @ts-ignore @type {typeof __VLS_components.DeleteOutlined} */
         DeleteOutlined;
         // @ts-ignore
-        const __VLS_42 = __VLS_asFunctionalComponent1(__VLS_41, new __VLS_41({}));
-        const __VLS_43 = __VLS_42({}, ...__VLS_functionalComponentArgsRest(__VLS_42));
+        const __VLS_47 = __VLS_asFunctionalComponent1(__VLS_46, new __VLS_46({}));
+        const __VLS_48 = __VLS_47({}, ...__VLS_functionalComponentArgsRest(__VLS_47));
     }
 }
 // @ts-ignore

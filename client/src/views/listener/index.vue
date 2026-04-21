@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 m-0">
+      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0">
         <ApiOutlined class="text-indigo-500" />
         监听器管理
       </h2>
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Table Container -->
-    <div class="flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden">
       <a-table
         :columns="columns"
         :data-source="listeners"
@@ -38,7 +38,7 @@
           </template>
 
           <template v-else-if="column.key === 'address'">
-            <span class="font-mono text-sm text-slate-600 dark:text-slate-300">
+            <span class="font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]">
               {{ record.bind_host }}:{{ record.bind_port }}
             </span>
           </template>
@@ -223,9 +223,9 @@ const getStatusDotColor = (status: string) => {
 
 const getStatusTextColor = (status: string) => {
   if (status === 'running') return 'text-green-600 dark:text-green-500 font-medium';
-  if (status === 'stopped') return 'text-slate-500 dark:text-slate-400';
+  if (status === 'stopped') return 'text-slate-500 dark:text-[var(--text-secondary)]';
   if (status === 'error') return 'text-red-600 dark:text-red-500 font-medium';
-  return 'text-slate-700 dark:text-slate-300';
+  return 'text-slate-700 dark:text-[var(--text-secondary)]';
 };
 </script>
 

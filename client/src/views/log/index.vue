@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 m-0">
+      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0">
         <FileSearchOutlined class="text-cyan-500" />
         操作日志
       </h2>
@@ -60,7 +60,7 @@
     </div>
 
     <!-- Table Container -->
-    <div class="flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden">
       <a-table
         :columns="columns"
         :data-source="audits"
@@ -84,7 +84,7 @@
           </template>
 
           <template v-else-if="column.key === 'operator'">
-            <span class="font-medium text-slate-700 dark:text-slate-300">
+            <span class="font-medium text-slate-700 dark:text-[var(--text-secondary)]">
               {{ record.operator }}
             </span>
           </template>
@@ -100,7 +100,7 @@
               <a-tag size="small" class="mr-0">
                 {{ formatTargetKind(record.target_kind) }}
               </a-tag>
-              <span v-if="record.target_id" class="font-mono text-sm text-slate-500 dark:text-slate-400">
+              <span v-if="record.target_id" class="font-mono text-sm text-slate-500 dark:text-[var(--text-secondary)]">
                 {{ record.target_id }}
               </span>
             </div>
@@ -108,7 +108,7 @@
 
           <template v-else-if="column.key === 'detail'">
             <a-tooltip v-if="record.detail" :title="record.detail">
-              <span class="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[260px] inline-block align-bottom">
+              <span class="text-sm text-slate-500 dark:text-[var(--text-secondary)] truncate max-w-[260px] inline-block align-bottom">
                 {{ record.detail }}
               </span>
             </a-tooltip>

@@ -165,12 +165,12 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['mb-4']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.h2, __VLS_intrinsics.h2)({
-    ...{ class: "text-xl font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 m-0" },
+    ...{ class: "text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0" },
 });
 /** @type {__VLS_StyleScopedClasses['text-xl']} */ ;
 /** @type {__VLS_StyleScopedClasses['font-semibold']} */ ;
 /** @type {__VLS_StyleScopedClasses['text-slate-800']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:text-slate-100']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-primary)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['items-center']} */ ;
 /** @type {__VLS_StyleScopedClasses['gap-2']} */ ;
@@ -424,15 +424,15 @@ const { default: __VLS_82 } = __VLS_78.slots;
 var __VLS_78;
 var __VLS_79;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-1 bg-white dark:bg-[#1C1E22] rounded-lg border border-gray-200 dark:border-[#14161A] shadow-sm flex flex-col overflow-hidden" },
+    ...{ class: "flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden" },
 });
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-lg']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-col']} */ ;
@@ -490,11 +490,11 @@ const { default: __VLS_88 } = __VLS_86.slots;
     }
     else if (column.key === 'operator') {
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-            ...{ class: "font-medium text-slate-700 dark:text-slate-300" },
+            ...{ class: "font-medium text-slate-700 dark:text-[var(--text-secondary)]" },
         });
         /** @type {__VLS_StyleScopedClasses['font-medium']} */ ;
         /** @type {__VLS_StyleScopedClasses['text-slate-700']} */ ;
-        /** @type {__VLS_StyleScopedClasses['dark:text-slate-300']} */ ;
+        /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
         (record.operator);
     }
     else if (column.key === 'action') {
@@ -545,12 +545,12 @@ const { default: __VLS_88 } = __VLS_86.slots;
         var __VLS_99;
         if (record.target_id) {
             __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                ...{ class: "font-mono text-sm text-slate-500 dark:text-slate-400" },
+                ...{ class: "font-mono text-sm text-slate-500 dark:text-[var(--text-secondary)]" },
             });
             /** @type {__VLS_StyleScopedClasses['font-mono']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
-            /** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
+            /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
             (record.target_id);
         }
     }
@@ -568,11 +568,11 @@ const { default: __VLS_88 } = __VLS_86.slots;
             }, ...__VLS_functionalComponentArgsRest(__VLS_103));
             const { default: __VLS_107 } = __VLS_105.slots;
             __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
-                ...{ class: "text-sm text-slate-500 dark:text-slate-400 truncate max-w-[260px] inline-block align-bottom" },
+                ...{ class: "text-sm text-slate-500 dark:text-[var(--text-secondary)] truncate max-w-[260px] inline-block align-bottom" },
             });
             /** @type {__VLS_StyleScopedClasses['text-sm']} */ ;
             /** @type {__VLS_StyleScopedClasses['text-slate-500']} */ ;
-            /** @type {__VLS_StyleScopedClasses['dark:text-slate-400']} */ ;
+            /** @type {__VLS_StyleScopedClasses['dark:text-[var(--text-secondary)]']} */ ;
             /** @type {__VLS_StyleScopedClasses['truncate']} */ ;
             /** @type {__VLS_StyleScopedClasses['max-w-[260px]']} */ ;
             /** @type {__VLS_StyleScopedClasses['inline-block']} */ ;

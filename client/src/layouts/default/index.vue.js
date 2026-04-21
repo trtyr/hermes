@@ -47,14 +47,14 @@ let __VLS_12;
 aLayout;
 // @ts-ignore
 const __VLS_13 = __VLS_asFunctionalComponent1(__VLS_12, new __VLS_12({
-    ...{ class: "h-screen bg-[#f0f2f5] dark:bg-[#14161A] flex flex-col" },
+    ...{ class: "h-screen bg-[#f0f2f5] dark:bg-[var(--bg-page)] flex flex-col" },
 }));
 const __VLS_14 = __VLS_13({
-    ...{ class: "h-screen bg-[#f0f2f5] dark:bg-[#14161A] flex flex-col" },
+    ...{ class: "h-screen bg-[#f0f2f5] dark:bg-[var(--bg-page)] flex flex-col" },
 }, ...__VLS_functionalComponentArgsRest(__VLS_13));
 /** @type {__VLS_StyleScopedClasses['h-screen']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-[#f0f2f5]']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-page)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex']} */ ;
 /** @type {__VLS_StyleScopedClasses['flex-col']} */ ;
 const { default: __VLS_17 } = __VLS_15.slots;
@@ -96,17 +96,17 @@ const __VLS_32 = __VLS_31({
 /** @type {__VLS_StyleScopedClasses['flex-col']} */ ;
 const { default: __VLS_35 } = __VLS_33.slots;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "flex-1 w-full bg-white dark:bg-[#1C1E22] rounded-md shadow-sm border border-gray-200 dark:border-[#14161A] overflow-y-auto relative" },
+    ...{ class: "flex-1 w-full bg-white dark:bg-[var(--bg-card)] rounded-md shadow-sm border border-gray-200 dark:border-[var(--border-default)] overflow-y-auto relative" },
 });
 /** @type {__VLS_StyleScopedClasses['flex-1']} */ ;
 /** @type {__VLS_StyleScopedClasses['w-full']} */ ;
 /** @type {__VLS_StyleScopedClasses['bg-white']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:bg-[#1C1E22]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:bg-[var(--bg-card)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['rounded-md']} */ ;
 /** @type {__VLS_StyleScopedClasses['shadow-sm']} */ ;
 /** @type {__VLS_StyleScopedClasses['border']} */ ;
 /** @type {__VLS_StyleScopedClasses['border-gray-200']} */ ;
-/** @type {__VLS_StyleScopedClasses['dark:border-[#14161A]']} */ ;
+/** @type {__VLS_StyleScopedClasses['dark:border-[var(--border-default)]']} */ ;
 /** @type {__VLS_StyleScopedClasses['overflow-y-auto']} */ ;
 /** @type {__VLS_StyleScopedClasses['relative']} */ ;
 let __VLS_36;

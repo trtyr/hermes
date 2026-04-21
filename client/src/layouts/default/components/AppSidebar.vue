@@ -6,8 +6,8 @@
     theme="dark"
     width="200"
     collapsedWidth="64"
-    class="h-screen z-20 relative border-r border-[#14161A] dark:border-[#14161A]"
-    :style="{ background: appStore.isDark ? '#1C1E22' : '#001529' }"
+    class="h-screen z-20 relative border-r border-[var(--border-default)] dark:border-[var(--border-default)]"
+    :style="{ background: appStore.isDark ? 'var(--bg-sidebar)' : 'var(--bg-sidebar)' }"
   >
     <AppLogo />
     <a-menu
