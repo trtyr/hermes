@@ -27,7 +27,6 @@
         :loading="loading"
         :pagination="{ pageSize: 20, total: total, current: currentPage, onChange: onPageChange }"
         class="w-full flex-1"
-        :scroll="{ y: 'max-content' }"
       >
         <!-- Custom Body Cells -->
         <template #bodyCell="{ column, record }">
@@ -174,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { message } from 'ant-design-vue';
 import {
   RocketOutlined,
@@ -192,6 +191,7 @@ import {
 } from '@/api/agentBuild';
 import { fetchListeners, ListenerRecord } from '@/api/listener';
 import { useConnectionStore } from '@/store/connection';
+import { useEventStore } from '@/store/events';
 
 const builds = ref<AgentBuildRecord[]>([]);
 const loading = ref(false);
@@ -213,6 +213,7 @@ const buildForm = ref({
 // Listeners for the form dropdown
 const listeners = ref<ListenerRecord[]>([]);
 const listenersLoading = ref(false);
+const eventStore = useEventStore();
 
 const columns = [
   { title: '构建 ID', dataIndex: 'build_id', key: 'build_id', width: 100 },
@@ -281,9 +282,35 @@ const onPageChange = (page: number) => {
   loadBuilds();
 };
 
+let unsubscribe: (() => void) | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
 onMounted(() => {
   loadBuilds();
   loadListeners();
+  
+  unsubscribe = eventStore.subscribe((event) => {
+    if (event.type === 'agent_build_created' || event.type === 'agent_build_completed') {
+      // Debounce: don't refresh more than once per 2 seconds
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => loadBuilds(), 2000);
+      
+      // Show toast on completion
+      if (event.type === 'agent_build_completed') {
+        const build = event.build;
+        if (build.status === 'succeeded') {
+          message.success(`构建 #${build.build_id} 完成！`);
+        } else if (build.status === 'failed') {
+          message.error(`构建 #${build.build_id} 失败：${build.detail || '未知错误'}`);
+        }
+      }
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe();
+  if (refreshTimer) clearTimeout(refreshTimer);
 });
 
 // Build action
@@ -379,8 +406,30 @@ const getStatusLabel = (status: string) => {
 }
 :deep(.ant-table) {
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+:deep(.ant-table-container) {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+:deep(.ant-table-header) {
+  flex-shrink: 0;
+}
+:deep(.ant-table-thead > tr > th) {
+  padding: 8px 12px !important;
+  line-height: 1.4;
+}
+:deep(.ant-table-tbody > tr > td) {
+  padding: 8px 12px !important;
+  line-height: 1.4;
 }
 :deep(.ant-table-body) {
+  flex-grow: 1;
   overflow-y: auto !important;
 }
 </style>

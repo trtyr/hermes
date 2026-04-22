@@ -35,7 +35,7 @@ pub(crate) async fn create_agent_build(
                 now_ts(),
             );
             (
-                StatusCode::CREATED,
+                StatusCode::ACCEPTED,
                 Json(AgentBuildCreateResponse {
                     success: true,
                     detail: "agent build created".to_string(),

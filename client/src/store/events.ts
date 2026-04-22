@@ -18,7 +18,9 @@ export type BackendEvent =
   | { type: 'agent_deleted'; agent_id: string }
   | { type: 'task_dispatched'; [key: string]: any }
   | { type: 'task_result'; [key: string]: any }
-  | { type: 'task_updated'; [key: string]: any };
+  | { type: 'task_updated'; [key: string]: any }
+  | { type: 'agent_build_created'; build: any }
+  | { type: 'agent_build_completed'; build: any };
 
 export const useEventStore = defineStore('events', () => {
   const connectionStore = useConnectionStore();

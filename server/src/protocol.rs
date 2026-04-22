@@ -433,4 +433,10 @@ pub enum WebEvent {
     CommandUpdated {
         command: CommandExecutionSnapshot,
     },
+    AgentBuildCreated {
+        build: AgentBuildRecord,
+    },
+    AgentBuildCompleted {
+        build: AgentBuildRecord,
+    },
 }

@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::protocol::ListenerRecord;
+use crate::protocol::{ListenerRecord, WebEvent};
 use toolchain::{
     build_command_for_target, detect_host_target_triple, ensure_target_support, sanitize_target,
 };
@@ -66,10 +66,15 @@ impl AgentBuildFacade {
             )
             .await?;
 
-        let result = self
-            .run_build(
-                build.build_id,
-                target_triple.clone(),
+        self.kernel
+            .publish_web_event(WebEvent::AgentBuildCreated { build: build.clone() });
+
+        let kernel = self.kernel.clone();
+        let build_id = build.build_id;
+        tokio::spawn(async move {
+            let result = run_build(
+                build_id,
+                target_triple,
                 server_addr,
                 agent_token,
                 profile,
@@ -77,164 +82,55 @@ impl AgentBuildFacade {
             )
             .await;
 
-        match result {
-            Ok((artifact_path, artifact_name, detail)) => self
-                .kernel
-                .storage
-                .update_agent_build_record(
-                    build.build_id,
-                    AgentBuildStatus::Succeeded,
-                    Some(artifact_path),
-                    Some(artifact_name),
-                    Some(detail),
-                )
-                .await?
-                .ok_or_else(|| {
-                    anyhow::anyhow!("build {} missing after success update", build.build_id)
-                }),
-            Err(error) => {
-                self.kernel
-                    .storage
-                    .update_agent_build_record(
-                        build.build_id,
-                        AgentBuildStatus::Failed,
-                        None,
-                        None,
-                        Some(error.to_string()),
-                    )
-                    .await?;
-                Err(error)
+            match result {
+                Ok((artifact_path, artifact_name, detail)) => {
+                    match kernel
+                        .storage
+                        .update_agent_build_record(
+                            build_id,
+                            AgentBuildStatus::Succeeded,
+                            Some(artifact_path),
+                            Some(artifact_name),
+                            Some(detail),
+                        )
+                        .await
+                    {
+                        Ok(Some(updated)) => {
+                            kernel
+                                .publish_web_event(WebEvent::AgentBuildCompleted { build: updated });
+                        }
+                        Ok(None) => {
+                            eprintln!(
+                                "[agent-build] build {build_id} record missing after success update"
+                            );
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "[agent-build] build {build_id} failed to update record: {e}"
+                            );
+                        }
+                    }
+                }
+                Err(error) => {
+                    if let Ok(Some(updated)) = kernel
+                        .storage
+                        .update_agent_build_record(
+                            build_id,
+                            AgentBuildStatus::Failed,
+                            None,
+                            None,
+                            Some(error.to_string()),
+                        )
+                        .await
+                    {
+                        kernel
+                            .publish_web_event(WebEvent::AgentBuildCompleted { build: updated });
+                    }
+                }
             }
-        }
-    }
+        });
 
-    async fn run_build(
-        &self,
-        build_id: i64,
-        target_triple: String,
-        server_addr: String,
-        agent_token: Option<String>,
-        profile: String,
-        listener: Option<ListenerRecord>,
-    ) -> anyhow::Result<(String, String, String)> {
-        let agent_project_path = PathBuf::from(DEFAULT_AGENT_PROJECT_PATH);
-        let artifact_root =
-            PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));
-        fs::create_dir_all(&artifact_root)?;
-
-        ensure_target_support(&target_triple).await?;
-
-        let listener_kind = listener.as_ref().map(|l| l.kind.clone());
-        let protocol = match listener_kind {
-            Some(ListenerKind::HttpsJson) => "tls",
-            _ => "tcp",
-        };
-
-        let mut command = build_command_for_target(&target_triple, &profile);
-        if protocol == "tls" {
-            command.args(["--features", "tls"]);
-        }
-        command.current_dir(&agent_project_path);
-        let server_module_path = agent_project_path.join(AGENT_SERVER_MODULE_PATH);
-        let previous_server_module = fs::read_to_string(&server_module_path)?;
-        fs::write(
-            &server_module_path,
-            render_server_module(&server_addr, agent_token.as_deref(), protocol),
-        )?;
-
-        let output = command.output().await;
-        let restore_result = fs::write(&server_module_path, previous_server_module);
-        let output = match (output, restore_result) {
-            (Ok(output), Ok(())) => output,
-            (Err(build_error), Ok(())) => return Err(build_error.into()),
-            (Ok(_), Err(restore_error)) => {
-                return Err(anyhow::anyhow!(
-                    "agent build server module restore failed: {}",
-                    restore_error
-                ));
-            }
-            (Err(build_error), Err(restore_error)) => {
-                return Err(anyhow::anyhow!(
-                    "agent build failed: {}; server module restore also failed: {}",
-                    build_error,
-                    restore_error
-                ));
-            }
-        };
-        if !output.status.success() {
-            return Err(anyhow::anyhow!(
-                "agent build failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ));
-        }
-
-        let binary_name = if target_triple.contains("windows") {
-            "agent.exe"
-        } else {
-            "agent"
-        };
-        let profile_dir = if profile == "release" {
-            "release"
-        } else {
-            "debug"
-        };
-        let source_artifact = agent_project_path
-            .join("target")
-            .join(&target_triple)
-            .join(profile_dir)
-            .join(binary_name);
-        if !source_artifact.exists() {
-            return Err(anyhow::anyhow!(
-                "expected artifact missing at {}",
-                source_artifact.display()
-            ));
-        }
-
-        let artifact_name = format!("agent-{}-{}", sanitize_target(&target_triple), binary_name);
-        let artifact_path = artifact_root.join(&artifact_name);
-        fs::copy(&source_artifact, &artifact_path)?;
-        let manifest_path = artifact_root.join(format!("{artifact_name}.manifest.json"));
-        let manifest = AgentBuildManifest {
-            build_id,
-            target_triple: target_triple.clone(),
-            profile: profile.clone(),
-            listener_id: listener.as_ref().map(|item| item.listener_id),
-            listener_name: listener.as_ref().map(|item| item.name.clone()),
-            listener_kind: listener
-                .as_ref()
-                .map(|item| format!("{:?}", item.kind).to_lowercase()),
-            listener_bind: listener
-                .as_ref()
-                .map(|item| format!("{}:{}", item.bind_host, item.bind_port)),
-            embedded_server_addr: server_addr.clone(),
-            server_addr_binding: "compile_time_only",
-            embedded_agent_token: agent_token.is_some(),
-            artifact_name: artifact_name.clone(),
-            artifact_path: artifact_path.display().to_string(),
-            ignored_runtime_overrides: vec![
-                "HERMES_SERVER_ADDR",
-                "HERMES_AGENT_ID",
-                "HERMES_AGENT_NAME",
-                "HERMES_AGENT_TOKEN",
-                "HERMES_HEARTBEAT_SECS",
-                "HERMES_JITTER",
-                "HERMES_RECONNECT_SECS",
-                "HERMES_COMMAND_TIMEOUT_SECS",
-            ],
-            runtime_overrides: Vec::new(),
-        };
-        fs::write(&manifest_path, serde_json::to_vec_pretty(&manifest)?)?;
-
-        Ok((
-            artifact_path.display().to_string(),
-            artifact_name,
-            format!(
-                "built {} with embedded server_addr={} binding=compile_time_only manifest={}",
-                target_triple,
-                server_addr,
-                manifest_path.display()
-            ),
-        ))
+        Ok(build)
     }
 
     async fn resolve_build_listener(
@@ -290,6 +186,134 @@ impl AgentBuildFacade {
         }
         Ok(())
     }
+}
+
+async fn run_build(
+    build_id: i64,
+    target_triple: String,
+    server_addr: String,
+    agent_token: Option<String>,
+    profile: String,
+    listener: Option<ListenerRecord>,
+) -> anyhow::Result<(String, String, String)> {
+    let agent_project_path = PathBuf::from(DEFAULT_AGENT_PROJECT_PATH);
+    let artifact_root =
+        PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));
+    fs::create_dir_all(&artifact_root)?;
+
+    ensure_target_support(&target_triple).await?;
+
+    let listener_kind = listener.as_ref().map(|l| l.kind.clone());
+    let protocol = match listener_kind {
+        Some(ListenerKind::HttpsJson) => "tls",
+        _ => "tcp",
+    };
+
+    let mut command = build_command_for_target(&target_triple, &profile);
+    if protocol == "tls" {
+        command.args(["--features", "tls"]);
+    }
+    command.current_dir(&agent_project_path);
+    let server_module_path = agent_project_path.join(AGENT_SERVER_MODULE_PATH);
+    let previous_server_module = fs::read_to_string(&server_module_path)?;
+    fs::write(
+        &server_module_path,
+        render_server_module(&server_addr, agent_token.as_deref(), protocol),
+    )?;
+
+    let output = command.output().await;
+    let restore_result = fs::write(&server_module_path, previous_server_module);
+    let output = match (output, restore_result) {
+        (Ok(output), Ok(())) => output,
+        (Err(build_error), Ok(())) => return Err(build_error.into()),
+        (Ok(_), Err(restore_error)) => {
+            return Err(anyhow::anyhow!(
+                "agent build server module restore failed: {}",
+                restore_error
+            ));
+        }
+        (Err(build_error), Err(restore_error)) => {
+            return Err(anyhow::anyhow!(
+                "agent build failed: {}; server module restore also failed: {}",
+                build_error,
+                restore_error
+            ));
+        }
+    };
+    if !output.status.success() {
+        return Err(anyhow::anyhow!(
+            "agent build failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+
+    let binary_name = if target_triple.contains("windows") {
+        "agent.exe"
+    } else {
+        "agent"
+    };
+    let profile_dir = if profile == "release" {
+        "release"
+    } else {
+        "debug"
+    };
+    let source_artifact = agent_project_path
+        .join("target")
+        .join(&target_triple)
+        .join(profile_dir)
+        .join(binary_name);
+    if !source_artifact.exists() {
+        return Err(anyhow::anyhow!(
+            "expected artifact missing at {}",
+            source_artifact.display()
+        ));
+    }
+
+    let artifact_name = format!("agent-{}-{}", sanitize_target(&target_triple), binary_name);
+    let artifact_path = artifact_root.join(&artifact_name);
+    fs::copy(&source_artifact, &artifact_path)?;
+    let manifest_path = artifact_root.join(format!("{artifact_name}.manifest.json"));
+    let manifest = AgentBuildManifest {
+        build_id,
+        target_triple: target_triple.clone(),
+        profile: profile.clone(),
+        listener_id: listener.as_ref().map(|item| item.listener_id),
+        listener_name: listener.as_ref().map(|item| item.name.clone()),
+        listener_kind: listener
+            .as_ref()
+            .map(|item| format!("{:?}", item.kind).to_lowercase()),
+        listener_bind: listener
+            .as_ref()
+            .map(|item| format!("{}:{}", item.bind_host, item.bind_port)),
+        embedded_server_addr: server_addr.clone(),
+        server_addr_binding: "compile_time_only",
+        embedded_agent_token: agent_token.is_some(),
+        artifact_name: artifact_name.clone(),
+        artifact_path: artifact_path.display().to_string(),
+        ignored_runtime_overrides: vec![
+            "HERMES_SERVER_ADDR",
+            "HERMES_AGENT_ID",
+            "HERMES_AGENT_NAME",
+            "HERMES_AGENT_TOKEN",
+            "HERMES_HEARTBEAT_SECS",
+            "HERMES_JITTER",
+            "HERMES_RECONNECT_SECS",
+            "HERMES_COMMAND_TIMEOUT_SECS",
+        ],
+        runtime_overrides: Vec::new(),
+    };
+    fs::write(&manifest_path, serde_json::to_vec_pretty(&manifest)?)?;
+
+    Ok((
+        artifact_path.display().to_string(),
+        artifact_name,
+        format!(
+            "built {} with embedded server_addr={} binding=compile_time_only manifest={}",
+            target_triple,
+            server_addr,
+            manifest_path.display()
+        ),
+    ))
 }
 
 fn render_server_module(
