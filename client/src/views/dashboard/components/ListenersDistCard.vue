@@ -39,13 +39,6 @@
         </div>
         <span class="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs">{{ stats.listeners.by_kind.https_json }}</span>
       </div>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2 text-sm text-slate-600">
-          <div class="w-1.5 h-4 bg-orange-400 rounded-sm"></div>
-          <span>Private Proto</span>
-        </div>
-        <span class="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs">{{ stats.listeners.by_kind.private_proto }}</span>
-      </div>
     </div>
     
     <div class="mt-5 text-xs text-right text-slate-400">

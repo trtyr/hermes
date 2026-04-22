@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { message } from 'ant-design-vue';
 
 // Subcomponents
@@ -87,9 +87,39 @@ watch(() => connectionStore.activeProfileId, (newId) => {
   }
 });
 
+// Auto-refresh: debounced event-driven + periodic fallback
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let periodicTimer: ReturnType<typeof setInterval> | null = null;
+let unsubscribe: (() => void) | null = null;
+
+function scheduleDebouncedReload() {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    loadStats();
+  }, 3000);
+}
+
 onMounted(() => {
   if (connectionStore.activeProfile) {
     loadStats();
   }
+
+  // WebSocket-driven refresh with 3s debounce
+  unsubscribe = eventStore.subscribe(() => {
+    scheduleDebouncedReload();
+  });
+
+  // Periodic fallback every 30s
+  periodicTimer = setInterval(() => {
+    if (connectionStore.activeProfile) {
+      loadStats();
+    }
+  }, 30_000);
+});
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  if (periodicTimer) clearInterval(periodicTimer);
+  if (unsubscribe) unsubscribe();
 });
 </script>

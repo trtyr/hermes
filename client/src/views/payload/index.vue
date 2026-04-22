@@ -335,17 +335,9 @@ const formatTimestamp = (ts: number | null | undefined) => {
   return 'default';
 };
 
- const formatKind = (kind: string) => {
-
-  if (kind === 'tcp_json') return 'TCP';
-  if (kind === 'https_json') return 'HTTPS';
-  return kind;
-};
-
 const formatKind = (kind: string) => {
   if (kind === 'tcp_json') return 'TCP';
   if (kind === 'https_json') return 'HTTPS';
-  if (kind === 'private_proto') return 'Private';
   return kind;
 };
 
