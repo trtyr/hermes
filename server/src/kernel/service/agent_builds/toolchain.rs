@@ -21,6 +21,8 @@ pub(super) fn build_command_for_target(target_triple: &str, profile: &str) -> Co
         let mut command = Command::new("cargo");
         command.arg("xwin");
         command.arg("build");
+        // Statically link CRT so the binary doesn't depend on vcruntime140.dll
+        command.env("RUSTFLAGS", "-C target-feature=+crt-static");
         command
     } else if target_triple.contains("linux-musl") {
         let mut command = Command::new("cargo");
