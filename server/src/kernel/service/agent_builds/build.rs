@@ -182,12 +182,14 @@ impl AgentBuildFacade {
         let Some(listener) = listener else {
             return Ok(());
         };
-        let listener_bind = format!("{}:{}", listener.bind_host, listener.bind_port);
-        if server_addr != listener_bind {
+        // Only validate port matches; host can differ (e.g. listener binds 0.0.0.0
+        // but agent connects via a specific interface IP like 192.168.x.x)
+        let request_port = server_addr.rsplit(':').next();
+        if request_port != Some(listener.bind_port.to_string().as_str()) {
             return Err(anyhow::anyhow!(
-                "listener {} is bound to {}, but build requested server_addr={}",
+                "listener {} is bound to port {}, but build requested server_addr={}",
                 listener.listener_id,
-                listener_bind,
+                listener.bind_port,
                 server_addr
             ));
         }
