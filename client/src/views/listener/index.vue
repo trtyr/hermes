@@ -258,8 +258,22 @@ const getStatusTextColor = (status: string) => {
 }
 :deep(.ant-table) {
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+:deep(.ant-table-container) {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+:deep(.ant-table-header) {
+  flex-shrink: 0;
 }
 :deep(.ant-table-body) {
+  flex-grow: 1;
   overflow-y: auto !important;
 }
 </style>

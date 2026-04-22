@@ -12,7 +12,7 @@
 
       <!-- Dynamic Content Page -->
       <a-layout-content class="flex-1 w-full p-4 overflow-hidden relative flex flex-col">
-        <div class="flex-1 w-full bg-white rounded-md shadow-sm border border-gray-200 overflow-y-auto relative">
+        <div class="flex-1 w-full bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden relative">
           <router-view v-slot="{ Component }">
             <transition name="fade-slide" mode="out-in">
               <keep-alive>

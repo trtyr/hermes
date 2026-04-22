@@ -292,8 +292,30 @@ const getActionColor = (action: string) => {
 }
 :deep(.ant-table) {
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+:deep(.ant-table-container) {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+:deep(.ant-table-header) {
+  flex-shrink: 0;
+}
+:deep(.ant-table-thead > tr > th) {
+  padding: 8px 12px !important;
+  line-height: 1.4;
+}
+:deep(.ant-table-tbody > tr > td) {
+  padding: 8px 12px !important;
+  line-height: 1.4;
 }
 :deep(.ant-table-body) {
+  flex-grow: 1;
   overflow-y: auto !important;
 }
 </style>
