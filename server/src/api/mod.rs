@@ -60,7 +60,7 @@ pub async fn run_http_api(
         )
         .route(
             "/agent-builds/{build_id}",
-            get(agent_builds::get_agent_build),
+            get(agent_builds::get_agent_build).delete(agent_builds::delete_agent_build),
         )
         .route(
             "/agent-builds/{build_id}/download",

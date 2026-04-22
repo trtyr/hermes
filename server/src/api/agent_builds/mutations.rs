@@ -55,3 +55,62 @@ pub(crate) async fn create_agent_build(
             .into_response(),
     }
 }
+
+pub(crate) async fn delete_agent_build(
+    Path(build_id): Path<i64>,
+    headers: HeaderMap,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    if let Some(response) = authorize_api(&state, &headers, None) {
+        return response;
+    }
+    let operator = extract_operator_for_request(&state, &headers, None);
+
+    match state.kernel.agent_builds().delete_build(build_id).await {
+        Ok(true) => {
+            state.kernel.append_audit_record(
+                operator,
+                "delete_agent_build".to_string(),
+                "agent_build".to_string(),
+                Some(build_id.to_string()),
+                Some("agent build deleted".to_string()),
+                now_ts(),
+            );
+            (
+                StatusCode::OK,
+                Json(ApiResponse {
+                    success: true,
+                    detail: format!("agent build {} deleted", build_id),
+                    task_id: None,
+                }),
+            )
+                .into_response()
+        }
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse {
+                success: false,
+                detail: format!("agent build {} not found", build_id),
+                task_id: None,
+            }),
+        )
+            .into_response(),
+        Err(error) => {
+            let detail = error.to_string();
+            let status = if detail.contains("still pending") {
+                StatusCode::CONFLICT
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            (
+                status,
+                Json(ApiResponse {
+                    success: false,
+                    detail,
+                    task_id: None,
+                }),
+            )
+                .into_response()
+        }
+    }
+}

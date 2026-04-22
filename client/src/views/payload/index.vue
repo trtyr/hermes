@@ -87,16 +87,26 @@
           </template>
 
           <template v-else-if="column.key === 'action'">
-            <a-button
-              v-if="record.status === 'succeeded'"
-              type="link"
-              size="small"
-              @click="handleDownload(record)"
-            >
-              <template #icon><DownloadOutlined /></template>
-              下载
-            </a-button>
-            <span v-else class="text-slate-400 text-xs">-</span>
+            <div class="flex gap-1">
+              <a-button
+                v-if="record.status === 'succeeded'"
+                type="link"
+                size="small"
+                @click="handleDownload(record)"
+              >
+                <template #icon><DownloadOutlined /></template>
+                下载
+              </a-button>
+              <a-button
+                v-if="record.status !== 'pending'"
+                type="link"
+                size="small"
+                danger
+                @click="handleDelete(record)"
+              >
+                <template #icon><DeleteOutlined /></template>
+              </a-button>
+            </div>
           </template>
         </template>
       </a-table>
@@ -177,6 +187,7 @@ import {
   ReloadOutlined,
   PlusOutlined,
   DownloadOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
@@ -184,6 +195,7 @@ import {
   AgentBuildRecord,
   fetchAgentBuilds,
   createAgentBuild,
+  deleteAgentBuild,
   getBuildDownloadUrl,
 } from '@/api/agentBuild';
 import { fetchListeners, ListenerRecord } from '@/api/listener';
@@ -262,6 +274,16 @@ async function handleDownload(record: AgentBuildRecord) {
   }
 }
 
+async function handleDelete(record: AgentBuildRecord) {
+  try {
+    await deleteAgentBuild(record.build_id);
+    message.success(`构建 #${record.build_id} 已删除`);
+    loadBuilds();
+  } catch (e: any) {
+    message.error(e.message || '删除失败');
+  }
+}
+
 const loadListeners = async () => {
   listenersLoading.value = true;
   try {
@@ -287,7 +309,7 @@ onMounted(() => {
   loadListeners();
   
   unsubscribe = eventStore.subscribe((event) => {
-    if (event.type === 'agent_build_created' || event.type === 'agent_build_completed') {
+    if (event.type === 'agent_build_created' || event.type === 'agent_build_completed' || event.type === 'agent_build_deleted') {
       // Debounce: don't refresh more than once per 2 seconds
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => loadBuilds(), 2000);

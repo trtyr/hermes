@@ -20,7 +20,8 @@ export type BackendEvent =
   | { type: 'task_result'; [key: string]: any }
   | { type: 'task_updated'; [key: string]: any }
   | { type: 'agent_build_created'; build: any }
-  | { type: 'agent_build_completed'; build: any };
+  | { type: 'agent_build_completed'; build: any }
+  | { type: 'agent_build_deleted'; build_id: number };
 
 export const useEventStore = defineStore('events', () => {
   const connectionStore = useConnectionStore();

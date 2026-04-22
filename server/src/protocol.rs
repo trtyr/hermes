@@ -439,4 +439,7 @@ pub enum WebEvent {
     AgentBuildCompleted {
         build: AgentBuildRecord,
     },
+    AgentBuildDeleted {
+        build_id: i64,
+    },
 }

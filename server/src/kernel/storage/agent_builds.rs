@@ -73,6 +73,20 @@ impl Storage {
         .context("sqlite create agent build record join error")?
     }
 
+    pub async fn delete_agent_build_record(&self, build_id: i64) -> anyhow::Result<bool> {
+        let path = self.sqlite_path.clone();
+        tokio::task::spawn_blocking(move || {
+            let connection = open_connection(&path)?;
+            let rows = connection.execute(
+                "DELETE FROM agent_builds WHERE build_id = ?1",
+                params![build_id],
+            )?;
+            Ok(rows > 0)
+        })
+        .await
+        .context("sqlite delete agent build record join error")?
+    }
+
     pub async fn update_agent_build_record(
         &self,
         build_id: i64,

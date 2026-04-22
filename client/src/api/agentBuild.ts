@@ -79,4 +79,16 @@ export function getBuildDownloadUrl(buildId: number): string {
   return `${getBaseUrl()}/agent-builds/${buildId}/download`;
 }
 
+export async function deleteAgentBuild(buildId: number): Promise<{ success: boolean }> {
+  const res = await fetch(`${getBaseUrl()}/agent-builds/${buildId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.detail || '删除构建失败: ' + res.statusText);
+  }
+  return res.json();
+}
+
 
