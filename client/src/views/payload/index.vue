@@ -27,6 +27,7 @@
         :loading="loading"
         :pagination="{ pageSize: 20, total: total, current: currentPage, onChange: onPageChange }"
         class="w-full flex-1"
+        :scroll="{ x: 1020 }"
       >
         <!-- Custom Body Cells -->
         <template #bodyCell="{ column, record }">
@@ -113,18 +114,14 @@
       :destroyOnClose="true"
     >
       <a-form layout="vertical" class="mt-4">
-        <a-form-item label="目标平台" help="留空则使用当前服务器平台">
+        <a-form-item label="目标平台" required>
           <a-select
             v-model:value="buildForm.target_triple"
             allowClear
-            placeholder="自动检测当前平台"
+            placeholder="选择目标平台"
           >
-            <a-select-option value="x86_64-pc-windows-msvc">Windows x86_64 (MSVC)</a-select-option>
-            <a-select-option value="i686-pc-windows-msvc">Windows i686 (MSVC)</a-select-option>
-            <a-select-option value="x86_64-unknown-linux-gnu">Linux x86_64 (GNU)</a-select-option>
-            <a-select-option value="aarch64-unknown-linux-gnu">Linux ARM64 (GNU)</a-select-option>
-            <a-select-option value="x86_64-apple-darwin">macOS x86_64</a-select-option>
-            <a-select-option value="aarch64-apple-darwin">macOS ARM64</a-select-option>
+            <a-select-option value="x86_64-pc-windows-msvc">Windows x86_64</a-select-option>
+            <a-select-option value="i686-pc-windows-msvc">Windows x86</a-select-option>
           </a-select>
         </a-form-item>
 
@@ -216,15 +213,15 @@ const listenersLoading = ref(false);
 const eventStore = useEventStore();
 
 const columns = [
-  { title: '构建 ID', dataIndex: 'build_id', key: 'build_id', width: 100 },
-  { title: '目标平台', dataIndex: 'target_triple', key: 'target_triple', width: 220 },
-  { title: '配置', dataIndex: 'profile', key: 'profile', width: 90 },
-  { title: '监听器', dataIndex: 'listener_id', key: 'listener_id', width: 100 },
-  { title: '回连地址', dataIndex: 'server_addr', key: 'server_addr', width: 180 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '详情', dataIndex: 'detail', key: 'detail', width: 200, ellipsis: true },
-  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 170 },
-  { title: '操作', key: 'action', width: 80, fixed: 'right' },
+  { title: 'ID', dataIndex: 'build_id', key: 'build_id', width: 60 },
+  { title: '目标平台', dataIndex: 'target_triple', key: 'target_triple', width: 180 },
+  { title: '配置', dataIndex: 'profile', key: 'profile', width: 70 },
+  { title: '监听器', dataIndex: 'listener_id', key: 'listener_id', width: 70 },
+  { title: '回连地址', dataIndex: 'server_addr', key: 'server_addr', width: 140 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
+  { title: '详情', dataIndex: 'detail', key: 'detail', width: 200 },
+  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 150 },
+  { title: '操作', key: 'action', width: 70, fixed: 'right' },
 ];
 
 const loadBuilds = async () => {
@@ -317,6 +314,11 @@ onUnmounted(() => {
 const handleBuild = async () => {
   building.value = true;
   try {
+    if (!buildForm.value.target_triple) {
+      message.warning('请选择目标平台');
+      building.value = false;
+      return;
+    }
     const data: Record<string, any> = {
       profile: buildForm.value.profile,
     };
