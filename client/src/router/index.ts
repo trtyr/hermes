@@ -1,6 +1,7 @@
 import type { App } from 'vue';
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 import { useConnectionStore } from '@/store/connection';
+import { checkSession } from '@/api/connection';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -62,19 +63,52 @@ export const router = createRouter({
   routes,
 });
 
-// Navigation guard: redirect to login if not authenticated
-router.beforeEach((to, _from, next) => {
-  const connectionStore = useConnectionStore();
-  const isAuthenticated = connectionStore.activeProfile !== null;
+// Track whether we've validated the stored session this app lifecycle.
+let isSessionVerified = false;
 
-  if (to.path !== '/login' && !isAuthenticated) {
-    next('/login');
-  } else if (to.path === '/login' && isAuthenticated) {
-    next('/dashboard');
-  } else {
+// Navigation guard
+router.beforeEach(async (to, _from, next) => {
+  const connectionStore = useConnectionStore();
+
+  // Login page: if there's an active profile, redirect away.
+  if (to.path === '/login') {
+    if (connectionStore.activeProfile) {
+      next('/dashboard');
+      return;
+    }
     next();
+    return;
   }
+
+  // Protected routes: must have a profile
+  if (!connectionStore.activeProfile) {
+    next('/login');
+    return;
+  }
+
+  // Verify session on first visit to a protected route this lifecycle.
+  if (!isSessionVerified) {
+    const valid = await checkSession(
+      connectionStore.activeProfile.server_url,
+      connectionStore.activeProfile.api_token
+    );
+
+    if (!valid) {
+      connectionStore.logout();
+      isSessionVerified = false;
+      next('/login');
+      return;
+    }
+
+    isSessionVerified = true;
+  }
+
+  next();
 });
+
+export function resetSessionVerification() {
+  isSessionVerified = false;
+}
 
 export function setupRouter(app: App<Element>) {
   app.use(router);

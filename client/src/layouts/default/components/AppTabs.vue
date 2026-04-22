@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-shrink-0 w-full bg-slate-100 dark:bg-[var(--bg-page)] border-b border-gray-200 dark:border-[var(--border-default)] pt-2 px-2 flex items-end space-x-1 overflow-x-auto z-10 transition-colors duration-300 h-[42px]">
+  <div class="flex-shrink-0 w-full bg-slate-100 border-b border-gray-200 pt-2 px-2 flex items-end space-x-1 overflow-x-auto z-10 transition-colors duration-300 h-[42px]">
     <div
       v-for="tab in appStore.visitedViews"
       :key="tab.path"
@@ -8,12 +8,12 @@
         'group relative flex items-center h-[34px] px-4 min-w-[120px] max-w-[200px] cursor-pointer select-none transition-all duration-200',
         'rounded-t-lg mx-[-1px]', 
         route.path === tab.path
-          ? 'bg-white dark:bg-[var(--bg-card)] text-primary font-medium z-10'
-          : 'bg-transparent text-slate-500 hover:text-slate-700 dark:text-[var(--text-secondary)] dark:hover:text-[var(--text-primary)] hover:bg-slate-200/50 dark:hover:bg-[var(--bg-card)]/50'
+          ? 'bg-white text-primary font-medium z-10'
+          : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
       ]"
     >
       <!-- Separator (inactive) -->
-      <div v-if="route.path !== tab.path" class="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-4 bg-slate-300 dark:bg-slate-700 group-hover:hidden"></div>
+      <div v-if="route.path !== tab.path" class="absolute right-0 top-1/2 -translate-y-1/2 w-[1px] h-4 bg-slate-300 group-hover:hidden"></div>
       
       <!-- Active Top Highlight -->
       <div v-if="route.path === tab.path" class="absolute top-0 left-0 w-full h-[2px] bg-primary rounded-t-lg"></div>
@@ -30,7 +30,7 @@
       <CloseOutlined
         v-if="appStore.visitedViews.length > 1"
         @click.stop="closeTab(tab.path)"
-        class="ml-2 text-[10px] p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+        class="ml-2 text-[10px] p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
         :class="route.path === tab.path ? '!opacity-100' : ''"
       />
     </div>

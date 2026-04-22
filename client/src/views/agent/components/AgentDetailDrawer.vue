@@ -10,10 +10,10 @@
     <div v-if="localAgent" class="space-y-6">
       <!-- Status Banner -->
       <div class="p-4 rounded-lg flex items-center justify-between border" 
-           :class="localAgent.is_online ? 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-900/30' : 'bg-slate-50 border-slate-200 dark:bg-[var(--bg-sub)] dark:border-slate-800'">
+           :class="localAgent.is_online ? 'bg-green-50/50 border-green-200' : 'bg-slate-50 border-slate-200'">
         <div class="flex items-center gap-3">
           <div class="w-3 h-3 rounded-full" :class="localAgent.is_online ? 'bg-green-500' : 'bg-slate-400'"></div>
-          <span class="font-medium" :class="localAgent.is_online ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-[var(--text-secondary)]'">
+          <span class="font-medium" :class="localAgent.is_online ? 'text-green-700' : 'text-slate-600'">
             {{ localAgent.is_online ? '在线 (Online)' : '离线 (Offline)' }}
           </span>
           <a-tag v-if="localAgent.is_disabled" color="error">已禁用</a-tag>
@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <a-descriptions title="基础信息" :column="2" bordered size="small" class="bg-white dark:bg-[var(--bg-card)]">
+      <a-descriptions title="基础信息" :column="2" bordered size="small" class="bg-white">
         <a-descriptions-item label="主机名">{{ localAgent.hostname }}</a-descriptions-item>
         <a-descriptions-item label="用户名">{{ localAgent.username }}</a-descriptions-item>
         <a-descriptions-item label="操作系统">{{ localAgent.os }}</a-descriptions-item>
@@ -50,17 +50,17 @@
         </a-descriptions-item>
       </a-descriptions>
 
-      <a-descriptions title="网络配置" :column="2" bordered size="small" class="bg-white dark:bg-[var(--bg-card)]">
+      <a-descriptions title="网络配置" :column="2" bordered size="small" class="bg-white">
         <a-descriptions-item label="内部 IP">{{ localAgent.internal_ip }}</a-descriptions-item>
         <a-descriptions-item label="外部 IP">{{ localAgent.external_ip }}</a-descriptions-item>
         <a-descriptions-item label="对端地址" :span="2">{{ localAgent.peer_addr }}</a-descriptions-item>
       </a-descriptions>
 
-      <div class="border border-gray-200 dark:border-[var(--border-default)] rounded-lg overflow-hidden">
-        <div class="bg-slate-50 dark:bg-[var(--bg-sub)] px-4 py-2 border-b border-gray-200 dark:border-[var(--border-default)] font-medium text-slate-800 dark:text-[var(--text-primary)]">
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="bg-slate-50 px-4 py-2 border-b border-gray-200 font-medium text-slate-800">
           Beacon 通信配置
         </div>
-        <div class="p-4 bg-white dark:bg-[var(--bg-card)]">
+        <div class="p-4 bg-white">
           <a-form layout="vertical" class="flex gap-4">
             <a-form-item label="休眠间隔 (秒)" class="flex-1 mb-0">
               <a-input-number v-model:value="beaconForm.sleep_interval" :min="1" class="w-full" :disabled="!localAgent.is_online || localAgent.is_disabled" />
@@ -80,7 +80,7 @@
         </div>
       </div>
 
-      <div class="flex gap-2 justify-end pt-4 border-t border-gray-200 dark:border-[var(--border-default)]">
+      <div class="flex gap-2 justify-end pt-4 border-t border-gray-200">
         <a-button type="primary" :disabled="localAgent.is_disabled" @click="openTaskModal">下发任务</a-button>
         
         <a-dropdown placement="topRight">

@@ -3,7 +3,7 @@
     <!-- Main Left Sidebar -->
     <AppSidebar />
 
-    <a-layout class="h-screen bg-[#f0f2f5] dark:bg-[var(--bg-page)] flex flex-col">
+    <a-layout class="h-screen bg-[#f0f2f5] flex flex-col">
       <!-- Top Action Header -->
       <AppHeader :isRefreshing="refreshing" @refresh="refreshCurrentView" />
 
@@ -12,7 +12,7 @@
 
       <!-- Dynamic Content Page -->
       <a-layout-content class="flex-1 w-full p-4 overflow-hidden relative flex flex-col">
-        <div class="flex-1 w-full bg-white dark:bg-[var(--bg-card)] rounded-md shadow-sm border border-gray-200 dark:border-[var(--border-default)] overflow-y-auto relative">
+        <div class="flex-1 w-full bg-white rounded-md shadow-sm border border-gray-200 overflow-y-auto relative">
           <router-view v-slot="{ Component }">
             <transition name="fade-slide" mode="out-in">
               <keep-alive>

@@ -1,8 +1,8 @@
 <template>
-  <div class="h-full w-full flex flex-col p-4 relative bg-[#f0f2f5] dark:bg-[var(--bg-page)] transition-colors duration-300">
+  <div class="h-full w-full flex flex-col p-4 relative bg-[#f0f2f5] transition-colors duration-300">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0">
+      <h2 class="text-xl font-semibold text-slate-800 flex items-center gap-2 m-0">
         <CodeOutlined class="text-blue-500" />
         交互终端 - {{ agentId }}
       </h2>
@@ -14,7 +14,7 @@
     </div>
     
     <!-- Terminal Container -->
-    <div class="flex-1 bg-[#1e1e1e] dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm overflow-hidden relative">
+    <div class="flex-1 bg-[#1e1e1e] rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
       <div ref="terminalContainer" class="absolute inset-0 p-3 pt-2"></div>
     </div>
   </div>

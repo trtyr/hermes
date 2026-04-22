@@ -22,6 +22,10 @@ Thumbs.db
 .env
 *.log
 
+# Stale Vue/TS compiled sidecar files (Vite doesn't need these)
+*.vue.js
+*.ts.js
+
 # Python cache
 __pycache__/
 *.pyc

@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { useConnectionStore } from './connection';
+// After this many consecutive reconnect failures, assume the session is gone.
+const MAX_RETRIES_BEFORE_LOGOUT = 6;
 export const useEventStore = defineStore('events', () => {
     const connectionStore = useConnectionStore();
     const socket = ref(null);
@@ -16,6 +18,15 @@ export const useEventStore = defineStore('events', () => {
     }
     function notifySubscribers(event) {
         subscribers.value.forEach(cb => cb(event));
+    }
+    /**
+     * Clear the session and navigate to /login.
+     * Lazy-imports router to avoid circular dependency at module init time.
+     */
+    async function forceLogout() {
+        connectionStore.logout();
+        const { router } = await import('@/router');
+        router.push('/login');
     }
     function connect() {
         manualDisconnect.value = false;
@@ -61,6 +72,13 @@ export const useEventStore = defineStore('events', () => {
                 console.log('[EventStore] WebSocket closed', e.code, e.reason);
                 isConnected.value = false;
                 socket.value = null;
+                // Close code 1008 = policy violation (often auth failure)
+                // Close code 4001+ = custom server codes that may indicate auth issues
+                if (e.code === 1008 || e.code === 4001) {
+                    console.warn('[EventStore] WebSocket closed with auth-related code, forcing logout');
+                    forceLogout();
+                    return;
+                }
                 if (!manualDisconnect.value && connectionStore.activeProfile) {
                     scheduleReconnect();
                 }
@@ -87,8 +105,14 @@ export const useEventStore = defineStore('events', () => {
     function scheduleReconnect() {
         if (reconnectTimer.value)
             return;
+        // If we've retried too many times, force logout
+        if (retryCount.value >= MAX_RETRIES_BEFORE_LOGOUT) {
+            console.warn('[EventStore] Max reconnect attempts reached, forcing logout');
+            forceLogout();
+            return;
+        }
         const delay = Math.min(1000 * Math.pow(2, retryCount.value), 30000);
-        console.log(`[EventStore] Reconnecting in ${delay}ms...`);
+        console.log(`[EventStore] Reconnecting in ${delay}ms... (attempt ${retryCount.value + 1}/${MAX_RETRIES_BEFORE_LOGOUT})`);
         reconnectTimer.value = setTimeout(() => {
             reconnectTimer.value = null;
             retryCount.value++;
@@ -98,6 +122,8 @@ export const useEventStore = defineStore('events', () => {
     // Auto connect/disconnect when active profile changes
     watch(() => connectionStore.activeProfileId, (newId) => {
         if (newId) {
+            // Reset retry count when a new profile is activated (fresh login)
+            retryCount.value = 0;
             connect();
         }
         else {

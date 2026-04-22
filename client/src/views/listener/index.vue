@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0">
+      <h2 class="text-xl font-semibold text-slate-800 flex items-center gap-2 m-0">
         <ApiOutlined class="text-indigo-500" />
         监听器管理
       </h2>
@@ -19,11 +19,11 @@
     </div>
 
     <!-- Table Container -->
-    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden">
       <a-table
         :columns="columns"
         :data-source="listeners"
-        row-key="id"
+        row-key="listener_id"
         :loading="loading"
         :pagination="{ pageSize: 20 }"
         class="w-full flex-1"
@@ -31,28 +31,35 @@
       >
         <!-- Custom Body Cells -->
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'protocol'">
-            <a-tag :color="getProtocolColor(record.protocol)" class="font-medium mr-0">
-              {{ record.protocol }}
+          <template v-if="column.key === 'kind'">
+            <a-tag :color="getKindColor(record.kind)" class="font-medium mr-0">
+              {{ formatKind(record.kind) }}
             </a-tag>
           </template>
 
           <template v-else-if="column.key === 'address'">
-            <span class="font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]">
+            <span class="font-mono text-sm text-slate-600">
               {{ record.bind_host }}:{{ record.bind_port }}
             </span>
           </template>
 
-          <template v-else-if="column.key === 'status'">
-            <div class="flex items-center gap-2">
-              <span class="relative flex h-2.5 w-2.5 shrink-0">
-                <span v-if="record.status === 'running'" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                <span class="relative inline-flex h-2.5 w-2.5 rounded-full" 
-                      :class="getStatusDotColor(record.status)"></span>
-              </span>
-              <span :class="getStatusTextColor(record.status)" class="capitalize">
-                {{ record.status }}
-              </span>
+          <template v-else-if="column.key === 'runtime_status'">
+            <div class="flex flex-col gap-0.5">
+              <div class="flex items-center gap-2">
+                <span class="relative flex h-2.5 w-2.5 shrink-0">
+                  <span v-if="record.runtime_status === 'running'" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex h-2.5 w-2.5 rounded-full" 
+                        :class="getStatusDotColor(record.runtime_status)"></span>
+                </span>
+                <span :class="getStatusTextColor(record.runtime_status)" class="capitalize">
+                  {{ record.runtime_status }}
+                </span>
+              </div>
+              <a-tooltip v-if="record.last_error" :title="record.last_error">
+                <span class="text-xs text-red-400 truncate max-w-[180px] inline-block align-bottom cursor-help">
+                  {{ record.last_error }}
+                </span>
+              </a-tooltip>
             </div>
           </template>
 
@@ -64,20 +71,20 @@
             <div class="flex gap-2 items-center">
               <a-button 
                 type="text" size="small" 
-                class="text-green-600 dark:text-green-400 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/30"
+                class="text-green-600 hover:text-green-700 hover:bg-green-50"
                 @click="doStartListener(record)" 
-                v-if="record.status !== 'running'"
-                :loading="actionLoading === record.id + 'start'"
+                v-if="record.enabled === false"
+                :loading="actionLoading === record.listener_id + 'start'"
               >
                 启动
               </a-button>
 
               <a-button 
                 type="text" size="small" 
-                class="text-amber-600 dark:text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                class="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                 @click="doStopListener(record)" 
-                v-if="record.status === 'running'"
-                :loading="actionLoading === record.id + 'stop'"
+                v-if="record.enabled === true"
+                :loading="actionLoading === record.listener_id + 'stop'"
               >
                 停止
               </a-button>
@@ -89,7 +96,7 @@
                 cancelText="取消"
                 okType="danger"
               >
-                <a-button type="text" size="small" danger :loading="actionLoading === record.id + 'delete'">
+                <a-button type="text" size="small" danger :loading="actionLoading === record.listener_id + 'delete'">
                   删除
                 </a-button>
               </a-popconfirm>
@@ -132,11 +139,11 @@ const createModalVisible = ref(false);
 const actionLoading = ref('');
 
 const columns = [
-  { title: '标识 ID', dataIndex: 'id', key: 'id', width: 120, ellipsis: true },
+  { title: '标识 ID', dataIndex: 'listener_id', key: 'listener_id', width: 100 },
   { title: '名称', dataIndex: 'name', key: 'name', width: 200 },
-  { title: '协议', dataIndex: 'protocol', key: 'protocol', width: 100 },
+  { title: '协议', dataIndex: 'kind', key: 'kind', width: 100 },
   { title: '侦听地址', key: 'address', width: 200 },
-  { title: '当前状态', dataIndex: 'status', key: 'status', width: 140 },
+  { title: '当前状态', dataIndex: 'runtime_status', key: 'runtime_status', width: 180 },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
   { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
 ];
@@ -159,10 +166,11 @@ onMounted(() => {
 
 // Row Actions
 const doStartListener = async (record: ListenerRecord) => {
-  actionLoading.value = record.id + 'start';
+  actionLoading.value = record.listener_id + 'start';
   try {
-    await startListener(record.id);
+    await startListener(record.listener_id);
     message.success(`监听器 ${record.name} 已启动`);
+    await new Promise(r => setTimeout(r, 2000));
     await loadListeners();
   } catch (err: any) {
     message.error(err.message || '操作失败');
@@ -172,10 +180,11 @@ const doStartListener = async (record: ListenerRecord) => {
 };
 
 const doStopListener = async (record: ListenerRecord) => {
-  actionLoading.value = record.id + 'stop';
+  actionLoading.value = record.listener_id + 'stop';
   try {
-    await stopListener(record.id);
+    await stopListener(record.listener_id);
     message.success(`监听器 ${record.name} 已停止`);
+    await new Promise(r => setTimeout(r, 2000));
     await loadListeners();
   } catch (err: any) {
     message.error(err.message || '操作失败');
@@ -185,9 +194,9 @@ const doStopListener = async (record: ListenerRecord) => {
 };
 
 const doDeleteListener = async (record: ListenerRecord) => {
-  actionLoading.value = record.id + 'delete';
+  actionLoading.value = record.listener_id + 'delete';
   try {
-    await deleteListener(record.id);
+    await deleteListener(record.listener_id);
     message.success(`监听器 ${record.name} 已删除`);
     await loadListeners();
   } catch (err: any) {
@@ -205,12 +214,16 @@ const formatTimestamp = (ts: number | null | undefined) => {
   return dayjs(ms).format('YYYY-MM-DD HH:mm:ss');
 };
 
-const getProtocolColor = (proto: string) => {
-  const p = proto?.toUpperCase() || '';
-  if (p === 'TCP') return 'blue';
-  if (p === 'HTTP' || p === 'HTTPS') return 'purple';
-  if (p === 'DNS') return 'cyan';
+const getKindColor = (kind: string) => {
+  if (kind === 'tcp_json') return 'blue';
+  if (kind === 'https_json') return 'purple';
   return 'default';
+};
+
+const formatKind = (kind: string) => {
+  if (kind === 'tcp_json') return 'TCP';
+  if (kind === 'https_json') return 'HTTPS';
+  return kind;
 };
 
 const getStatusDotColor = (status: string) => {
@@ -222,10 +235,10 @@ const getStatusDotColor = (status: string) => {
 };
 
 const getStatusTextColor = (status: string) => {
-  if (status === 'running') return 'text-green-600 dark:text-green-500 font-medium';
-  if (status === 'stopped') return 'text-slate-500 dark:text-[var(--text-secondary)]';
-  if (status === 'error') return 'text-red-600 dark:text-red-500 font-medium';
-  return 'text-slate-700 dark:text-[var(--text-secondary)]';
+  if (status === 'running') return 'text-green-600 font-medium';
+  if (status === 'stopped') return 'text-slate-500';
+  if (status === 'error') return 'text-red-600 font-medium';
+  return 'text-slate-700';
 };
 </script>
 

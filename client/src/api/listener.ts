@@ -1,18 +1,22 @@
 import { useConnectionStore } from '@/store/connection';
 
 export interface ListenerRecord {
-  id: string;
+  listener_id: number;
   name: string;
-  protocol: string;
+  kind: string;
   bind_host: string;
   bind_port: number;
-  status: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  runtime_status: string;
+  last_error: string | null;
   created_at: number;
+  updated_at: number;
 }
 
 export interface SpawnListenerRequest {
   name: string;
-  protocol: string;
+  kind: string;
   bind_host: string;
   bind_port: number;
 }
@@ -52,7 +56,7 @@ export async function spawnListener(data: SpawnListenerRequest): Promise<{ succe
   return res.json();
 }
 
-export async function startListener(id: string): Promise<{ success: boolean }> {
+export async function startListener(id: number): Promise<{ success: boolean }> {
   const url = `${getBaseUrl()}/listeners/${id}/enable`;
   const res = await fetch(url, {
     method: 'POST',
@@ -62,7 +66,7 @@ export async function startListener(id: string): Promise<{ success: boolean }> {
   return res.json();
 }
 
-export async function stopListener(id: string): Promise<{ success: boolean }> {
+export async function stopListener(id: number): Promise<{ success: boolean }> {
   const url = `${getBaseUrl()}/listeners/${id}/disable`;
   const res = await fetch(url, {
     method: 'POST',
@@ -72,7 +76,7 @@ export async function stopListener(id: string): Promise<{ success: boolean }> {
   return res.json();
 }
 
-export async function deleteListener(id: string): Promise<{ success: boolean }> {
+export async function deleteListener(id: number): Promise<{ success: boolean }> {
   const url = `${getBaseUrl()}/listeners/${id}`;
   const res = await fetch(url, {
     method: 'DELETE',

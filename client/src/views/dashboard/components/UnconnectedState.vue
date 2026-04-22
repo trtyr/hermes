@@ -5,8 +5,8 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
       </svg>
     </div>
-    <h2 class="text-2xl font-semibold text-slate-800 dark:text-[var(--text-primary)] mb-2">未连接到任何后端服务器</h2>
-    <p class="text-slate-500 dark:text-[var(--text-secondary)] mb-8">请配置并选择一个活跃的 Hermes 服务端进行通信。这是客户端与后端交互的必要步骤。</p>
+    <h2 class="text-2xl font-semibold text-slate-800 mb-2">未连接到任何后端服务器</h2>
+    <p class="text-slate-500 mb-8">请配置并选择一个活跃的 Hermes 服务端进行通信。这是客户端与后端交互的必要步骤。</p>
     
     <a-button type="primary" size="large" @click="emit('connect')">
       <template #icon><ApiOutlined /></template>

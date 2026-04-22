@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 /* ============================================
    Vben Admin Inspired Design Tokens
    ============================================ */
@@ -36,42 +34,6 @@
 
   /* Sidebar */
   --bg-sidebar: #001529;
-
-  /* Terminal */
-  --bg-terminal: #1e1e1e;
-  --bg-terminal-dark: #0a0a0a;
-}
-
-.dark {
-  /* Vben Admin default dark palette */
-  --bg-page: hsl(222.34 10.43% 12.27%);       /* ≈ #1B1F27 */
-  --bg-deep: hsl(220 13.06% 9%);               /* ≈ #141820 */
-  --bg-card: hsl(222.34 10.43% 12.27%);        /* ≈ #1B1F27 */
-  --bg-sub: hsl(220 13.06% 9%);                /* ≈ #141820 */
-  --bg-muted: hsl(240 3.7% 15.9%);             /* ≈ #27272A */
-  --bg-accent: hsl(216 5% 19%);                /* ≈ #2E3138 */
-  --bg-accent-hover: hsl(216 5% 24%);          /* ≈ #363B44 */
-
-  /* Borders */
-  --border-default: hsl(240 3.7% 22%);         /* ≈ #363639 */
-  --border-input: hsl(0 0% 100% / 10%);
-
-  /* Text */
-  --text-primary: hsl(0 0% 95%);               /* ≈ #F2F2F2 */
-  --text-secondary: hsl(240 5% 64.9%);         /* ≈ #A1A1AA */
-  --text-muted: hsl(240 3.7% 46.1%);           /* ≈ #6E6E73 */
-
-  /* Brand */
-  --color-primary: hsl(212 100% 45%);          /* ≈ #0066CC */
-
-  /* Semantic status colors */
-  --color-success: hsl(144 57% 58%);            /* ≈ #4ADE80 */
-  --color-danger: hsl(348 100% 61%);            /* ≈ #F43F5E */
-  --color-warning: hsl(42 84% 61%);             /* ≈ #FBBF24 */
-  --color-info: hsl(212 100% 45%);              /* ≈ #0066CC */
-
-  /* Sidebar */
-  --bg-sidebar: hsl(222.34 10.43% 12.27%);     /* ≈ #1B1F27 */
 
   /* Terminal */
   --bg-terminal: #1e1e1e;

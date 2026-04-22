@@ -13,11 +13,10 @@
         <a-input v-model:value="formState.name" placeholder="请输入标识名称，如 HTTPS Beacon US-East" />
       </a-form-item>
       
-      <a-form-item label="协议类型 (Protocol)" name="protocol">
-        <a-select v-model:value="formState.protocol" placeholder="选择通信协议">
-          <a-select-option value="TCP">TCP</a-select-option>
-          <a-select-option value="HTTP">HTTP</a-select-option>
-          <a-select-option value="HTTPS">HTTPS</a-select-option>
+      <a-form-item label="协议类型 (Protocol)" name="kind">
+        <a-select v-model:value="formState.kind" placeholder="选择通信协议">
+          <a-select-option value="tcp_json">TCP</a-select-option>
+          <a-select-option value="https_json">HTTPS</a-select-option>
         </a-select>
       </a-form-item>
 
@@ -50,14 +49,14 @@ const submitting = ref(false);
 
 const formState = reactive<SpawnListenerRequest>({
   name: '',
-  protocol: 'TCP',
+  kind: 'tcp_json',
   bind_host: '0.0.0.0',
   bind_port: 1234,
 });
 
 const rules = {
   name: [{ required: true, message: '请输入监听器名称' }],
-  protocol: [{ required: true, message: '请选择协议' }],
+  kind: [{ required: true, message: '请选择协议' }],
   bind_host: [{ required: true, message: '请输入绑定地址' }],
   bind_port: [{ required: true, message: '请输入合法端口', type: 'number' }],
 };

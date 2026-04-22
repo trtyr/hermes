@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header Actions -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)]">Agent管理</h2>
+      <h2 class="text-xl font-semibold text-slate-800">Agent管理</h2>
       <div class="flex items-center gap-2">
         <a-input-search
           v-model:value="searchKeyword"
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Table -->
-    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm overflow-hidden flex flex-col">
+    <div class="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col">
       <a-table
         :dataSource="agents"
         :columns="columns"
@@ -49,7 +49,7 @@
           <template v-else-if="column.key === 'platform'">
             <div class="flex items-center gap-1.5">
               <WindowsOutlined v-if="record.os && record.os.toLowerCase().includes('windows')" class="text-blue-500" />
-              <AppleOutlined v-else-if="record.os && (record.os.toLowerCase().includes('mac') || record.os.toLowerCase().includes('darwin'))" class="text-gray-500 dark:text-gray-300" />
+              <AppleOutlined v-else-if="record.os && (record.os.toLowerCase().includes('mac') || record.os.toLowerCase().includes('darwin'))" class="text-gray-500" />
               <svg v-else-if="record.os && record.os.toLowerCase().includes('linux')" class="w-3.5 h-3.5 text-yellow-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
               <DesktopOutlined v-else class="text-slate-500" />
               <span>{{ record.os }} / {{ record.arch }}</span>

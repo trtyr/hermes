@@ -2,16 +2,16 @@
   <Teleport to="body">
     <div
       v-if="visible"
-      class="fixed z-50 bg-white dark:bg-[var(--bg-card)] border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[160px]"
+      class="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[160px]"
       :style="{ top: `${y}px`, left: `${x}px` }"
       @click.stop
     >
-      <div class="px-3 py-1.5 text-xs text-slate-400 border-b border-gray-100 dark:border-gray-800 mb-1">
+      <div class="px-3 py-1.5 text-xs text-slate-400 border-b border-gray-100 mb-1">
         Agent: {{ agent?.agent_id }}
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
+        class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-sm text-slate-700"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('open-task')"
       >
@@ -19,7 +19,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
+        class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-sm text-slate-700"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('open-terminal')"
       >
@@ -27,7 +27,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
+        class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-sm text-slate-700"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('open-file-ops')"
       >
@@ -35,7 +35,7 @@
       </div>
       
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
+        class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-sm text-slate-700"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('screenshot')"
       >
@@ -43,18 +43,18 @@
       </div>
 
       <div 
-        class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center gap-2 text-sm text-slate-700 dark:text-[var(--text-primary)]"
+        class="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-sm text-slate-700"
         :class="{ 'opacity-50 cursor-not-allowed': agent?.is_disabled }"
         @click="!agent?.is_disabled && emitAction('ps')"
       >
         <UnorderedListOutlined /> 进程列表
       </div>
 
-      <div class="h-[1px] bg-gray-100 dark:bg-gray-800 my-1"></div>
+      <div class="h-[1px] bg-gray-100 my-1"></div>
 
       <div 
         v-if="!agent?.is_disabled"
-        class="px-3 py-2 hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400"
+        class="px-3 py-2 hover:bg-orange-50 cursor-pointer flex items-center gap-2 text-sm text-orange-600"
         @click="agent && emitAction('action', 'disable')"
       >
         <StopOutlined /> 禁用节点
@@ -62,7 +62,7 @@
       
       <div 
         v-if="agent?.is_disabled"
-        class="px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer flex items-center gap-2 text-sm text-green-600 dark:text-green-400"
+        class="px-3 py-2 hover:bg-green-50 cursor-pointer flex items-center gap-2 text-sm text-green-600"
         @click="agent && emitAction('action', 'enable')"
       >
         <CheckCircleOutlined /> 启用节点
@@ -70,7 +70,7 @@
 
       <div 
         v-if="agent?.is_online"
-        class="px-3 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer flex items-center gap-2 text-sm text-red-600 dark:text-red-400"
+        class="px-3 py-2 hover:bg-red-50 cursor-pointer flex items-center gap-2 text-sm text-red-600"
         @click="agent && emitAction('action', 'disconnect')"
       >
         <DisconnectOutlined /> 断开连接
@@ -78,7 +78,7 @@
 
       <div 
         v-if="!agent?.is_online"
-        class="px-3 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer flex items-center gap-2 text-sm text-red-600 dark:text-red-400"
+        class="px-3 py-2 hover:bg-red-50 cursor-pointer flex items-center gap-2 text-sm text-red-600"
         @click="agent && emitAction('action', 'delete')"
       >
         <DeleteOutlined /> 删除记录

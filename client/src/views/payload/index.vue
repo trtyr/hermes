@@ -2,7 +2,7 @@
   <div class="h-full w-full flex flex-col p-4 relative">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-slate-800 dark:text-[var(--text-primary)] flex items-center gap-2 m-0">
+      <h2 class="text-xl font-semibold text-slate-800 flex items-center gap-2 m-0">
         <RocketOutlined class="text-orange-500" />
         载荷生成
       </h2>
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Table Container -->
-    <div class="flex-1 bg-white dark:bg-[var(--bg-card)] rounded-lg border border-gray-200 dark:border-[var(--border-default)] shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col overflow-hidden">
       <a-table
         :columns="columns"
         :data-source="builds"
@@ -36,7 +36,7 @@
           </template>
 
           <template v-else-if="column.key === 'target_triple'">
-            <span class="font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]">
+            <span class="font-mono text-sm text-slate-600">
               {{ record.target_triple }}
             </span>
           </template>
@@ -68,7 +68,7 @@
           </template>
 
           <template v-else-if="column.key === 'server_addr'">
-            <span class="font-mono text-sm text-slate-600 dark:text-[var(--text-secondary)]">
+            <span class="font-mono text-sm text-slate-600">
               {{ record.server_addr || '-' }}
             </span>
           </template>
@@ -79,7 +79,7 @@
 
           <template v-else-if="column.key === 'detail'">
             <a-tooltip v-if="record.detail" :title="record.detail">
-              <span class="text-sm text-slate-500 dark:text-[var(--text-secondary)] truncate max-w-[200px] inline-block align-bottom">
+              <span class="text-sm text-slate-500 truncate max-w-[200px] inline-block align-bottom">
                 {{ record.detail }}
               </span>
             </a-tooltip>
@@ -136,11 +136,11 @@
             placeholder="选择监听器"
             :loading="listenersLoading"
           >
-            <a-select-option v-for="l in listeners" :key="l.id" :value="l.id">
-              <span class="font-mono mr-2">#{{ l.id }}</span>
+            <a-select-option v-for="l in listeners" :key="l.listener_id" :value="l.listener_id">
+              <span class="font-mono mr-2">#{{ l.listener_id }}</span>
               {{ l.name }}
-              <a-tag :color="getProtocolColor(l.protocol)" size="small" class="ml-2 mr-0">
-                {{ l.protocol }}
+              <a-tag :color="getKindColor(l.kind)" size="small" class="ml-2 mr-0">
+                {{ formatKind(l.kind) }}
               </a-tag>
             </a-select-option>
           </a-select>
@@ -328,12 +328,25 @@ const formatTimestamp = (ts: number | null | undefined) => {
   return dayjs(ms).format('YYYY-MM-DD HH:mm:ss');
 };
 
-const getProtocolColor = (proto: string) => {
-  const p = proto?.toUpperCase() || '';
-  if (p === 'TCP') return 'blue';
-  if (p === 'HTTP' || p === 'HTTPS') return 'purple';
-  if (p === 'DNS') return 'cyan';
+ const getKindColor = (kind: string) => {
+
+  if (kind === 'tcp_json') return 'blue';
+  if (kind === 'https_json') return 'purple';
   return 'default';
+};
+
+ const formatKind = (kind: string) => {
+
+  if (kind === 'tcp_json') return 'TCP';
+  if (kind === 'https_json') return 'HTTPS';
+  return kind;
+};
+
+const formatKind = (kind: string) => {
+  if (kind === 'tcp_json') return 'TCP';
+  if (kind === 'https_json') return 'HTTPS';
+  if (kind === 'private_proto') return 'Private';
+  return kind;
 };
 
 const getStatusDotColor = (status: string) => {
@@ -344,10 +357,10 @@ const getStatusDotColor = (status: string) => {
 };
 
 const getStatusTextColor = (status: string) => {
-  if (status === 'succeeded') return 'text-green-600 dark:text-green-500 font-medium';
-  if (status === 'pending') return 'text-blue-600 dark:text-blue-400 font-medium';
-  if (status === 'failed') return 'text-red-600 dark:text-red-500 font-medium';
-  return 'text-slate-500 dark:text-[var(--text-secondary)]';
+  if (status === 'succeeded') return 'text-green-600 font-medium';
+  if (status === 'pending') return 'text-blue-600 font-medium';
+  if (status === 'failed') return 'text-red-600 font-medium';
+  return 'text-slate-500';
 };
 
 const getStatusLabel = (status: string) => {

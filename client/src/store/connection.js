@@ -52,6 +52,14 @@ export const useConnectionStore = defineStore('connection', () => {
         activeProfileId.value = id;
         saveProfiles();
     }
+    /**
+     * Clear the active session. Keeps saved profiles so the login page
+     * can pre-fill the server URL, but deactivates the current connection.
+     */
+    function logout() {
+        activeProfileId.value = null;
+        saveProfiles();
+    }
     function normalizeUrl(url) {
         let normalized = url.trim();
         if (!/^https?:\/\//i.test(normalized)) {
@@ -73,6 +81,7 @@ export const useConnectionStore = defineStore('connection', () => {
         updateProfile,
         deleteProfile,
         setActiveProfile,
+        logout,
         normalizeUrl
     };
 });

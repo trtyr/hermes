@@ -1,19 +1,7 @@
 <template>
-  <div class="relative w-full h-screen overflow-hidden bg-white dark:bg-[var(--bg-page)] flex justify-center">
-    <!-- Theme toggle -->
-    <div class="absolute top-4 right-4 flex items-center space-x-4 z-50">
-      <div class="cursor-pointer text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors" @click="toggleDark">
-        <svg v-if="!appStore.isDark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      </div>
-    </div>
-
+  <div class="relative w-full h-screen overflow-hidden bg-white flex justify-center">
     <!-- Main card -->
-    <div class="flex w-full h-full max-w-[1200px] shadow-2xl overflow-hidden rounded-none md:rounded-2xl md:h-[620px] md:my-auto md:w-4/5 lg:w-[1000px] bg-white dark:bg-[var(--bg-card)]">
+    <div class="flex w-full h-full max-w-[1200px] shadow-2xl overflow-hidden rounded-none md:rounded-2xl md:h-[620px] md:my-auto md:w-4/5 lg:w-[1000px] bg-white">
       <!-- Left: Branding -->
       <div class="hidden md:flex flex-col justify-center items-center w-1/2 bg-blue-600 relative overflow-hidden text-white p-10">
         <!-- Blob decorations -->
@@ -38,18 +26,18 @@
       </div>
 
       <!-- Right: Login Form -->
-      <div class="w-full md:w-1/2 flex flex-col justify-center p-8 lg:p-14 bg-white dark:bg-[var(--bg-card)] transition-colors duration-300">
+      <div class="w-full md:w-1/2 flex flex-col justify-center p-8 lg:p-14 bg-white transition-colors duration-300">
         <div class="w-full max-w-md mx-auto">
           <!-- Mobile Branding -->
-          <div class="flex items-center space-x-3 mb-8 md:hidden justify-center text-gray-900 dark:text-white">
-            <svg class="w-10 h-10 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center space-x-3 mb-8 md:hidden justify-center text-gray-900">
+            <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             <span class="text-3xl font-bold">Hermes C2</span>
           </div>
 
-          <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-2">连接到服务器</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mb-8">输入服务器地址和凭据以访问控制台</p>
+          <h2 class="text-2xl font-semibold text-gray-800 mb-2">连接到服务器</h2>
+          <p class="text-sm text-gray-500 mb-8">输入服务器地址和凭据以访问控制台</p>
 
           <a-form :model="formState" @finish="handleFinish" layout="vertical" class="w-full">
             <!-- Server URL -->
@@ -127,14 +115,12 @@ import {
   GlobalOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons-vue';
-import { useAppStore } from '@/store/app';
 import { useConnectionStore } from '@/store/connection';
 import { loginToBackend } from '@/api/connection';
 
 const router = useRouter();
 const loading = ref(false);
 const errorMsg = ref('');
-const appStore = useAppStore();
 const connectionStore = useConnectionStore();
 
 const formState = reactive({
@@ -143,18 +129,7 @@ const formState = reactive({
   password: '',
 });
 
-const toggleDark = () => {
-  appStore.toggleTheme();
-};
-
 onMounted(() => {
-  // Auto-dark for login page
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    if (!appStore.isDark) {
-      appStore.toggleTheme();
-    }
-  }
-
   // Pre-fill from last active profile
   if (connectionStore.activeProfile) {
     formState.serverUrl = connectionStore.activeProfile.server_url;

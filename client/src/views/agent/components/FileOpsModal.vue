@@ -17,13 +17,12 @@
           <a-form-item label="选择文件">
             <input
               type="file"
-              class="block w-full text-sm text-slate-500 dark:text-[var(--text-secondary)]
+              class="block w-full text-sm text-slate-500
                 file:mr-3 file:py-1.5 file:px-3
                 file:rounded-md file:border-0
                 file:text-sm file:font-medium
                 file:bg-blue-50 file:text-blue-600
-                dark:file:bg-blue-900/20 dark:file:text-blue-400
-                hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30
+                hover:file:bg-blue-100
                 cursor-pointer"
               @change="onFileSelect"
             />
