@@ -87,7 +87,7 @@
           </template>
 
           <template v-else-if="column.key === 'action'">
-            <div class="flex gap-1">
+            <div class="flex items-center gap-2">
               <a-button
                 v-if="record.status === 'succeeded'"
                 type="link"
@@ -97,15 +97,18 @@
                 <template #icon><DownloadOutlined /></template>
                 下载
               </a-button>
-              <a-button
+              <a-popconfirm
                 v-if="record.status !== 'pending'"
-                type="link"
-                size="small"
-                danger
-                @click="handleDelete(record)"
+                title="确定删除此构建？"
+                ok-text="删除"
+                cancel-text="取消"
+                @confirm="handleDelete(record)"
               >
-                <template #icon><DeleteOutlined /></template>
-              </a-button>
+                <a-button type="link" size="small" danger>
+                  <template #icon><DeleteOutlined /></template>
+                  删除
+                </a-button>
+              </a-popconfirm>
             </div>
           </template>
         </template>
@@ -240,15 +243,13 @@ const listenersLoading = ref(false);
 const eventStore = useEventStore();
 
 const columns = [
-  { title: 'ID', dataIndex: 'build_id', key: 'build_id', width: 60 },
-  { title: '目标平台', dataIndex: 'target_triple', key: 'target_triple', width: 180 },
-  { title: '配置', dataIndex: 'profile', key: 'profile', width: 70 },
-  { title: '监听器', dataIndex: 'listener_id', key: 'listener_id', width: 70 },
-  { title: '回连地址', dataIndex: 'server_addr', key: 'server_addr', width: 140 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
-  { title: '详情', dataIndex: 'detail', key: 'detail', width: 200 },
+  { title: 'ID', dataIndex: 'build_id', key: 'build_id', width: 50 },
+  { title: '目标平台', dataIndex: 'target_triple', key: 'target_triple', width: 160 },
+  { title: '监听器', dataIndex: 'listener_id', key: 'listener_id', width: 60 },
+  { title: '回连地址', dataIndex: 'server_addr', key: 'server_addr', width: 150 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 70 },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 150 },
-  { title: '操作', key: 'action', width: 70, fixed: 'right' },
+  { title: '操作', key: 'action', width: 120, fixed: 'right' },
 ];
 
 const loadBuilds = async () => {
