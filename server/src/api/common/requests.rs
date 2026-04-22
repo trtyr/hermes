@@ -128,6 +128,8 @@ pub(crate) struct AgentBuildCreateRequest {
     pub(crate) agent_token: Option<String>,
     #[serde(default = "default_build_profile")]
     pub(crate) profile: String,
+    pub(crate) heartbeat_secs: Option<u64>,
+    pub(crate) jitter: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -136,6 +138,8 @@ pub(crate) struct ListenerAgentBuildRequest {
     pub(crate) agent_token: Option<String>,
     #[serde(default = "default_build_profile")]
     pub(crate) profile: String,
+    pub(crate) heartbeat_secs: Option<u64>,
+    pub(crate) jitter: Option<u32>,
 }
 
 #[derive(Deserialize, Default)]

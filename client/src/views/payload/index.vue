@@ -168,11 +168,24 @@
           />
         </a-form-item>
 
-        <a-form-item label="构建配置">
-          <a-radio-group v-model:value="buildForm.profile">
-            <a-radio-button value="release">Release（体积最小）</a-radio-button>
-            <a-radio-button value="debug">Debug（带调试信息）</a-radio-button>
-          </a-radio-group>
+        <a-form-item label="心跳间隔" help="Agent 回连间隔（秒），默认 15 秒">
+          <a-input-number
+            v-model:value="buildForm.heartbeat_secs"
+            :min="1"
+            :max="86400"
+            placeholder="15"
+            class="w-full"
+          />
+        </a-form-item>
+
+        <a-form-item label="抖动系数" help="心跳随机偏移百分比（0-100），默认 0">
+          <a-input-number
+            v-model:value="buildForm.jitter"
+            :min="0"
+            :max="100"
+            placeholder="0"
+            class="w-full"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -217,6 +230,8 @@ const buildForm = ref({
   server_addr: '',
   agent_token: '',
   profile: 'release',
+  heartbeat_secs: undefined as number | undefined,
+  jitter: undefined as number | undefined,
 });
 
 // Listeners for the form dropdown
@@ -348,6 +363,8 @@ const handleBuild = async () => {
     if (buildForm.value.listener_id) data.listener_id = buildForm.value.listener_id;
     if (buildForm.value.server_addr) data.server_addr = buildForm.value.server_addr;
     if (buildForm.value.agent_token) data.agent_token = buildForm.value.agent_token;
+    if (buildForm.value.heartbeat_secs) data.heartbeat_secs = buildForm.value.heartbeat_secs;
+    if (buildForm.value.jitter) data.jitter = buildForm.value.jitter;
 
     await createAgentBuild(data);
     message.success('构建任务已提交');
@@ -369,6 +386,8 @@ const resetBuildForm = () => {
     server_addr: '',
     agent_token: '',
     profile: 'release',
+    heartbeat_secs: undefined,
+    jitter: undefined,
   };
 };
 

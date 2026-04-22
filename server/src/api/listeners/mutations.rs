@@ -92,6 +92,8 @@ pub(crate) async fn create_listener_agent_build(
             None,
             request.agent_token,
             request.profile,
+            request.heartbeat_secs,
+            request.jitter,
         )
         .await
     {

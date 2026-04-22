@@ -19,6 +19,8 @@ pub(crate) async fn create_agent_build(
             request.server_addr,
             request.agent_token,
             request.profile,
+            request.heartbeat_secs,
+            request.jitter,
         )
         .await
     {

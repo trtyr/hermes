@@ -33,6 +33,8 @@ impl AgentBuildFacade {
         server_addr: Option<String>,
         agent_token: Option<String>,
         profile: String,
+        heartbeat_secs: Option<u64>,
+        jitter: Option<u32>,
     ) -> anyhow::Result<AgentBuildRecord> {
         let target_triple = match target_triple {
             Some(target_triple) => target_triple,
@@ -69,6 +71,9 @@ impl AgentBuildFacade {
         self.kernel
             .publish_web_event(WebEvent::AgentBuildCreated { build: build.clone() });
 
+        let heartbeat_secs = heartbeat_secs.unwrap_or(15);
+        let jitter = jitter.unwrap_or(0);
+
         let kernel = self.kernel.clone();
         let build_id = build.build_id;
         tokio::spawn(async move {
@@ -79,6 +84,8 @@ impl AgentBuildFacade {
                 agent_token,
                 profile,
                 listener,
+                heartbeat_secs,
+                jitter,
             )
             .await;
 
@@ -195,6 +202,8 @@ async fn run_build(
     agent_token: Option<String>,
     profile: String,
     listener: Option<ListenerRecord>,
+    heartbeat_secs: u64,
+    jitter: u32,
 ) -> anyhow::Result<(String, String, String)> {
     let agent_project_path = PathBuf::from(DEFAULT_AGENT_PROJECT_PATH);
     let artifact_root =
@@ -218,7 +227,7 @@ async fn run_build(
     let previous_server_module = fs::read_to_string(&server_module_path)?;
     fs::write(
         &server_module_path,
-        render_server_module(&server_addr, agent_token.as_deref(), protocol),
+        render_server_module(&server_addr, agent_token.as_deref(), protocol, heartbeat_secs, jitter),
     )?;
 
     let output = command.output().await;
@@ -320,6 +329,8 @@ fn render_server_module(
     server_addr: &str,
     agent_token: Option<&str>,
     protocol: &str,
+    heartbeat_secs: u64,
+    jitter: u32,
 ) -> String {
     let agent_token = match agent_token {
         Some(agent_token) => format!("Some({:?})", agent_token),
@@ -331,7 +342,9 @@ fn render_server_module(
          // Generated at build time. Do not edit manually during automated builds.\n\n\
          const EMBEDDED_SERVER_ADDR: &str = {:?};\n\
          const EMBEDDED_AGENT_TOKEN: Option<&str> = {};\n\
-         const EMBEDDED_PROTOCOL: &str = {:?};\n\n\
+         const EMBEDDED_PROTOCOL: &str = {:?};\n\
+         const EMBEDDED_HEARTBEAT_SECS: u64 = {};\n\
+         const EMBEDDED_JITTER: u32 = {};\n\n\
          pub fn get_server_addr() -> String {{\n\
              EMBEDDED_SERVER_ADDR.to_string()\n\
          }}\n\n\
@@ -340,7 +353,13 @@ fn render_server_module(
          }}\n\n\
          pub fn get_protocol() -> &'static str {{\n\
              EMBEDDED_PROTOCOL\n\
+         }}\n\n\
+         pub fn get_heartbeat_secs() -> u64 {{\n\
+             EMBEDDED_HEARTBEAT_SECS\n\
+         }}\n\n\
+         pub fn get_jitter() -> u32 {{\n\
+             EMBEDDED_JITTER\n\
          }}\n",
-        server_addr, agent_token, protocol
+        server_addr, agent_token, protocol, heartbeat_secs, jitter
     )
 }

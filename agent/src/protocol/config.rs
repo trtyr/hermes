@@ -32,9 +32,9 @@ impl Config {
         Ok(Self {
             server_addr: crate::server::get_server_addr(),
             agent_token: crate::server::get_agent_token(),
-            heartbeat_secs: 15,
+            heartbeat_secs: crate::server::get_heartbeat_secs(),
             reconnect_secs: 3,
-            jitter: 0,
+            jitter: crate::server::get_jitter(),
             command_timeout_secs: 20,
             max_output_chars: 6000,
             max_list_entries: 120,
