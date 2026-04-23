@@ -61,8 +61,8 @@
           </template>
 
           <template v-else-if="column.key === 'listener_id'">
-            <span v-if="record.listener_id" class="font-mono text-sm">
-              #{{ record.listener_id }}
+            <span v-if="record.listener_id" class="text-sm">
+              {{ listeners.find(l => l.listener_id === record.listener_id)?.name || `#${record.listener_id}` }}
             </span>
             <span v-else class="text-slate-400">-</span>
           </template>
@@ -245,7 +245,7 @@ const eventStore = useEventStore();
 const columns = [
   { title: 'ID', dataIndex: 'build_id', key: 'build_id', width: 50 },
   { title: '目标平台', dataIndex: 'target_triple', key: 'target_triple', width: 160 },
-  { title: '监听器', dataIndex: 'listener_id', key: 'listener_id', width: 60 },
+  { title: '监听器', dataIndex: 'listener_id', key: 'listener_id', width: 100 },
   { title: '回连地址', dataIndex: 'server_addr', key: 'server_addr', width: 150 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 70 },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 150 },
