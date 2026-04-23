@@ -72,7 +72,12 @@
           </template>
 
           <template v-else-if="column.key === 'privilege'">
-            <span class="text-xs font-mono">{{ record.privilege || '-' }}</span>
+            <a-tooltip v-if="record.privilege" :title="record.privilege">
+              <SafetyCertificateOutlined
+                :style="{ color: record.privilege.startsWith('Admin') || record.privilege === 'SYSTEM' ? '#f5222d' : '#8c8c8c', fontSize: '16px', cursor: 'pointer' }"
+              />
+            </a-tooltip>
+            <span v-else class="text-slate-400">-</span>
           </template>
 
           <template v-else-if="column.key === 'last_seen'">
@@ -158,7 +163,7 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
-import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons-vue';
+import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, FolderOpenOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue';
 import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent, fetchAgentDetail, takeScreenshot, dispatchTask } from '@/api/agent';
 import type { Agent } from '@/api/agent';
 import { formatTimestamp } from '@/utils/format';
@@ -192,7 +197,7 @@ const columns = [
   { title: '网络地址', key: 'network', width: 200 },
   { title: 'Beacon', key: 'beacon', width: 100 },
   { title: 'PID', dataIndex: 'pid', key: 'pid', width: 60 },
-  { title: '权限', key: 'privilege', width: 200 },
+  { title: '权限', key: 'privilege', width: 70 },
   { title: '最后活跃', key: 'last_seen', width: 150 },
   { title: '操作', key: 'action', width: 100, fixed: 'right' }
 ];
