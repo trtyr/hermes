@@ -77,33 +77,114 @@ pub fn get_internal_ip() -> Option<String> {
 pub fn get_privilege_info() -> String {
     #[cfg(windows)]
     {
-        let username = std::env::var("USERNAME").unwrap_or_default();
-        if username == "SYSTEM" || username == "LOCAL SERVICE" || username == "NETWORK SERVICE" {
-            return "SYSTEM".to_string();
+        use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+        use windows_sys::Win32::Security::{
+            GetTokenInformation, LookupPrivilegeNameW, TokenElevation, TokenPrivileges,
+            TOKEN_ELEVATION, TOKEN_PRIVILEGES, TOKEN_QUERY,
+        };
+        use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+
+        let mut token: HANDLE = std::ptr::null_mut();
+        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+            return "User".to_string();
         }
-        // Try to read SAM to check for admin elevation
-        let is_admin = std::fs::read(r"C:\Windows\System32\config\SAM").is_ok();
-        // Get enabled privileges via whoami
-        if let Ok(output) = std::process::Command::new("whoami")
-            .args(["/priv"])
-            .output()
-        {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let enabled: Vec<&str> = stdout
-                .lines()
-                .filter(|l| l.contains("Enabled"))
-                .filter_map(|l| l.split_whitespace().next())
-                .filter(|name| *name != "SeChangeNotifyPrivilege") // skip trivial privilege
-                .collect();
-            if !enabled.is_empty() {
-                let prefix = if is_admin { "Admin" } else { "User" };
-                return format!("{}: {}", prefix, enabled.join(", "));
+
+        // Check elevation
+        let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
+        let mut size = 0u32;
+        let is_elevated = unsafe {
+            GetTokenInformation(
+                token,
+                TokenElevation,
+                &mut elevation as *mut _ as *mut _,
+                std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+                &mut size,
+            )
+        } != 0
+            && elevation.TokenIsElevated != 0;
+
+        // Get privilege list
+        let mut priv_names: Vec<String> = Vec::new();
+
+        // First call to get required buffer size
+        let mut buf_size = 0u32;
+        unsafe {
+            GetTokenInformation(
+                token,
+                TokenPrivileges,
+                std::ptr::null_mut(),
+                0,
+                &mut buf_size,
+            );
+        }
+
+        if buf_size > 0 {
+            let mut buffer = vec![0u8; buf_size as usize];
+            let mut return_length = 0u32;
+            let ok = unsafe {
+                GetTokenInformation(
+                    token,
+                    TokenPrivileges,
+                    buffer.as_mut_ptr() as *mut _,
+                    buf_size,
+                    &mut return_length,
+                )
+            };
+
+            if ok != 0 {
+                let tp = unsafe { &*(buffer.as_ptr() as *const TOKEN_PRIVILEGES) };
+                let count = tp.PrivilegeCount;
+                let entries = unsafe {
+                    std::slice::from_raw_parts(
+                        tp.Privileges.as_ptr(),
+                        count as usize,
+                    )
+                };
+
+                for entry in entries {
+                    let mut name_len = 0u32;
+                    unsafe {
+                        LookupPrivilegeNameW(
+                            std::ptr::null(),
+                            &entry.Luid,
+                            std::ptr::null_mut(),
+                            &mut name_len,
+                        );
+                    }
+                    if name_len > 0 {
+                        let mut name_buf = vec![0u16; name_len as usize + 1];
+                        let ok = unsafe {
+                            LookupPrivilegeNameW(
+                                std::ptr::null(),
+                                &entry.Luid,
+                                name_buf.as_mut_ptr(),
+                                &mut name_len,
+                            )
+                        };
+                        if ok != 0 {
+                            let name = String::from_utf16_lossy(&name_buf[..name_len as usize]);
+                            // Skip trivial privileges
+                            if name != "SeChangeNotifyPrivilege" {
+                                priv_names.push(name);
+                            }
+                        }
+                    }
+                }
             }
         }
-        if is_admin {
-            "Admin".to_string()
+
+        unsafe { CloseHandle(token) };
+
+        let level = if !is_elevated {
+            "User"
         } else {
-            "User".to_string()
+            "Admin"
+        };
+
+        if priv_names.is_empty() {
+            level.to_string()
+        } else {
+            format!("{}: {}", level, priv_names.join(", "))
         }
     }
 
