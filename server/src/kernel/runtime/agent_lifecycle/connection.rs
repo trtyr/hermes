@@ -40,6 +40,7 @@ pub(super) async fn handle_agent_connected(
         connected_at: now,
         last_seen: now,
         sender,
+        elevated: false,
     });
 
     effects.publish(&WebEvent::AgentConnected {

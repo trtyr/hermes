@@ -30,6 +30,8 @@ pub enum AgentMessage {
         session_nonce: Option<String>,
         #[serde(default)]
         auth_response: Option<String>,
+        #[serde(default)]
+        elevated: bool,
     },
     Heartbeat {
         agent_id: Option<String>,
@@ -154,6 +156,7 @@ pub struct AgentSnapshot {
     pub peer_addr: String,
     pub connected_at: u64,
     pub last_seen: u64,
+    pub elevated: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -178,6 +181,7 @@ pub struct AgentRecord {
     pub is_online: bool,
     pub is_disabled: bool,
     pub updated_at: u64,
+    pub elevated: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

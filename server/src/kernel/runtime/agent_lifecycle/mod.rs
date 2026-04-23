@@ -97,6 +97,7 @@ pub(super) async fn handle_agent_frame(
             sleep_interval,
             jitter,
             token: _,
+            elevated,
             ..
         } => {
             registration::handle_register(
@@ -113,6 +114,7 @@ pub(super) async fn handle_agent_frame(
                 tags,
                 sleep_interval,
                 jitter,
+                elevated,
             )
             .await;
         }

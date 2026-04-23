@@ -114,9 +114,10 @@ impl Storage {
                     peer_addr TEXT NOT NULL,
                     connected_at INTEGER NOT NULL,
                     last_seen INTEGER NOT NULL,
-                    is_online INTEGER NOT NULL,
-                    is_disabled INTEGER NOT NULL DEFAULT 0,
-                    updated_at INTEGER NOT NULL
+                     is_online INTEGER NOT NULL,
+                     is_disabled INTEGER NOT NULL DEFAULT 0,
+                     elevated INTEGER NOT NULL DEFAULT 0,
+                     updated_at INTEGER NOT NULL
                  );
                  CREATE TABLE IF NOT EXISTS audits (
                     audit_id INTEGER PRIMARY KEY AUTOINCREMENT,

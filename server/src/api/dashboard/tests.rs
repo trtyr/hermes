@@ -26,6 +26,7 @@ fn summarize_agents_counts_online_and_disabled() {
             is_online: true,
             is_disabled: false,
             updated_at: 2,
+            elevated: false,
         },
         AgentRecord {
             agent_id: "agent-2".to_string(),
@@ -48,6 +49,7 @@ fn summarize_agents_counts_online_and_disabled() {
             is_online: false,
             is_disabled: true,
             updated_at: 4,
+            elevated: false,
         },
     ];
 

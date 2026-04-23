@@ -14,6 +14,7 @@ pub enum AgentMessage {
         arch: Option<String>,
         pid: Option<u32>,
         internal_ip: Option<String>,
+        elevated: bool,
         tags: Vec<String>,
         sleep_interval: u64,
         jitter: u32,

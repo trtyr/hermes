@@ -33,9 +33,9 @@
         class="w-full h-full"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'agent_id'">
+          <template v-if="column.key === 'hostname'">
             <a-button type="link" class="p-0 font-medium" @click="openDetail(record)">
-              {{ record.agent_id }}
+              {{ record.hostname || record.agent_id }}
             </a-button>
           </template>
 
@@ -46,25 +46,35 @@
             </div>
           </template>
 
+          <template v-else-if="column.key === 'user'">
+            <span class="text-sm">{{ record.username || '-' }}</span>
+          </template>
+
           <template v-else-if="column.key === 'platform'">
             <div class="flex items-center gap-1.5">
               <WindowsOutlined v-if="record.os && record.os.toLowerCase().includes('windows')" class="text-blue-500" />
               <AppleOutlined v-else-if="record.os && (record.os.toLowerCase().includes('mac') || record.os.toLowerCase().includes('darwin'))" class="text-gray-500" />
               <svg v-else-if="record.os && record.os.toLowerCase().includes('linux')" class="w-3.5 h-3.5 text-yellow-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
               <DesktopOutlined v-else class="text-slate-500" />
-              <span>{{ record.os }} / {{ record.arch }}</span>
+              <span>{{ record.os }} {{ record.arch }}</span>
             </div>
           </template>
 
           <template v-else-if="column.key === 'network'">
             <div class="text-xs space-y-0.5">
-              <div><span class="text-slate-400">内部:</span> {{ record.internal_ip }}</div>
-              <div><span class="text-slate-400">外部:</span> {{ record.external_ip }}</div>
+              <div v-if="record.internal_ip"><span class="text-slate-400">内网:</span> {{ record.internal_ip }}</div>
+              <div v-if="record.external_ip"><span class="text-slate-400">外网:</span> {{ record.external_ip }}</div>
             </div>
           </template>
 
           <template v-else-if="column.key === 'beacon'">
             <div class="text-xs">{{ record.sleep_interval }}s ±{{ record.jitter }}%</div>
+          </template>
+
+          <template v-else-if="column.key === 'elevated'">
+            <a-tag :color="record.elevated ? 'red' : 'default'" size="small">
+              {{ record.elevated ? '管理员' : '普通' }}
+            </a-tag>
           </template>
 
           <template v-else-if="column.key === 'last_seen'">
@@ -177,13 +187,15 @@ const actionAgent = ref<Agent | null>(null);
 const contextMenuState = reactive({ visible: false, x: 0, y: 0, record: null as Agent | null });
 
 const columns = [
-  { title: '节点 ID', dataIndex: 'agent_id', key: 'agent_id', width: 140 },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
-  { title: '平台/架构', key: 'platform', width: 180 },
-  { title: '网络地址', key: 'network', width: 160 },
-  { title: 'Beacon', key: 'beacon', width: 120 },
-  { title: '最后活跃', key: 'last_seen', width: 160 },
+  { title: '主机名', dataIndex: 'hostname', key: 'hostname', width: 130 },
+  { title: '状态', key: 'status', width: 80 },
+  { title: '用户', key: 'user', width: 120 },
+  { title: '平台', key: 'platform', width: 130 },
+  { title: '网络地址', key: 'network', width: 200 },
+  { title: 'Beacon', key: 'beacon', width: 100 },
+  { title: 'PID', dataIndex: 'pid', key: 'pid', width: 60 },
+  { title: '权限', key: 'elevated', width: 70 },
+  { title: '最后活跃', key: 'last_seen', width: 150 },
   { title: '操作', key: 'action', width: 100, fixed: 'right' }
 ];
 

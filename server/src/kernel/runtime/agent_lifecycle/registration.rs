@@ -22,6 +22,7 @@ pub(super) async fn handle_register(
     tags: Vec<String>,
     sleep_interval: u64,
     jitter: u32,
+    elevated: bool,
 ) {
     let now = now_ts();
     let mut state = state.write().await;
@@ -59,6 +60,7 @@ pub(super) async fn handle_register(
         sleep_interval,
         jitter,
         last_seen: now,
+        elevated,
     };
 
     if let Some(snapshot) = state.upsert_agent_identity(session_id, identity) {

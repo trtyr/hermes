@@ -84,6 +84,7 @@ async fn seed_agent_with_sender(
         connected_at: now,
         last_seen: now,
         sender,
+        elevated: false,
     });
     let snapshot = state.upsert_agent_identity(
         1,
@@ -99,6 +100,7 @@ async fn seed_agent_with_sender(
             sleep_interval: 60,
             jitter: 0,
             last_seen: now,
+            elevated: false,
         },
     );
     assert!(snapshot.is_some());
