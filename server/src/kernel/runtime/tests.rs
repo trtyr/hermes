@@ -77,7 +77,7 @@ async fn late_register_does_not_evict_existing_agent_session() {
             connected_at: now,
             last_seen: now,
             sender: open_sender(),
-            elevated: false,
+            privilege: String::new(),
         });
         state.upsert_agent_identity(
             1,
@@ -93,7 +93,7 @@ async fn late_register_does_not_evict_existing_agent_session() {
                 sleep_interval: 60,
                 jitter: 0,
                 last_seen: now,
-                elevated: false,
+                privilege: String::new(),
             },
         );
 
@@ -140,7 +140,7 @@ async fn late_register_does_not_evict_existing_agent_session() {
             token: None,
             session_nonce: None,
             auth_response: None,
-            elevated: false,
+            privilege: String::new(),
         },
     )
     .await;
@@ -193,7 +193,7 @@ async fn heartbeat_dispatches_pending_tasks_for_registered_agent() {
             connected_at: now,
             last_seen: now,
             sender,
-            elevated: false,
+            privilege: String::new(),
         });
         state.upsert_agent_identity(
             7,
@@ -209,7 +209,7 @@ async fn heartbeat_dispatches_pending_tasks_for_registered_agent() {
                 sleep_interval: 15,
                 jitter: 10,
                 last_seen: now,
-                elevated: false,
+                privilege: String::new(),
             },
         );
         state.create_task(NewTask {
@@ -282,7 +282,7 @@ async fn cancel_active_task_marks_cancel_requested_and_sends_command() {
             connected_at: now,
             last_seen: now,
             sender,
-            elevated: false,
+            privilege: String::new(),
         });
         state.upsert_agent_identity(
             8,
@@ -298,7 +298,7 @@ async fn cancel_active_task_marks_cancel_requested_and_sends_command() {
                 sleep_interval: 15,
                 jitter: 10,
                 last_seen: now,
-                elevated: false,
+                privilege: String::new(),
             },
         );
         state.create_task(NewTask {

@@ -74,26 +74,50 @@ pub fn get_internal_ip() -> Option<String> {
     }
 }
 
-pub fn is_elevated() -> bool {
+pub fn get_privilege_info() -> String {
     #[cfg(windows)]
     {
-        // Check if running as admin by trying to open a high-privilege resource
-        // Simple heuristic: check if username is SYSTEM or we can write to SystemRoot
-        let username = get_username();
+        let username = std::env::var("USERNAME").unwrap_or_default();
         if username == "SYSTEM" || username == "LOCAL SERVICE" || username == "NETWORK SERVICE" {
-            return true;
+            return "SYSTEM".to_string();
         }
-        // Try to open a privileged resource
-        std::path::Path::new(r"C:\Windows\System32\config\SAM").exists()
-            && std::fs::read(r"C:\Windows\System32\config\SAM").is_ok()
+        // Try to read SAM to check for admin elevation
+        let is_admin = std::fs::read(r"C:\Windows\System32\config\SAM").is_ok();
+        // Get enabled privileges via whoami
+        if let Ok(output) = std::process::Command::new("whoami")
+            .args(["/priv"])
+            .output()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let enabled: Vec<&str> = stdout
+                .lines()
+                .filter(|l| l.contains("Enabled"))
+                .filter_map(|l| l.split_whitespace().next())
+                .filter(|name| *name != "SeChangeNotifyPrivilege") // skip trivial privilege
+                .collect();
+            if !enabled.is_empty() {
+                let prefix = if is_admin { "Admin" } else { "User" };
+                return format!("{}: {}", prefix, enabled.join(", "));
+            }
+        }
+        if is_admin {
+            "Admin".to_string()
+        } else {
+            "User".to_string()
+        }
     }
 
     #[cfg(not(windows))]
     {
-        std::process::Command::new("id")
+        let uid = std::process::Command::new("id")
             .arg("-u")
             .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "0")
-            .unwrap_or(false)
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_else(|_| "?".to_string());
+        if uid == "0" {
+            "root".to_string()
+        } else {
+            format!("user (uid={})", uid)
+        }
     }
 }

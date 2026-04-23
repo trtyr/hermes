@@ -31,7 +31,7 @@ pub enum AgentMessage {
         #[serde(default)]
         auth_response: Option<String>,
         #[serde(default)]
-        elevated: bool,
+        privilege: String,
     },
     Heartbeat {
         agent_id: Option<String>,
@@ -156,7 +156,7 @@ pub struct AgentSnapshot {
     pub peer_addr: String,
     pub connected_at: u64,
     pub last_seen: u64,
-    pub elevated: bool,
+    pub privilege: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -181,7 +181,7 @@ pub struct AgentRecord {
     pub is_online: bool,
     pub is_disabled: bool,
     pub updated_at: u64,
-    pub elevated: bool,
+    pub privilege: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

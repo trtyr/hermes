@@ -32,7 +32,7 @@ pub struct AgentSession {
     pub connected_at: u64,
     pub last_seen: u64,
     pub sender: mpsc::UnboundedSender<ServerCommand>,
-    pub elevated: bool,
+    pub privilege: String,
 }
 
 #[derive(Clone)]
@@ -62,7 +62,7 @@ pub struct AgentIdentity {
     pub sleep_interval: u64,
     pub jitter: u32,
     pub last_seen: u64,
-    pub elevated: bool,
+    pub privilege: String,
 }
 
 pub struct NewTask {

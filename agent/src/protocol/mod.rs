@@ -38,7 +38,7 @@ pub fn build_register(
         arch: cfg.metadata.arch.clone(),
         pid: Some(cfg.metadata.pid),
         internal_ip: crate::sys::get_internal_ip(),
-        elevated: crate::sys::is_elevated(),
+        privilege: crate::sys::get_privilege_info(),
         tags: Vec::new(),
         sleep_interval,
         jitter,

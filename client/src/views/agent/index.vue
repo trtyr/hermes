@@ -71,10 +71,8 @@
             <div class="text-xs">{{ record.sleep_interval }}s ±{{ record.jitter }}%</div>
           </template>
 
-          <template v-else-if="column.key === 'elevated'">
-            <a-tag :color="record.elevated ? 'red' : 'default'" size="small">
-              {{ record.elevated ? '管理员' : '普通' }}
-            </a-tag>
+          <template v-else-if="column.key === 'privilege'">
+            <span class="text-xs font-mono">{{ record.privilege || '-' }}</span>
           </template>
 
           <template v-else-if="column.key === 'last_seen'">
@@ -194,7 +192,7 @@ const columns = [
   { title: '网络地址', key: 'network', width: 200 },
   { title: 'Beacon', key: 'beacon', width: 100 },
   { title: 'PID', dataIndex: 'pid', key: 'pid', width: 60 },
-  { title: '权限', key: 'elevated', width: 70 },
+  { title: '权限', key: 'privilege', width: 200 },
   { title: '最后活跃', key: 'last_seen', width: 150 },
   { title: '操作', key: 'action', width: 100, fixed: 'right' }
 ];

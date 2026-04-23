@@ -12,7 +12,7 @@ impl Storage {
                 "INSERT INTO agents (
                     agent_id, session_id, listener_id, listener_name, hostname, username, os, arch, pid, internal_ip,
                     tags_json, sleep_interval, jitter, peer_addr, connected_at, last_seen,
-                    is_online, is_disabled, elevated, updated_at
+                    is_online, is_disabled, privilege, updated_at
                  ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, 0, ?18, ?19)
                  ON CONFLICT(agent_id) DO UPDATE SET
                     session_id = excluded.session_id,
@@ -31,7 +31,7 @@ impl Storage {
                     connected_at = excluded.connected_at,
                     last_seen = excluded.last_seen,
                     is_online = excluded.is_online,
-                    elevated = excluded.elevated,
+                    privilege = excluded.privilege,
                     updated_at = excluded.updated_at",
                 params![
                     agent_id,
@@ -51,7 +51,7 @@ impl Storage {
                     agent.connected_at,
                     agent.last_seen,
                     if is_online { 1 } else { 0 },
-                    if agent.elevated { 1 } else { 0 },
+                    agent.privilege,
                     agent.last_seen,
                 ],
             )?;
@@ -160,7 +160,7 @@ impl Storage {
             let mut statement = connection.prepare(
                 "SELECT agent_id, session_id, listener_id, listener_name, hostname, username, os, arch, pid, internal_ip,
                         tags_json, sleep_interval, jitter, peer_addr, connected_at, last_seen,
-                        is_online, is_disabled, elevated, updated_at
+                        is_online, is_disabled, privilege, updated_at
                  FROM agents
                  WHERE agent_id = ?1",
             )?;
@@ -192,7 +192,7 @@ impl Storage {
                 last_seen: row.get(15)?,
                 is_online: row.get::<_, i64>(16)? != 0,
                 is_disabled: row.get::<_, i64>(17)? != 0,
-                elevated: row.get::<_, i64>(18)? != 0,
+                privilege: row.get(18)?,
                 updated_at: row.get(19)?,
             }))
         })
@@ -254,7 +254,7 @@ fn load_agent_records(connection: &Connection) -> anyhow::Result<Vec<AgentRecord
     let mut statement = connection.prepare(
         "SELECT agent_id, session_id, listener_id, listener_name, hostname, username, os, arch, pid, internal_ip,
                 tags_json, sleep_interval, jitter, peer_addr, connected_at, last_seen,
-                is_online, is_disabled, elevated, updated_at
+                is_online, is_disabled, privilege, updated_at
          FROM agents
          ORDER BY updated_at DESC, agent_id ASC",
     )?;
@@ -283,7 +283,7 @@ fn load_agent_records(connection: &Connection) -> anyhow::Result<Vec<AgentRecord
                 last_seen: row.get(15)?,
                 is_online: row.get::<_, i64>(16)? != 0,
                 is_disabled: row.get::<_, i64>(17)? != 0,
-                elevated: row.get::<_, i64>(18)? != 0,
+                privilege: row.get(18)?,
                 updated_at: row.get(19)?,
             })
         })?

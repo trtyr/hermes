@@ -73,7 +73,7 @@ impl KernelState {
         session.sleep_interval = identity.sleep_interval;
         session.jitter = identity.jitter;
         session.last_seen = identity.last_seen;
-        session.elevated = identity.elevated;
+        session.privilege = identity.privilege;
         self.agent_index.insert(identity.agent_id, session_id);
         Some(session.snapshot())
     }
@@ -203,7 +203,7 @@ impl AgentSession {
             peer_addr: self.peer_addr.to_string(),
             connected_at: self.connected_at,
             last_seen: self.last_seen,
-            elevated: self.elevated,
+            privilege: self.privilege.clone(),
         }
     }
 }

@@ -116,7 +116,7 @@ impl Storage {
                     last_seen INTEGER NOT NULL,
                      is_online INTEGER NOT NULL,
                      is_disabled INTEGER NOT NULL DEFAULT 0,
-                     elevated INTEGER NOT NULL DEFAULT 0,
+                     privilege TEXT NOT NULL DEFAULT '',
                      updated_at INTEGER NOT NULL
                  );
                  CREATE TABLE IF NOT EXISTS audits (

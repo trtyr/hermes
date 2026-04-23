@@ -275,7 +275,7 @@ fn snapshots_only_include_registered_agents() {
         connected_at: 1,
         last_seen: 1,
         sender,
-        elevated: false,
+        privilege: String::new(),
     });
 
     assert!(state.snapshots().is_empty());
@@ -294,7 +294,7 @@ fn snapshots_only_include_registered_agents() {
             sleep_interval: 60,
             jitter: 0,
             last_seen: 2,
-            elevated: false,
+            privilege: String::new(),
         },
     );
 
