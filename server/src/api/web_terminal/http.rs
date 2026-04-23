@@ -11,6 +11,19 @@ pub(crate) async fn open_terminal_session(
         return response;
     }
 
+    // Reject if agent is not online
+    if !state.kernel.agent_queries().is_connected(&request.agent_id).await {
+        return (
+            StatusCode::CONFLICT,
+            Json(WebTerminalResponse {
+                success: false,
+                message: "agent is not online".to_string(),
+                data: None::<WebTerminalSessionData>,
+            }),
+        )
+            .into_response();
+    }
+
     let operator = extract_operator_for_request(&state, &headers, None);
     match state
         .kernel
