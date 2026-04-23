@@ -3,6 +3,8 @@ import { useConnectionStore } from '@/store/connection';
 export interface Agent {
   agent_id: string;
   session_id: number | null;
+  listener_id: number;
+  listener_name: string;
   hostname: string;
   username: string;
   os: string;
@@ -10,6 +12,7 @@ export interface Agent {
   pid: number;
   internal_ip: string;
   external_ip: string;
+  privilege: string;
   tags: string[];
   sleep_interval: number;
   jitter: number;

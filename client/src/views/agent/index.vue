@@ -104,7 +104,7 @@ import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue';
-import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent } from '@/api/agent';
+import { fetchAgents, disconnectAgent, deleteAgent } from '@/api/agent';
 import type { Agent } from '@/api/agent';
 import { formatTimestamp } from '@/utils/format';
 import { useAgentWebSocket } from './hooks/useAgentWebSocket';
@@ -124,10 +124,11 @@ const contextMenuState = reactive({ visible: false, x: 0, y: 0, record: null as 
 const columns = [
   { title: '主机名', dataIndex: 'hostname', key: 'hostname', width: 130 },
   { title: '状态', key: 'status', width: 80 },
-  { title: '用户', key: 'user', width: 120 },
+  { title: '用户', key: 'user', width: 100 },
   { title: '平台', key: 'platform', width: 130 },
   { title: '网络地址', key: 'network', width: 200 },
-  { title: 'Beacon', key: 'beacon', width: 100 },
+  { title: '监听器', dataIndex: 'listener_name', key: 'listener_name', width: 100 },
+  { title: 'Beacon', key: 'beacon', width: 90 },
   { title: 'PID', dataIndex: 'pid', key: 'pid', width: 60 },
   { title: '权限', key: 'privilege', width: 70 },
   { title: '最后活跃', key: 'last_seen', width: 150 },
@@ -173,8 +174,6 @@ function openSession(agent: Agent) {
 function handleAction({ action, agent }: { action: string, agent: Agent }) {
   const actionMap: Record<string, { title: string, func: Function }> = {
     'disconnect': { title: '断开连接', func: disconnectAgent },
-    'disable': { title: '禁用节点', func: disableAgent },
-    'enable': { title: '启用节点', func: enableAgent },
     'delete': { title: '删除记录', func: deleteAgent },
   };
 
@@ -184,7 +183,7 @@ function handleAction({ action, agent }: { action: string, agent: Agent }) {
   Modal.confirm({
     title: `确认要对节点 ${agent.agent_id} 执行 [${target.title}] 操作吗？`,
     content: action === 'delete' ? '删除后将不可恢复。' : '',
-    okType: action === 'delete' || action === 'disable' || action === 'disconnect' ? 'danger' : 'primary',
+    okType: action === 'delete' || action === 'disconnect' ? 'danger' : 'primary',
     async onOk() {
       try {
         await target.func(agent.agent_id);

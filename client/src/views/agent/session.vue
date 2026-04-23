@@ -59,6 +59,7 @@
 
         <!-- Secondary info (smaller text) -->
         <div class="text-xs text-slate-400 flex items-center gap-3">
+          <span v-if="agent.listener_name">📡 {{ agent.listener_name }}</span>
           <span v-if="agent.internal_ip">{{ agent.internal_ip }}</span>
           <span v-if="agent.pid">PID:{{ agent.pid }}</span>
           <span>{{ agent.sleep_interval }}s±{{ agent.jitter }}%</span>
@@ -125,19 +126,10 @@
                   调整心跳
                 </a-menu-item>
                 <a-menu-divider />
-                <a-menu-item key="disable" v-if="agent && !agent.is_disabled">
-                  <template #icon><StopOutlined /></template>
-                  禁用 Agent
-                </a-menu-item>
-                <a-menu-item key="enable" v-if="agent && agent.is_disabled">
-                  <template #icon><CheckCircleOutlined /></template>
-                  启用 Agent
-                </a-menu-item>
                 <a-menu-item key="disconnect" :disabled="!agent?.is_online">
                   <template #icon><DisconnectOutlined /></template>
                   断开连接
                 </a-menu-item>
-                <a-menu-divider />
                 <a-menu-item key="delete" danger>
                   <template #icon><DeleteOutlined /></template>
                   删除 Agent
@@ -177,11 +169,11 @@ import { message, Modal } from 'ant-design-vue';
 import {
   LeftOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined,
   SafetyCertificateOutlined, SettingOutlined, CameraOutlined,
-  FolderOpenOutlined, ClockCircleOutlined, StopOutlined,
-  CheckCircleOutlined, DisconnectOutlined, DeleteOutlined
+  FolderOpenOutlined, ClockCircleOutlined,
+  DisconnectOutlined, DeleteOutlined
 } from '@ant-design/icons-vue';
 import {
-  fetchAgentDetail, disconnectAgent, disableAgent, enableAgent,
+  fetchAgentDetail, disconnectAgent,
   deleteAgent, takeScreenshot, updateBeaconConfig
 } from '@/api/agent';
 import type { Agent } from '@/api/agent';
@@ -258,8 +250,6 @@ function onMenuClick({ key }: { key: string }) {
 
   const actionMap: Record<string, { title: string; func: (id: string) => Promise<any> }> = {
     disconnect: { title: '断开连接', func: disconnectAgent },
-    disable: { title: '禁用 Agent', func: disableAgent },
-    enable: { title: '启用 Agent', func: enableAgent },
     delete: { title: '删除 Agent', func: deleteAgent },
   };
 
