@@ -49,10 +49,10 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '操作日志 - Hermes C2' },
       },
       {
-        path: 'agent/terminal/:id',
-        name: 'AgentTerminal',
-        component: () => import('../views/agent/terminal.vue'),
-        meta: { title: '终端控制面板' },
+        path: 'agent/:id/session',
+        name: 'AgentSession',
+        component: () => import('../views/agent/session.vue'),
+        meta: { title: '会话控制面板' },
       },
     ]
   }

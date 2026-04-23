@@ -34,7 +34,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'hostname'">
-            <a-button type="link" class="p-0 font-medium" @click="openDetail(record)">
+            <a-button type="link" class="p-0 font-medium" @click="openSession(record)">
               {{ record.hostname || record.agent_id }}
             </a-button>
           </template>
@@ -83,77 +83,17 @@
           <template v-else-if="column.key === 'last_seen'">
             <span class="text-xs">{{ formatTimestamp(record.last_seen) }}</span>
           </template>
-
-          <template v-else-if="column.key === 'action'">
-            <div class="flex items-center gap-2">
-              <a-button type="link" size="small" class="p-0" @click="openDetail(record)">管理</a-button>
-              
-              <a-dropdown :trigger="['click']">
-                <a-button type="text" size="small" class="px-1"><MoreOutlined /></a-button>
-                <template #overlay>
-                  <a-menu>
-                    <a-menu-item key="task" :disabled="record.is_disabled" @click="openTaskModal(record)">
-                      <template #icon><CodeOutlined /></template> 快捷命令 (弹窗)
-                    </a-menu-item>
-                    <a-menu-item key="terminal" :disabled="record.is_disabled" @click="openTerminal(record)">
-                      <template #icon><DesktopOutlined /></template> 打开独立终端
-                    </a-menu-item>
-                    <a-menu-item key="fileops" :disabled="record.is_disabled" @click="openFileOps(record)">
-                      <template #icon><FolderOpenOutlined /></template> 文件管理
-                    </a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item key="disconnect" :disabled="!record.is_online" @click="handleAction({ action: 'disconnect', agent: record })">
-                      <template #icon><DisconnectOutlined /></template> 断开连接
-                    </a-menu-item>
-                    <a-menu-item key="disable" v-if="!record.is_disabled" @click="handleAction({ action: 'disable', agent: record })">
-                      <template #icon><StopOutlined /></template> 禁用节点
-                    </a-menu-item>
-                    <a-menu-item key="enable" v-if="record.is_disabled" @click="handleAction({ action: 'enable', agent: record })">
-                      <template #icon><CheckCircleOutlined /></template> 启用节点
-                    </a-menu-item>
-                    <a-menu-divider />
-                    <a-menu-item key="delete" :disabled="record.is_online" danger @click="handleAction({ action: 'delete', agent: record })">
-                      <template #icon><DeleteOutlined /></template> 删除记录
-                    </a-menu-item>
-                  </a-menu>
-                </template>
-              </a-dropdown>
-            </div>
-          </template>
         </template>
       </a-table>
     </div>
 
-    <!-- Extracted Child Components -->
-    <AgentDetailDrawer 
-      v-model:visible="detailVisible" 
-      :agent="selectedAgent"
-      @update:agent="handleAgentStoreUpdate"
-      @open-task="openTaskModal" 
-      @action="handleAction"
-    />
-
-    <AgentTaskModal 
-      v-model:visible="taskModalVisible" 
-      :agent="actionAgent" 
-    />
-
-    <FileOpsModal 
-      v-model:visible="fileOpsVisible" 
-      :agent="actionAgent" 
-    />
-
-    <AgentContextMenu 
-      :visible="contextMenuState.visible" 
-      :x="contextMenuState.x" 
-      :y="contextMenuState.y" 
+    <!-- Context menu (simplified) -->
+    <AgentContextMenu
+      :visible="contextMenuState.visible"
+      :x="contextMenuState.x"
+      :y="contextMenuState.y"
       :agent="contextMenuState.record"
       @close="contextMenuState.visible = false"
-      @open-task="openTaskModal"
-      @open-terminal="openTerminal"
-      @open-file-ops="openFileOps"
-      @screenshot="handleScreenshot"
-      @ps="handlePs"
       @action="handleAction"
     />
   </div>
@@ -163,14 +103,11 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
-import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, MoreOutlined, CodeOutlined, DisconnectOutlined, StopOutlined, CheckCircleOutlined, DeleteOutlined, FolderOpenOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue';
-import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent, fetchAgentDetail, takeScreenshot, dispatchTask } from '@/api/agent';
+import { ReloadOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined, SafetyCertificateOutlined } from '@ant-design/icons-vue';
+import { fetchAgents, disconnectAgent, disableAgent, enableAgent, deleteAgent } from '@/api/agent';
 import type { Agent } from '@/api/agent';
 import { formatTimestamp } from '@/utils/format';
 import { useAgentWebSocket } from './hooks/useAgentWebSocket';
-import AgentDetailDrawer from './components/AgentDetailDrawer.vue';
-import AgentTaskModal from './components/AgentTaskModal.vue';
-import FileOpsModal from './components/FileOpsModal.vue';
 import AgentContextMenu from './components/AgentContextMenu.vue';
 
 const router = useRouter();
@@ -181,12 +118,7 @@ const loading = ref(false);
 const searchKeyword = ref('');
 const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChanger: true });
 
-// UI Component State
-const detailVisible = ref(false);
-const taskModalVisible = ref(false);
-const fileOpsVisible = ref(false);
-const selectedAgent = ref<Agent | null>(null);
-const actionAgent = ref<Agent | null>(null); 
+// Context menu state
 const contextMenuState = reactive({ visible: false, x: 0, y: 0, record: null as Agent | null });
 
 const columns = [
@@ -199,10 +131,11 @@ const columns = [
   { title: 'PID', dataIndex: 'pid', key: 'pid', width: 60 },
   { title: '权限', key: 'privilege', width: 70 },
   { title: '最后活跃', key: 'last_seen', width: 150 },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' }
 ];
 
-// Initialize WebSocket Hook (Microkernel approach)
+// WebSocket hook (keeps agent list fresh)
+const selectedAgent = ref<Agent | null>(null);
+const detailVisible = ref(false);
 useAgentWebSocket(agents, selectedAgent, detailVisible, loadAgents);
 
 async function loadAgents() {
@@ -233,58 +166,8 @@ function onSearch() {
   loadAgents();
 }
 
-function openDetail(agent: Agent) {
-  selectedAgent.value = agent;
-  detailVisible.value = true;
-}
-
-function openTaskModal(agent: Agent) {
-  actionAgent.value = agent;
-  taskModalVisible.value = true;
-}
-
-function openFileOps(agent: Agent) {
-  actionAgent.value = agent;
-  fileOpsVisible.value = true;
-}
-
-async function handleScreenshot(agent: Agent) {
-  try {
-    const res = await takeScreenshot(agent.agent_id);
-    if (res.success) {
-      message.success(`截图任务已下发 (task: ${res.task_id})`);
-    } else {
-      message.error(res.detail || '截图失败');
-    }
-  } catch (e: any) {
-    message.error(e.message);
-  }
-}
-
-async function handlePs(agent: Agent) {
-  try {
-    const res = await dispatchTask(agent.agent_id, { command: 'ps' });
-    if (res.success) {
-      message.success(`进程列表任务已下发 (task: ${res.task_id})`);
-    } else {
-      message.error(res.detail || '获取进程列表失败');
-    }
-  } catch (e: any) {
-    message.error(e.message);
-  }
-}
-
-function openTerminal(agent: Agent) {
-  router.push(`/agent/terminal/${agent.agent_id}`);
-}
-
-function handleAgentStoreUpdate(agent: Agent) {
-  // Sync changes back to the main agents array if needed
-  const idx = agents.value.findIndex(a => a.agent_id === agent.agent_id);
-  if (idx > -1) agents.value[idx] = agent;
-  if (selectedAgent.value?.agent_id === agent.agent_id) {
-    selectedAgent.value = agent;
-  }
+function openSession(agent: Agent) {
+  router.push(`/agent/${agent.agent_id}/session`);
 }
 
 function handleAction({ action, agent }: { action: string, agent: Agent }) {
@@ -294,7 +177,7 @@ function handleAction({ action, agent }: { action: string, agent: Agent }) {
     'enable': { title: '启用节点', func: enableAgent },
     'delete': { title: '删除记录', func: deleteAgent },
   };
-  
+
   const target = actionMap[action];
   if (!target) return;
 
@@ -306,13 +189,7 @@ function handleAction({ action, agent }: { action: string, agent: Agent }) {
       try {
         await target.func(agent.agent_id);
         message.success(`操作 [${target.title}] 执行成功`);
-        
-        if (action === 'delete') {
-          detailVisible.value = false;
-        } else if (detailVisible.value && selectedAgent.value?.agent_id === agent.agent_id) {
-          selectedAgent.value = await fetchAgentDetail(agent.agent_id);
-        }
-        loadAgents(); 
+        loadAgents();
       } catch (e: any) {
         message.error(e.message);
       }
