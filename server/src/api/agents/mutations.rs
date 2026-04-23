@@ -342,15 +342,39 @@ pub(crate) async fn delete_agent(
         }
     }
 
+    // If the agent is online, disable + disconnect but keep the record
+    // so the agent cannot re-register. Only offline agents have their
+    // record fully deleted.
     if state.kernel.agent_queries().is_connected(&agent_id).await {
+        let _ = state
+            .kernel
+            .agent_commands()
+            .set_disabled(&agent_id, true)
+            .await;
+        let _ = state
+            .kernel
+            .agent_commands()
+            .disconnect(agent_id.clone())
+            .await;
+
+        state.kernel.append_audit_record(
+            operator,
+            "delete_agent".to_string(),
+            "agent".to_string(),
+            Some(agent_id.clone()),
+            Some("agent was online: disabled + disconnected, record kept".to_string()),
+            now_ts(),
+        );
+
+        state.kernel.publish_web_event(WebEvent::AgentDeleted {
+            agent_id: agent_id.clone(),
+        });
+
         return (
-            StatusCode::CONFLICT,
+            StatusCode::OK,
             Json(ApiResponse {
-                success: false,
-                detail: format!(
-                    "agent {} is online; disconnect it first before deleting its record",
-                    agent_id
-                ),
+                success: true,
+                detail: "agent disabled and disconnected; record kept to prevent re-registration".to_string(),
                 task_id: None,
             }),
         )
