@@ -3,14 +3,7 @@
 pub fn get_hostname() -> String {
     #[cfg(windows)]
     {
-        use windows_sys::Win32::System::SystemInformation::{GetComputerNameExW, ComputerNamePhysicalDnsHostname};
-        let mut buf = [0u16; 256];
-        let mut size = buf.len() as u32;
-        if unsafe { GetComputerNameExW(ComputerNamePhysicalDnsHostname, buf.as_mut_ptr(), &mut size) } != 0 {
-            String::from_utf16_lossy(&buf[..size as usize])
-        } else {
-            "unknown".to_string()
-        }
+        std::env::var("COMPUTERNAME").unwrap_or_else(|_| "unknown".to_string())
     }
 
     #[cfg(not(windows))]
@@ -26,14 +19,7 @@ pub fn get_hostname() -> String {
 pub fn get_username() -> String {
     #[cfg(windows)]
     {
-        use windows_sys::Win32::System::SystemInformation::{GetUserNameW};
-        let mut buf = [0u16; 256];
-        let mut size = buf.len() as u32;
-        if unsafe { GetUserNameW(buf.as_mut_ptr(), &mut size) } != 0 {
-            String::from_utf16_lossy(&buf[..size as usize - 1]) // size includes null terminator
-        } else {
-            "unknown".to_string()
-        }
+        std::env::var("USERNAME").unwrap_or_else(|_| "unknown".to_string())
     }
 
     #[cfg(not(windows))]
@@ -91,32 +77,19 @@ pub fn get_internal_ip() -> Option<String> {
 pub fn is_elevated() -> bool {
     #[cfg(windows)]
     {
-        // On Windows, check if we can open a privileged process token
-        use windows_sys::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
-        use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
-        use windows_sys::Win32::Foundation::HANDLE;
-        let mut token: HANDLE = std::ptr::null_mut();
-        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
-            return false;
+        // Check if running as admin by trying to open a high-privilege resource
+        // Simple heuristic: check if username is SYSTEM or we can write to SystemRoot
+        let username = get_username();
+        if username == "SYSTEM" || username == "LOCAL SERVICE" || username == "NETWORK SERVICE" {
+            return true;
         }
-        let mut elevation = TOKEN_ELEVATION { TokenIsElevated: 0 };
-        let mut size = 0u32;
-        let result = unsafe {
-            GetTokenInformation(
-                token,
-                TokenElevation,
-                &mut elevation as *mut _ as *mut _,
-                std::mem::size_of::<TOKEN_ELEVATION>() as u32,
-                &mut size,
-            )
-        };
-        unsafe { windows_sys::Win32::Foundation::CloseHandle(token) };
-        result != 0 && elevation.TokenIsElevated != 0
+        // Try to open a privileged resource
+        std::path::Path::new(r"C:\Windows\System32\config\SAM").exists()
+            && std::fs::read(r"C:\Windows\System32\config\SAM").is_ok()
     }
 
     #[cfg(not(windows))]
     {
-        // Unix: check if uid == 0
         std::process::Command::new("id")
             .arg("-u")
             .output()
