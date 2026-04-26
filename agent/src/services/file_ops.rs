@@ -2,10 +2,12 @@
 
 use crate::protocol::AgentMessage;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
+use serde::Serialize;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::mpsc::Sender;
+use std::time::UNIX_EPOCH;
 
 /// Handle `upload` command: decode base64 content and write to remote_path
 pub fn handle_upload(task_id: &str, payload: &str, sender: &Sender<AgentMessage>) {
@@ -58,9 +60,38 @@ pub fn handle_download(task_id: &str, remote_path: &str, sender: &Sender<AgentMe
     });
 }
 
+/// Handle `browse` command: list directory entries and return JSON metadata
+pub fn handle_browse(task_id: &str, payload: &str, sender: &Sender<AgentMessage>) {
+    #[derive(serde::Deserialize)]
+    struct BrowsePayload {
+        path: String,
+    }
+
+    let parsed: BrowsePayload = match serde_json::from_str(payload) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = sender.send(fail(task_id, format!("invalid payload: {e}")));
+            return;
+        }
+    };
+
+    let result = browse_dir(&parsed.path);
+    let _ = sender.send(match result {
+        Ok(entries) => match serde_json::to_string(&entries) {
+            Ok(output) => AgentMessage::TaskResult {
+                task_id: task_id.to_string(),
+                success: true,
+                output,
+            },
+            Err(e) => fail(task_id, format!("serialize failed: {e}")),
+        },
+        Err(e) => fail(task_id, e),
+    });
+}
+
 /// Check if a command is a built-in file operation
 pub fn is_file_op(command: &str) -> bool {
-    matches!(command, "upload" | "download")
+    matches!(command, "upload" | "download" | "browse")
 }
 
 fn write_file(path: &str, content: &[u8]) -> Result<(), String> {
@@ -84,10 +115,131 @@ fn read_file(path: &str) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
+fn browse_dir(path: &str) -> Result<Vec<BrowseEntry>, String> {
+    let mut entries = Vec::new();
+    let dir = fs::read_dir(path).map_err(|e| format!("read_dir failed: {e}"))?;
+
+    for entry in dir {
+        let entry = entry.map_err(|e| format!("read_dir entry failed: {e}"))?;
+        let metadata = entry
+            .metadata()
+            .map_err(|e| format!("metadata failed: {e}"))?;
+        let modified = metadata
+            .modified()
+            .ok()
+            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+            .map(|duration| duration.as_secs())
+            .unwrap_or(0);
+
+        entries.push(BrowseEntry {
+            name: entry.file_name().to_string_lossy().into_owned(),
+            is_dir: metadata.is_dir(),
+            size: if metadata.is_dir() { 0 } else { metadata.len() },
+            modified,
+        });
+    }
+
+    Ok(entries)
+}
+
+#[derive(Serialize)]
+struct BrowseEntry {
+    name: String,
+    is_dir: bool,
+    size: u64,
+    modified: u64,
+}
+
 fn fail(task_id: &str, detail: String) -> AgentMessage {
     AgentMessage::TaskResult {
         task_id: task_id.to_string(),
         success: false,
         output: detail,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn browse_is_treated_as_file_op() {
+        assert!(is_file_op("browse"));
+    }
+
+    #[test]
+    fn handle_browse_lists_directory_entries_as_json() {
+        let dir = unique_temp_dir("browse-success");
+        let subdir = dir.join("nested");
+        std::fs::create_dir_all(&subdir).unwrap();
+        let file_path = dir.join("note.txt");
+        std::fs::write(&file_path, b"hello").unwrap();
+
+        let (sender, receiver) = mpsc::channel();
+        let payload = serde_json::json!({ "path": dir.to_string_lossy() }).to_string();
+
+        handle_browse("task-1", &payload, &sender);
+
+        let message = receiver.recv().unwrap();
+        let AgentMessage::TaskResult {
+            task_id,
+            success,
+            output,
+        } = message
+        else {
+            panic!("expected task result");
+        };
+
+        assert_eq!(task_id, "task-1");
+        assert!(success);
+
+        let entries: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let entries = entries.as_array().unwrap();
+        assert!(entries.iter().any(|entry| {
+            entry["name"] == "nested"
+                && entry["is_dir"] == true
+                && entry["size"] == 0
+                && entry["modified"].as_u64().is_some()
+        }));
+        assert!(entries.iter().any(|entry| {
+            entry["name"] == "note.txt"
+                && entry["is_dir"] == false
+                && entry["size"] == 5
+                && entry["modified"].as_u64().is_some()
+        }));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn handle_browse_reports_invalid_payload() {
+        let (sender, receiver) = mpsc::channel();
+
+        handle_browse("task-2", "{not-json}", &sender);
+
+        let AgentMessage::TaskResult {
+            task_id,
+            success,
+            output,
+        } = receiver.recv().unwrap()
+        else {
+            panic!("expected task result");
+        };
+
+        assert_eq!(task_id, "task-2");
+        assert!(!success);
+        assert!(output.contains("invalid payload"));
+    }
+
+    fn unique_temp_dir(prefix: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("hermes-{prefix}-{unique}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
     }
 }

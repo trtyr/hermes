@@ -95,6 +95,10 @@ pub async fn run_http_api(
             post(agents::download_file),
         )
         .route(
+            "/agents/{agent_id}/browse",
+            post(agents::browse_file),
+        )
+        .route(
             "/agents/{agent_id}/screenshot",
             post(agents::take_screenshot),
         )

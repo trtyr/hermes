@@ -120,6 +120,11 @@ pub(crate) struct FileDownloadRequest {
     pub(crate) remote_path: String,
 }
 
+#[derive(Deserialize, Serialize)]
+pub(crate) struct BrowseFileRequest {
+    pub(crate) path: String,
+}
+
 #[derive(Deserialize)]
 pub(crate) struct AgentBuildCreateRequest {
     pub(crate) target_triple: Option<String>,

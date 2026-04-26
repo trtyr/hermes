@@ -82,10 +82,111 @@
           </div>
         </a-tab-pane>
 
-        <a-tab-pane key="files" tab="文件">
-          <div class="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-400">
-            <FolderOpenOutlined style="font-size: 48px; opacity: 0.3" />
-            <p class="mt-4 text-sm">文件管理功能开发中...</p>
+        <a-tab-pane key="files" tab="文件" force-render class="h-full">
+          <div class="flex flex-col h-full">
+            <!-- Path bar -->
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
+              <a-input
+                v-model:value="browsePathInput"
+                placeholder="输入路径，如 C:\ 或 /home"
+                class="flex-1"
+                size="small"
+                @pressEnter="browseFromInput"
+              >
+                <template #prefix>
+                  <FolderOpenOutlined class="text-slate-400" />
+                </template>
+              </a-input>
+              <a-button size="small" type="primary" :loading="browseLoading" @click="browseFromInput">
+                浏览
+              </a-button>
+            </div>
+
+            <!-- File list -->
+            <div class="flex-1 overflow-auto">
+              <a-spin :spinning="browseLoading" class="h-full">
+                <template v-if="browseError">
+                  <div class="flex flex-col items-center justify-center h-full min-h-[200px] text-slate-400">
+                    <ExclamationCircleOutlined style="font-size: 36px; opacity: 0.4; color: #faad14" />
+                    <p class="mt-3 text-sm text-amber-500">{{ browseError }}</p>
+                    <a-button size="small" class="mt-2" @click="browseFromInput">重试</a-button>
+                  </div>
+                </template>
+                <template v-else-if="browseEntries.length === 0 && !browseLoading && currentBrowsePath">
+                  <div class="flex flex-col items-center justify-center h-full min-h-[200px] text-slate-400">
+                    <FolderOpenOutlined style="font-size: 36px; opacity: 0.3" />
+                    <p class="mt-3 text-sm">目录为空</p>
+                  </div>
+                </template>
+                <template v-else-if="browseEntries.length > 0">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-100 text-left text-slate-500 text-xs">
+                        <th class="py-2 px-3 font-medium">名称</th>
+                        <th class="py-2 px-3 font-medium w-28">大小</th>
+                        <th class="py-2 px-3 font-medium w-44">修改时间</th>
+                        <th class="py-2 px-3 font-medium w-20">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Parent directory entry -->
+                      <tr
+                        v-if="currentBrowsePath"
+                        class="hover:bg-gray-50 cursor-pointer border-b border-gray-50"
+                        @click="browseParent"
+                      >
+                        <td class="py-1.5 px-3 flex items-center gap-2 text-slate-500">
+                          <FolderOutlined class="text-amber-400" />
+                          <span>..</span>
+                        </td>
+                        <td class="py-1.5 px-3 text-slate-400">-</td>
+                        <td class="py-1.5 px-3 text-slate-400">-</td>
+                        <td class="py-1.5 px-3">-</td>
+                      </tr>
+                      <!-- Directory entries -->
+                      <tr
+                        v-for="entry in browseEntries.filter(e => e.is_dir)"
+                        :key="'d-' + entry.name"
+                        class="hover:bg-gray-50 cursor-pointer border-b border-gray-50"
+                        @click="browseChild(entry.name)"
+                      >
+                        <td class="py-1.5 px-3 flex items-center gap-2">
+                          <FolderOutlined class="text-amber-400" />
+                          <span class="text-slate-700">{{ entry.name }}</span>
+                        </td>
+                        <td class="py-1.5 px-3 text-slate-400">-</td>
+                        <td class="py-1.5 px-3 text-slate-400">{{ formatTimestamp(entry.modified) }}</td>
+                        <td class="py-1.5 px-3">-</td>
+                      </tr>
+                      <!-- File entries -->
+                      <tr
+                        v-for="entry in browseEntries.filter(e => !e.is_dir)"
+                        :key="'f-' + entry.name"
+                        class="hover:bg-gray-50 border-b border-gray-50"
+                      >
+                        <td class="py-1.5 px-3 flex items-center gap-2">
+                          <FileOutlined class="text-blue-400" />
+                          <span class="text-slate-700">{{ entry.name }}</span>
+                        </td>
+                        <td class="py-1.5 px-3 text-slate-500">{{ formatSize(entry.size) }}</td>
+                        <td class="py-1.5 px-3 text-slate-500">{{ formatTimestamp(entry.modified) }}</td>
+                        <td class="py-1.5 px-3">
+                          <a-button type="link" size="small" @click="onDownloadFile(entry.name)">
+                            <DownloadOutlined />
+                          </a-button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </template>
+                <template v-else>
+                  <div class="flex flex-col items-center justify-center h-full min-h-[200px] text-slate-400">
+                    <FolderOpenOutlined style="font-size: 36px; opacity: 0.3" />
+                    <p class="mt-3 text-sm">输入路径开始浏览文件</p>
+                  </div>
+                </template>
+              </a-spin>
+            </div>
           </div>
         </a-tab-pane>
 
@@ -163,27 +264,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import {
   LeftOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined,
   SafetyCertificateOutlined, SettingOutlined, CameraOutlined,
-  FolderOpenOutlined, ClockCircleOutlined,
+  FolderOpenOutlined, FolderOutlined, FileOutlined, DownloadOutlined,
+  ExclamationCircleOutlined, ClockCircleOutlined,
   DisconnectOutlined, DeleteOutlined
 } from '@ant-design/icons-vue';
 import {
   fetchAgentDetail, disconnectAgent,
-  deleteAgent, takeScreenshot, updateBeaconConfig
+  deleteAgent, takeScreenshot, updateBeaconConfig, browseFile, downloadFile
 } from '@/api/agent';
-import type { Agent } from '@/api/agent';
+import type { Agent, FileEntry } from '@/api/agent';
 import { useTerminal } from './hooks/useTerminal';
 import { useAppStore } from '@/store/app';
+import { useEventStore } from '@/store/events';
 import 'xterm/css/xterm.css';
 
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
+const eventStore = useEventStore();
 const agentId = route.params.id as string;
 
 // Agent data
@@ -193,6 +297,17 @@ const activeTab = ref('terminal');
 // Screenshot state
 const screenshotLoading = ref(false);
 const screenshotUrl = ref<string | null>(null);
+const pendingScreenshotTaskId = ref<string | null>(null);
+let unsubscribeEvents: (() => void) | null = null;
+
+// File browser state
+const currentBrowsePath = ref<string>('');
+const browsePathInput = ref<string>('');
+const browseEntries = ref<FileEntry[]>([]);
+const browseLoading = ref(false);
+const browseError = ref<string | null>(null);
+const pendingBrowseTaskId = ref<string | null>(null);
+let unsubscribeBrowseEvents: (() => void) | null = null;
 
 // Beacon config state
 const beaconModalVisible = ref(false);
@@ -225,21 +340,182 @@ onMounted(async () => {
   }
 });
 
+onBeforeUnmount(() => {
+  if (unsubscribeEvents) {
+    unsubscribeEvents();
+    unsubscribeEvents = null;
+  }
+  if (unsubscribeBrowseEvents) {
+    unsubscribeBrowseEvents();
+    unsubscribeBrowseEvents = null;
+  }
+  pendingScreenshotTaskId.value = null;
+  screenshotLoading.value = false;
+  pendingBrowseTaskId.value = null;
+  browseLoading.value = false;
+});
+
 async function doScreenshot() {
   screenshotLoading.value = true;
   screenshotUrl.value = null;
+  pendingScreenshotTaskId.value = null;
+
+  // Clean up any previous subscription
+  if (unsubscribeEvents) {
+    unsubscribeEvents();
+    unsubscribeEvents = null;
+  }
+
   try {
     const res = await takeScreenshot(agentId);
-    if (res.success) {
-      message.success(`截图任务已下发 (task: ${res.task_id})`);
+    if (res.success && res.task_id) {
+      pendingScreenshotTaskId.value = res.task_id;
+
+      // Subscribe to WebSocket events and wait for the task result
+      unsubscribeEvents = eventStore.subscribe((event) => {
+        if (event.type !== 'task_result') return;
+        const taskId = (event as any).task_id as string;
+        if (taskId !== pendingScreenshotTaskId.value) return;
+
+        const success = (event as any).success as boolean;
+        const output = (event as any).output as string;
+
+        screenshotLoading.value = false;
+        pendingScreenshotTaskId.value = null;
+
+        if (success && output) {
+          screenshotUrl.value = `data:image/png;base64,${output}`;
+        } else {
+          message.error(output || '截图失败');
+        }
+
+        // Auto-cleanup this subscription
+        if (unsubscribeEvents) {
+          unsubscribeEvents();
+          unsubscribeEvents = null;
+        }
+      });
     } else {
-      message.error(res.detail || '截图失败');
+      screenshotLoading.value = false;
+      message.error(res.detail || '截图任务下发失败');
     }
   } catch (e: any) {
-    message.error(e.message);
-  } finally {
     screenshotLoading.value = false;
+    message.error(e.message);
   }
+}
+
+async function doBrowse(path: string) {
+  browseLoading.value = true;
+  browseError.value = null;
+  browseEntries.value = [];
+  currentBrowsePath.value = path;
+  browsePathInput.value = path;
+  pendingBrowseTaskId.value = null;
+
+  // Clean up any previous browse subscription
+  if (unsubscribeBrowseEvents) {
+    unsubscribeBrowseEvents();
+    unsubscribeBrowseEvents = null;
+  }
+
+  try {
+    const res = await browseFile(agentId, path);
+    if (res.success && res.task_id) {
+      pendingBrowseTaskId.value = res.task_id;
+
+      unsubscribeBrowseEvents = eventStore.subscribe((event) => {
+        if (event.type !== 'task_result') return;
+        const taskId = (event as any).task_id as string;
+        if (taskId !== pendingBrowseTaskId.value) return;
+
+        const success = (event as any).success as boolean;
+        const output = (event as any).output as string;
+
+        browseLoading.value = false;
+        pendingBrowseTaskId.value = null;
+
+        if (success && output) {
+          try {
+            browseEntries.value = JSON.parse(output) as FileEntry[];
+          } catch {
+            browseError.value = '解析目录列表失败';
+          }
+        } else {
+          browseError.value = output || '浏览目录失败';
+        }
+
+        // Auto-cleanup
+        if (unsubscribeBrowseEvents) {
+          unsubscribeBrowseEvents();
+          unsubscribeBrowseEvents = null;
+        }
+      });
+    } else {
+      browseLoading.value = false;
+      browseError.value = res.detail || '浏览任务下发失败';
+    }
+  } catch (e: any) {
+    browseLoading.value = false;
+    browseError.value = e.message;
+  }
+}
+
+function browseFromInput() {
+  const path = browsePathInput.value.trim();
+  if (!path) return;
+  doBrowse(path);
+}
+
+function browseChild(name: string) {
+  const sep = currentBrowsePath.value.includes('/') ? '/' : '\\';
+  const base = currentBrowsePath.value.endsWith(sep) ? currentBrowsePath.value : currentBrowsePath.value + sep;
+  doBrowse(base + name);
+}
+
+function browseParent() {
+  const path = currentBrowsePath.value;
+  if (!path) return;
+
+  const sep = path.includes('/') ? '/' : '\\';
+  // Handle root paths (e.g. "C:\" or "/")
+  const parts = path.replace(/[\\/]+$/, '').split(sep).filter(Boolean);
+  if (parts.length <= 1) {
+    // Already at root or drive root, browse root again
+    if (sep === '\\') {
+      // Windows: go to drive root like "C:\"
+      doBrowse(parts[0] + '\\');
+    } else {
+      doBrowse('/');
+    }
+    return;
+  }
+  parts.pop();
+  doBrowse(parts.join(sep) + sep);
+}
+
+function onDownloadFile(fileName: string) {
+  const sep = currentBrowsePath.value.includes('/') ? '/' : '\\';
+  const base = currentBrowsePath.value.endsWith(sep) ? currentBrowsePath.value : currentBrowsePath.value + sep;
+  const remotePath = base + fileName;
+  downloadFile(agentId, remotePath)
+    .then(() => message.info(`下载任务已下发: ${fileName}`))
+    .catch((e: any) => message.error(e.message));
+}
+
+function formatSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const val = bytes / Math.pow(1024, i);
+  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatTimestamp(ts: number): string {
+  if (!ts || ts === 0) return '-';
+  const d = new Date(ts * 1000);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function onMenuClick({ key }: { key: string }) {
@@ -292,6 +568,10 @@ async function submitBeaconConfig() {
 </script>
 
 <style>
+.session-tabs .ant-tabs-nav {
+  padding-left: 12px;
+}
+
 .session-tabs .ant-tabs-content {
   flex: 1;
   display: flex;

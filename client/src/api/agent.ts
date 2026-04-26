@@ -171,6 +171,31 @@ export async function downloadFile(agentId: string, remotePath: string): Promise
   return res.json();
 }
 
+export interface FileEntry {
+  name: string;
+  is_dir: boolean;
+  size: number;
+  modified: number;
+}
+
+export async function browseFile(agentId: string, path: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
+  const store = useConnectionStore();
+  const profile = store.activeProfile;
+  if (!profile) throw new Error('未连接到后端服务器');
+
+  const res = await fetch(`${profile.server_url}/agents/${agentId}/browse`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${profile.api_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ path })
+  });
+
+  if (!res.ok) throw new Error(`浏览目录失败: ${res.statusText}`);
+  return res.json();
+}
+
 export async function takeScreenshot(agentId: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
   const store = useConnectionStore();
   const profile = store.activeProfile;

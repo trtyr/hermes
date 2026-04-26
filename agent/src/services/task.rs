@@ -59,6 +59,13 @@ impl TaskService {
                             &sender,
                         );
                     }
+                    "browse" => {
+                        super::file_ops::handle_browse(
+                            &tid,
+                            pay.as_deref().unwrap_or(""),
+                            &sender,
+                        );
+                    }
                     _ => unreachable!(),
                 }
             });
