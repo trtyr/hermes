@@ -39,7 +39,7 @@ impl Config {
             max_output_chars: 6000,
             max_list_entries: 120,
             metadata: Metadata {
-                agent_id: derive_agent_id(&hostname),
+                agent_id: uuid::Uuid::new_v4().to_string(),
                 hostname,
                 username: if username.trim().is_empty() {
                     None
@@ -51,20 +51,5 @@ impl Config {
                 pid,
             },
         })
-    }
-}
-
-fn derive_agent_id(hostname: &str) -> String {
-    let Some(file_stem) = std::env::current_exe().ok().and_then(|path| {
-        path.file_stem()
-            .map(|value| value.to_string_lossy().into_owned())
-    }) else {
-        return hostname.to_string();
-    };
-
-    if file_stem == "agent" || file_stem.starts_with("agent-") {
-        hostname.to_string()
-    } else {
-        file_stem
     }
 }

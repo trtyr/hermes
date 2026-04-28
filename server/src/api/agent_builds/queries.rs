@@ -1,7 +1,7 @@
 use super::*;
 
-use axum::body::Body;
 use crate::protocol::AgentBuildStatus;
+use axum::body::Body;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
@@ -150,7 +150,10 @@ pub(crate) async fn download_agent_build(
             StatusCode::CONFLICT,
             Json(ApiResponse {
                 success: false,
-                detail: format!("agent build {} status is {:?}, not succeeded", build_id, build.status),
+                detail: format!(
+                    "agent build {} status is {:?}, not succeeded",
+                    build_id, build.status
+                ),
                 task_id: None,
             }),
         )
@@ -185,13 +188,18 @@ pub(crate) async fn download_agent_build(
             .into_response();
     }
 
-    let filename = build.artifact_name.unwrap_or_else(|| format!("agent-build-{}", build_id));
+    let filename = build
+        .artifact_name
+        .unwrap_or_else(|| format!("agent-build-{}", build_id));
 
     (
         StatusCode::OK,
         [
             ("content-type", "application/octet-stream".to_string()),
-            ("content-disposition", format!("attachment; filename=\"{}\"", filename)),
+            (
+                "content-disposition",
+                format!("attachment; filename=\"{}\"", filename),
+            ),
         ],
         Body::from(buffer),
     )

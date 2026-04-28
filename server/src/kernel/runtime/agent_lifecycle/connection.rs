@@ -8,7 +8,7 @@ use super::super::{effects::RuntimePorts, now_ts};
 use crate::kernel::state::{AgentSession, KernelState};
 
 const UNREGISTERED_SESSION_TIMEOUT_MS: u64 = 10_000;
-const HEARTBEAT_GRACE_MS: u64 = 5_000;
+const HEARTBEAT_GRACE_MS: u64 = 10_000;
 const MIN_HEARTBEAT_TIMEOUT_MS: u64 = 5_000;
 
 pub(super) async fn handle_agent_connected(
@@ -56,8 +56,8 @@ pub(super) async fn handle_agent_disconnected(
     session_id: u64,
 ) {
     let mut state = state.write().await;
-    if let Some(session) = state.remove_session(session_id) {
-        cleanup_removed_session(&mut state, effects, session, "disconnected");
+    if let Some(session) = state.remove_session_preserving_agent_index(session_id) {
+        cleanup_session_disconnect(effects, session);
     }
 }
 
@@ -67,18 +67,25 @@ pub(super) async fn disconnect_agent(
     agent_id: String,
 ) {
     let mut state = state.write().await;
-    if send_server_command_to_agent(
-        &mut state,
-        effects,
-        &agent_id,
-        ServerCommand::Disconnect {
-            reason: Some("requested by server".to_string()),
-        },
-        "command sender closed while disconnect was requested",
-    )
-    .is_ok()
-    {
-        effects.publish(&WebEvent::AgentDisconnectRequested { agent_id });
+    let sender = state
+        .session_by_agent_id(&agent_id)
+        .map(|session| session.sender.clone());
+
+    if let Some(sender) = sender {
+        if sender
+            .send(ServerCommand::Disconnect {
+                reason: Some("requested by server".to_string()),
+            })
+            .is_ok()
+        {
+            effects.publish(&WebEvent::AgentDisconnectRequested {
+                agent_id: agent_id.clone(),
+            });
+        }
+    }
+
+    if let Some(session) = state.remove_existing_session_for_agent(&agent_id) {
+        cleanup_session_expired(&mut state, effects, session, "was disconnected by server");
     }
 }
 
@@ -101,12 +108,24 @@ pub(super) async fn sweep_heartbeats(state: &Arc<RwLock<KernelState>>, effects: 
     let mut state = state.write().await;
     for session_id in timed_out_session_ids {
         if let Some(session) = state.remove_session(session_id) {
-            cleanup_removed_session(&mut state, effects, session, "heartbeat timed out");
+            cleanup_session_expired(&mut state, effects, session, "heartbeat timed out");
         }
     }
 }
 
-pub(super) fn cleanup_removed_session(
+pub(super) fn cleanup_session_disconnect(effects: &RuntimePorts, session: AgentSession) {
+    let now = now_ts();
+    let agent_id = session.agent_id.clone();
+    if let Some(agent_id) = agent_id.clone() {
+        effects.mark_agent_offline(agent_id, now);
+    }
+    effects.publish(&WebEvent::AgentDisconnected {
+        session_id: session.session_id,
+        agent_id,
+    });
+}
+
+pub(super) fn cleanup_session_expired(
     state: &mut KernelState,
     effects: &RuntimePorts,
     session: AgentSession,
@@ -203,7 +222,7 @@ pub(in crate::kernel::runtime) fn send_server_command_to_agent(
     effects: &RuntimePorts,
     agent_id: &str,
     command: ServerCommand,
-    disconnect_reason: &str,
+    _disconnect_reason: &str,
 ) -> anyhow::Result<()> {
     let (session_id, sender) = {
         let Some(session) = state.session_by_agent_id(agent_id) else {
@@ -213,8 +232,8 @@ pub(in crate::kernel::runtime) fn send_server_command_to_agent(
     };
 
     if sender.send(command).is_err() {
-        if let Some(session) = state.remove_session(session_id) {
-            cleanup_removed_session(state, effects, session, disconnect_reason);
+        if let Some(session) = state.remove_session_preserving_agent_index(session_id) {
+            cleanup_session_disconnect(effects, session);
         }
         return Err(anyhow::anyhow!("agent {} command sender closed", agent_id));
     }

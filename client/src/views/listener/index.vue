@@ -7,6 +7,20 @@
         监听器管理
       </h2>
       <div class="flex gap-2">
+        <template v-if="selectedRowKeys.length > 0">
+          <span class="text-sm text-slate-500">已选中 {{ selectedRowKeys.length }} 项</span>
+          <a-button type="link" size="small" @click="selectedRowKeys = []">取消选择</a-button>
+          <a-button class="text-green-600 border-green-300 hover:text-green-700 hover:border-green-400" :loading="batchStartLoading" @click="handleBatchStart">
+            批量启动
+          </a-button>
+          <a-button class="text-amber-600 border-amber-300 hover:text-amber-700 hover:border-amber-400" :loading="batchStopLoading" @click="handleBatchStop">
+            批量停止
+          </a-button>
+          <a-button danger :loading="batchDeleteLoading" @click="handleBatchDelete">
+            批量删除
+          </a-button>
+          <a-divider type="vertical" />
+        </template>
         <a-button @click="loadListeners" :loading="loading">
           <template #icon><ReloadOutlined /></template>
           刷新
@@ -26,6 +40,7 @@
         row-key="listener_id"
         :loading="loading"
         :pagination="{ pageSize: 20 }"
+        :rowSelection="rowSelection"
         class="w-full flex-1"
         :scroll="{ y: 'max-content' }"
       >
@@ -115,8 +130,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { ref, computed, onMounted } from 'vue';
+import { message, Modal } from 'ant-design-vue';
 import { 
   ApiOutlined, 
   ReloadOutlined, 
@@ -138,6 +153,18 @@ const loading = ref(false);
 const createModalVisible = ref(false);
 const actionLoading = ref('');
 
+// Batch selection state
+const selectedRowKeys = ref<number[]>([]);
+const batchStartLoading = ref(false);
+const batchStopLoading = ref(false);
+const batchDeleteLoading = ref(false);
+const rowSelection = computed(() => ({
+  selectedRowKeys: selectedRowKeys.value,
+  onChange: (keys: number[]) => {
+    selectedRowKeys.value = keys;
+  },
+}));
+
 const columns = [
   { title: '标识 ID', dataIndex: 'listener_id', key: 'listener_id', width: 100 },
   { title: '名称', dataIndex: 'name', key: 'name', width: 200 },
@@ -145,7 +172,7 @@ const columns = [
   { title: '侦听地址', key: 'address', width: 200 },
   { title: '当前状态', dataIndex: 'runtime_status', key: 'runtime_status', width: 180 },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
-  { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
+  { title: '操作', key: 'action', width: 140, fixed: 'right' as const },
 ];
 
 const loadListeners = async () => {
@@ -163,6 +190,82 @@ const loadListeners = async () => {
 onMounted(() => {
   loadListeners();
 });
+
+// Batch Actions
+async function handleBatchStart() {
+  const targets = listeners.value.filter(l => selectedRowKeys.value.includes(l.listener_id) && l.enabled === false);
+  if (targets.length === 0) {
+    message.info('所选监听器中无需启动的项（已全部启用）');
+    return;
+  }
+  batchStartLoading.value = true;
+  try {
+    const results = await Promise.allSettled(targets.map(l => startListener(l.listener_id)));
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed === 0) {
+      message.success(`成功启动 ${succeeded} 项`);
+    } else {
+      message.warning(`成功启动 ${succeeded} 项，失败 ${failed} 项`);
+    }
+    selectedRowKeys.value = [];
+    await new Promise(r => setTimeout(r, 2000));
+    await loadListeners();
+  } finally {
+    batchStartLoading.value = false;
+  }
+}
+
+async function handleBatchStop() {
+  const targets = listeners.value.filter(l => selectedRowKeys.value.includes(l.listener_id) && l.enabled === true);
+  if (targets.length === 0) {
+    message.info('所选监听器中无需停止的项（已全部停用）');
+    return;
+  }
+  batchStopLoading.value = true;
+  try {
+    const results = await Promise.allSettled(targets.map(l => stopListener(l.listener_id)));
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed === 0) {
+      message.success(`成功停止 ${succeeded} 项`);
+    } else {
+      message.warning(`成功停止 ${succeeded} 项，失败 ${failed} 项`);
+    }
+    selectedRowKeys.value = [];
+    await new Promise(r => setTimeout(r, 2000));
+    await loadListeners();
+  } finally {
+    batchStopLoading.value = false;
+  }
+}
+
+function handleBatchDelete() {
+  Modal.confirm({
+    title: `确认删除选中的 ${selectedRowKeys.value.length} 个监听器？`,
+    content: '删除后将不可恢复。',
+    okType: 'danger',
+    async onOk() {
+      batchDeleteLoading.value = true;
+      try {
+        const results = await Promise.allSettled(
+          selectedRowKeys.value.map(id => deleteListener(id))
+        );
+        const succeeded = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        if (failed === 0) {
+          message.success(`成功删除 ${succeeded} 项`);
+        } else {
+          message.warning(`成功删除 ${succeeded} 项，失败 ${failed} 项`);
+        }
+        selectedRowKeys.value = [];
+        await loadListeners();
+      } finally {
+        batchDeleteLoading.value = false;
+      }
+    }
+  });
+}
 
 // Row Actions
 const doStartListener = async (record: ListenerRecord) => {

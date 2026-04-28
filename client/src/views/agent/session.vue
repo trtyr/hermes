@@ -264,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import {
@@ -299,6 +299,7 @@ const screenshotLoading = ref(false);
 const screenshotUrl = ref<string | null>(null);
 const pendingScreenshotTaskId = ref<string | null>(null);
 let unsubscribeEvents: (() => void) | null = null;
+let screenshotTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 // File browser state
 const currentBrowsePath = ref<string>('');
@@ -308,6 +309,13 @@ const browseLoading = ref(false);
 const browseError = ref<string | null>(null);
 const pendingBrowseTaskId = ref<string | null>(null);
 let unsubscribeBrowseEvents: (() => void) | null = null;
+
+// Auto-browse root directory when files tab is first opened
+watch(activeTab, (tab) => {
+  if (tab === 'files' && !currentBrowsePath.value) {
+    doBrowse('C:\\');
+  }
+});
 
 // Beacon config state
 const beaconModalVisible = ref(false);
@@ -341,6 +349,10 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  if (screenshotTimeoutId) {
+    clearTimeout(screenshotTimeoutId);
+    screenshotTimeoutId = null;
+  }
   if (unsubscribeEvents) {
     unsubscribeEvents();
     unsubscribeEvents = null;
@@ -360,7 +372,11 @@ async function doScreenshot() {
   screenshotUrl.value = null;
   pendingScreenshotTaskId.value = null;
 
-  // Clean up any previous subscription
+  // Clean up any previous subscription and timeout
+  if (screenshotTimeoutId) {
+    clearTimeout(screenshotTimeoutId);
+    screenshotTimeoutId = null;
+  }
   if (unsubscribeEvents) {
     unsubscribeEvents();
     unsubscribeEvents = null;
@@ -377,11 +393,17 @@ async function doScreenshot() {
         const taskId = (event as any).task_id as string;
         if (taskId !== pendingScreenshotTaskId.value) return;
 
-        const success = (event as any).success as boolean;
-        const output = (event as any).output as string;
+        // Clear timeout on success
+        if (screenshotTimeoutId) {
+          clearTimeout(screenshotTimeoutId);
+          screenshotTimeoutId = null;
+        }
 
         screenshotLoading.value = false;
         pendingScreenshotTaskId.value = null;
+
+        const success = (event as any).success as boolean;
+        const output = (event as any).output as string;
 
         if (success && output) {
           screenshotUrl.value = `data:image/png;base64,${output}`;
@@ -395,6 +417,18 @@ async function doScreenshot() {
           unsubscribeEvents = null;
         }
       });
+
+      // Timeout: if no result received within 60s, unsubscribe and stop loading
+      screenshotTimeoutId = setTimeout(() => {
+        screenshotTimeoutId = null;
+        if (unsubscribeEvents) {
+          unsubscribeEvents();
+          unsubscribeEvents = null;
+        }
+        pendingScreenshotTaskId.value = null;
+        screenshotLoading.value = false;
+        message.error('截图超时，请重试');
+      }, 60_000);
     } else {
       screenshotLoading.value = false;
       message.error(res.detail || '截图任务下发失败');

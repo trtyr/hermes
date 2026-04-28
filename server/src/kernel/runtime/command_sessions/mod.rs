@@ -84,3 +84,15 @@ pub(super) async fn dispatch_next_command_if_idle(
 ) {
     execute::dispatch_next_command_if_idle(state, effects, command_session_id).await;
 }
+
+/// After agent reconnects, re-dispatch any pending commands for its command sessions.
+pub(in crate::kernel::runtime) fn dispatch_pending_commands_for_agent(
+    state: &mut KernelState,
+    effects: &RuntimePorts,
+    agent_id: &str,
+) {
+    let session_ids = state.command_session_ids_for_agent(agent_id);
+    for session_id in &session_ids {
+        let _ = execute::dispatch_next_command_if_idle_locked(state, effects, session_id);
+    }
+}

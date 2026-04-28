@@ -6,9 +6,26 @@ impl KernelState {
     }
 
     pub fn remove_session(&mut self, session_id: u64) -> Option<AgentSession> {
+        self.remove_session_inner(session_id, true)
+    }
+
+    pub fn remove_session_preserving_agent_index(
+        &mut self,
+        session_id: u64,
+    ) -> Option<AgentSession> {
+        self.remove_session_inner(session_id, false)
+    }
+
+    fn remove_session_inner(
+        &mut self,
+        session_id: u64,
+        remove_agent_index: bool,
+    ) -> Option<AgentSession> {
         let session = self.sessions.remove(&session_id)?;
-        if let Some(agent_id) = &session.agent_id {
-            self.agent_index.remove(agent_id);
+        if remove_agent_index {
+            if let Some(agent_id) = &session.agent_id {
+                self.agent_index.remove(agent_id);
+            }
         }
         Some(session)
     }
@@ -177,9 +194,10 @@ impl AgentSession {
         }
 
         let base_ms = self.sleep_interval.saturating_mul(1000);
-        let jitter_factor = 100_u64.saturating_add(self.jitter as u64);
-        let max_expected_ms = base_ms.saturating_mul(jitter_factor) / 100;
-        max_expected_ms
+        let multiplier_ms = base_ms.saturating_mul(3);
+        let jitter_extra_ms = base_ms.saturating_mul(self.jitter as u64) / 100;
+        multiplier_ms
+            .saturating_add(jitter_extra_ms)
             .saturating_add(heartbeat_grace_ms)
             .max(min_heartbeat_timeout_ms)
     }

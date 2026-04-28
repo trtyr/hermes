@@ -563,3 +563,31 @@ fn command_output_chunks_are_appended_to_running_command() {
         .expect("stderr chunk appended");
     assert_eq!(stderr.stderr.as_deref(), Some("warn"));
 }
+
+#[test]
+fn registered_agent_heartbeat_timeout_uses_triple_interval_plus_jitter_and_grace() {
+    let (_sender, receiver) = mpsc::unbounded_channel();
+    let session = AgentSession {
+        session_id: 1,
+        agent_id: Some("agent-1".to_string()),
+        listener_id: Some(1),
+        listener_name: Some("default-agent-tcp".to_string()),
+        hostname: Some("host-1".to_string()),
+        username: Some("tester".to_string()),
+        os: Some("linux".to_string()),
+        arch: Some("amd64".to_string()),
+        pid: Some(1001),
+        internal_ip: Some("10.0.0.1".to_string()),
+        tags: Vec::new(),
+        sleep_interval: 30,
+        jitter: 20,
+        peer_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 4001)),
+        connected_at: 1,
+        last_seen: 1,
+        sender: _sender,
+        privilege: String::new(),
+    };
+    std::mem::forget(receiver);
+
+    assert_eq!(session.heartbeat_timeout_ms(10_000, 10_000, 5_000), 106_000);
+}

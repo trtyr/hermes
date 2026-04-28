@@ -7,6 +7,15 @@
         载荷生成
       </h2>
       <div class="flex gap-2">
+        <template v-if="selectedRowKeys.length > 0">
+          <span class="text-sm text-slate-500">已选中 {{ selectedRowKeys.length }} 项</span>
+          <a-button type="link" size="small" @click="selectedRowKeys = []">取消选择</a-button>
+          <a-button danger :loading="batchDeleteLoading" @click="handleBatchDelete">
+            <template #icon><DeleteOutlined /></template>
+            批量删除
+          </a-button>
+          <a-divider type="vertical" />
+        </template>
         <a-button @click="loadBuilds" :loading="loading">
           <template #icon><ReloadOutlined /></template>
           刷新
@@ -26,6 +35,7 @@
         row-key="build_id"
         :loading="loading"
         :pagination="{ pageSize: 20, total: total, current: currentPage, onChange: onPageChange }"
+        :rowSelection="rowSelection"
         class="w-full flex-1"
         :scroll="{ x: 1020 }"
       >
@@ -196,8 +206,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { message, Modal } from 'ant-design-vue';
 import {
   RocketOutlined,
   ReloadOutlined,
@@ -223,6 +233,19 @@ const loading = ref(false);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = 20;
+
+// Batch selection state
+const selectedRowKeys = ref<number[]>([]);
+const batchDeleteLoading = ref(false);
+const rowSelection = computed(() => ({
+  selectedRowKeys: selectedRowKeys.value,
+  onChange: (keys: number[]) => {
+    selectedRowKeys.value = keys;
+  },
+  getCheckboxProps: (record: AgentBuildRecord) => ({
+    disabled: record.status === 'pending',
+  }),
+}));
 
 // Build form
 const buildModalVisible = ref(false);
@@ -252,6 +275,33 @@ const columns = [
   { title: '操作', key: 'action', width: 120, fixed: 'right' },
 ];
 
+async function handleBatchDelete() {
+  Modal.confirm({
+    title: `确认删除选中的 ${selectedRowKeys.value.length} 个构建？`,
+    content: '删除后将不可恢复。',
+    okType: 'danger',
+    async onOk() {
+      batchDeleteLoading.value = true;
+      try {
+        const results = await Promise.allSettled(
+          selectedRowKeys.value.map(id => deleteAgentBuild(id))
+        );
+        const succeeded = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        if (failed === 0) {
+          message.success(`成功删除 ${succeeded} 项`);
+        } else {
+          message.warning(`成功删除 ${succeeded} 项，失败 ${failed} 项`);
+        }
+        selectedRowKeys.value = [];
+        loadBuilds();
+      } finally {
+        batchDeleteLoading.value = false;
+      }
+    }
+  });
+}
+
 const loadBuilds = async () => {
   loading.value = true;
   try {
@@ -259,7 +309,7 @@ const loadBuilds = async () => {
       limit: pageSize,
       offset: (currentPage.value - 1) * pageSize,
     });
-    builds.value = res.builds || [];
+    builds.value = (res.builds || []).filter((b: AgentBuildRecord) => b && b.build_id);
     total.value = res.total || 0;
   } catch (err: any) {
     message.error(err.message || '获取构建列表失败');
@@ -467,6 +517,9 @@ const getStatusLabel = (status: string) => {
 :deep(.ant-table-thead > tr > th) {
   padding: 8px 12px !important;
   line-height: 1.4;
+}
+:deep(.ant-table-measure-row) {
+  display: none !important;
 }
 :deep(.ant-table-tbody > tr > td) {
   padding: 8px 12px !important;

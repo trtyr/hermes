@@ -96,10 +96,15 @@ fn exec_cmd(command: &str, cwd: Option<&str>) -> (bool, String) {
     }
 }
 
+fn windows_shell_command(command: &str) -> String {
+    format!("chcp 65001 >nul && {command}")
+}
+
 fn spawn_shell_process(command: &str, cwd: Option<&str>) -> std::io::Result<std::process::Child> {
     let mut process = if cfg!(target_os = "windows") {
         let mut process = Command::new("cmd");
-        process.args(["/C", command]);
+        let command = windows_shell_command(command);
+        process.args(["/C", &command]);
         process
     } else {
         let mut process = Command::new("sh");
@@ -127,3 +132,17 @@ pub fn default_cwd() -> String {
             }
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_shell_command_prefixes_utf8_code_page_switch() {
+        assert_eq!(
+            windows_shell_command("dir /b"),
+            "chcp 65001 >nul && dir /b"
+        );
+    }
+}
+

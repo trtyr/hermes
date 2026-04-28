@@ -1,10 +1,10 @@
 use super::*;
 
 use crate::api::common::{ApiResponse, AppState};
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
-use axum::Json;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -342,39 +342,13 @@ pub(crate) async fn delete_agent(
         }
     }
 
-    // If the agent is online, disable + disconnect but keep the record
-    // so the agent cannot re-register. Only offline agents have their
-    // record fully deleted.
+    // If agent is online, refuse to delete (must disable first)
     if state.kernel.agent_queries().is_connected(&agent_id).await {
-        let _ = state
-            .kernel
-            .agent_commands()
-            .set_disabled(&agent_id, true)
-            .await;
-        let _ = state
-            .kernel
-            .agent_commands()
-            .disconnect(agent_id.clone())
-            .await;
-
-        state.kernel.append_audit_record(
-            operator,
-            "delete_agent".to_string(),
-            "agent".to_string(),
-            Some(agent_id.clone()),
-            Some("agent was online: disabled + disconnected, record kept".to_string()),
-            now_ts(),
-        );
-
-        state.kernel.publish_web_event(WebEvent::AgentDeleted {
-            agent_id: agent_id.clone(),
-        });
-
         return (
-            StatusCode::OK,
+            StatusCode::CONFLICT,
             Json(ApiResponse {
-                success: true,
-                detail: "agent disabled and disconnected; record kept to prevent re-registration".to_string(),
+                success: false,
+                detail: "agent is online; disable it before deleting".to_string(),
                 task_id: None,
             }),
         )

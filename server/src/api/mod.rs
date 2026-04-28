@@ -86,18 +86,9 @@ pub async fn run_http_api(
             post(agents::disconnect_agent),
         )
         .route("/agents/{agent_id}/tasks", post(agents::dispatch_task))
-        .route(
-            "/agents/{agent_id}/upload",
-            post(agents::upload_file),
-        )
-        .route(
-            "/agents/{agent_id}/download",
-            post(agents::download_file),
-        )
-        .route(
-            "/agents/{agent_id}/browse",
-            post(agents::browse_file),
-        )
+        .route("/agents/{agent_id}/upload", post(agents::upload_file))
+        .route("/agents/{agent_id}/download", post(agents::download_file))
+        .route("/agents/{agent_id}/browse", post(agents::browse_file))
         .route(
             "/agents/{agent_id}/screenshot",
             post(agents::take_screenshot),

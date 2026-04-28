@@ -116,7 +116,7 @@ fn validate_command_session_ready(
     Ok(())
 }
 
-fn dispatch_next_command_if_idle_locked(
+pub(in crate::kernel::runtime) fn dispatch_next_command_if_idle_locked(
     state: &mut KernelState,
     effects: &RuntimePorts,
     command_session_id: &str,

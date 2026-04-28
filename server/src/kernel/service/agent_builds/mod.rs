@@ -34,7 +34,11 @@ impl AgentBuildFacade {
             ));
         }
 
-        let deleted = self.kernel.storage.delete_agent_build_record(build_id).await?;
+        let deleted = self
+            .kernel
+            .storage
+            .delete_agent_build_record(build_id)
+            .await?;
         if deleted {
             let artifact_dir =
                 PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));

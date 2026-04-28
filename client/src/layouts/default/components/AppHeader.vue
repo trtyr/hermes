@@ -35,10 +35,12 @@
 
     <!-- Right Side Tools -->
     <div class="flex items-center">
-      <button class="menu-btn relative mx-1" @click="openAction('通知中心')">
-        <span class="absolute top-1.5 right-1.5 size-2 rounded-sm bg-[#0960bd]"></span>
-        <svg viewBox="0 0 24 24" class="size-4 fill-none stroke-current stroke-2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
-      </button>
+      <NotificationCenter>
+        <button class="menu-btn relative mx-1">
+          <span v-if="notificationStore.unreadCount > 0" class="absolute top-1.5 right-1.5 size-2 rounded-sm bg-[#0960bd]"></span>
+          <svg viewBox="0 0 24 24" class="size-4 fill-none stroke-current stroke-2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        </button>
+      </NotificationCenter>
 
       <!-- Profile Dropdown -->
       <a-dropdown placement="bottomRight">
@@ -63,9 +65,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { message } from 'ant-design-vue';
 import { useAppStore } from '@/store/app';
 import { useConnectionStore } from '@/store/connection';
+import { useNotificationStore } from '@/store/notifications';
+import NotificationCenter from './NotificationCenter.vue';
 import {
   DashboardOutlined, RobotOutlined, ApiOutlined, CodeOutlined, FileTextOutlined,
   UserOutlined, LogoutOutlined
@@ -78,6 +81,7 @@ const router = useRouter();
 const route = useRoute();
 const appStore = useAppStore();
 const connectionStore = useConnectionStore();
+const notificationStore = useNotificationStore();
 
 const routeIcons = {
   dashboard: DashboardOutlined,
@@ -90,10 +94,6 @@ const routeIcons = {
 const routeMetaTitle = computed(() => route.meta?.title?.toString().split(' - ')[0] || '页面');
 const currentRouteKey = computed(() => (route.path.split('/')[1] || 'dashboard') as keyof typeof routeIcons);
 const currentRouteIcon = computed(() => routeIcons[currentRouteKey.value] || DashboardOutlined);
-
-const openAction = (name: string) => {
-  message.info(`${name} 入口已预留`);
-};
 
 const handleLogout = () => {
   connectionStore.logout();

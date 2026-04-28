@@ -68,8 +68,9 @@ impl AgentBuildFacade {
             )
             .await?;
 
-        self.kernel
-            .publish_web_event(WebEvent::AgentBuildCreated { build: build.clone() });
+        self.kernel.publish_web_event(WebEvent::AgentBuildCreated {
+            build: build.clone(),
+        });
 
         let heartbeat_secs = heartbeat_secs.unwrap_or(15);
         let jitter = jitter.unwrap_or(0);
@@ -103,8 +104,9 @@ impl AgentBuildFacade {
                         .await
                     {
                         Ok(Some(updated)) => {
-                            kernel
-                                .publish_web_event(WebEvent::AgentBuildCompleted { build: updated });
+                            kernel.publish_web_event(WebEvent::AgentBuildCompleted {
+                                build: updated,
+                            });
                         }
                         Ok(None) => {
                             eprintln!(
@@ -130,8 +132,7 @@ impl AgentBuildFacade {
                         )
                         .await
                     {
-                        kernel
-                            .publish_web_event(WebEvent::AgentBuildCompleted { build: updated });
+                        kernel.publish_web_event(WebEvent::AgentBuildCompleted { build: updated });
                     }
                 }
             }
@@ -208,8 +209,7 @@ async fn run_build(
     jitter: u32,
 ) -> anyhow::Result<(String, String, String)> {
     let agent_project_path = PathBuf::from(DEFAULT_AGENT_PROJECT_PATH);
-    let artifact_root =
-        PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));
+    let artifact_root = PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));
     fs::create_dir_all(&artifact_root)?;
 
     ensure_target_support(&target_triple).await?;
@@ -229,7 +229,13 @@ async fn run_build(
     let previous_server_module = fs::read_to_string(&server_module_path)?;
     fs::write(
         &server_module_path,
-        render_server_module(&server_addr, agent_token.as_deref(), protocol, heartbeat_secs, jitter),
+        render_server_module(
+            &server_addr,
+            agent_token.as_deref(),
+            protocol,
+            heartbeat_secs,
+            jitter,
+        ),
     )?;
 
     let output = command.output().await;

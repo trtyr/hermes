@@ -31,7 +31,7 @@ function getAuthHeaders() {
   const profile = store.activeProfile;
   if (!profile) throw new Error('未连接到后端服务器');
   return {
-    'Authorization': `Bearer ${profile.api_token}`,
+    'x-api-token': profile.api_token,
     'Content-Type': 'application/json'
   };
 }

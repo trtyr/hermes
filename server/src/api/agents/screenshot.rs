@@ -1,10 +1,10 @@
 use super::*;
 
 use crate::api::common::{ApiResponse, AppState};
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
-use axum::Json;
 
 pub(crate) async fn take_screenshot(
     Path(agent_id): Path<String>,

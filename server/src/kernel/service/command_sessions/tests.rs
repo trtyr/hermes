@@ -261,7 +261,7 @@ async fn execute_fails_fast_when_agent_sender_is_closed() {
             .await
             .expect("command session snapshot still exists")
             .status,
-        crate::protocol::CommandSessionStatus::Closed
+        crate::protocol::CommandSessionStatus::Open
     );
 }
 
@@ -271,15 +271,21 @@ async fn close_fails_fast_when_agent_sender_is_closed() {
     seed_agent_with_closed_sender(&kernel, "agent-close-closed").await;
     seed_open_command_session(&kernel, "cmdsess-1", "agent-close-closed").await;
 
-    let snapshot = kernel
+    let error = kernel
         .command_sessions()
         .close("cmdsess-1".to_string())
         .await
-        .expect("close should settle immediately when agent sender is closed");
+        .expect_err("close should fail when agent sender is closed");
 
+    assert!(error.to_string().contains("sender closed"));
     assert_eq!(
-        snapshot.status,
-        crate::protocol::CommandSessionStatus::Closed
+        kernel
+            .command_sessions()
+            .snapshot("cmdsess-1")
+            .await
+            .expect("command session snapshot still exists")
+            .status,
+        crate::protocol::CommandSessionStatus::Open
     );
     assert!(
         !kernel

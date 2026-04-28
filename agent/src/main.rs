@@ -15,9 +15,28 @@ use ops::AgentConfig;
 use protocol::{AgentMessage, Config, ServerCommand};
 use services::{HeartbeatService, NetworkService, SessionService, TaskService};
 use std::{
+    io::Write,
     sync::{mpsc, Arc, Mutex},
     time::Duration,
 };
+
+macro_rules! alog {
+    ($($arg:tt)*) => {{
+        let msg = format!($($arg)*);
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("agent_debug.log") {
+            let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+            let _ = writeln!(f, "[{}] {}", ts, msg);
+        }
+    }};
+}
+
+macro_rules! agent_log {
+    ($($arg:tt)*) => {{
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("C:\\Users\\macuser\\Desktop\\agent.log") {
+            let _ = writeln!(f, "[{}] {}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(), format!($($arg)*));
+        }
+    }};
+}
 
 fn main() {
     let cfg = match Config::load() {
@@ -51,12 +70,15 @@ fn main() {
     let session = Arc::new(Mutex::new(SessionService::new(op_cfg, outbox_tx.clone())));
 
     loop {
+        alog!("run_once starting");
         if run_once(
             &kernel, &cfg, &network, &heartbeat, &task, &session, &outbox_tx, &outbox_rx,
         )
         .is_err()
         {
-            // Silent
+            alog!("run_once failed, reconnect in {}s", cfg.reconnect_secs);
+        } else {
+            alog!("run_once returned Ok");
         }
         kernel.sleep(std::time::Duration::from_secs(cfg.reconnect_secs));
     }
@@ -78,8 +100,10 @@ fn run_once(
     {
         let mut net = network.lock().unwrap();
         if !net.connect(&cfg.server_addr) {
+            alog!("connect failed to {}", cfg.server_addr);
             return Err(());
         }
+        alog!("connected to {}", cfg.server_addr);
     }
 
     // Receive hello
@@ -99,8 +123,10 @@ fn run_once(
     {
         let mut net = network.lock().unwrap();
         if net.send(&register).is_err() {
+            alog!("register send failed");
             return Err(());
         }
+        alog!("register sent");
     }
 
     loop {
@@ -170,8 +196,14 @@ fn run_once(
 
                 flush_outbox(network, outbox_rx, None)?;
             }
-            Ok(None) => return Ok(()),
+            Ok(None) => {
+                alog!("read_line returned Ok(None) - server closed connection");
+                return Ok(());
+            }
             Err(_) => {
+                let poll_fast = session.lock().unwrap().should_poll_fast();
+                let hb_due = heartbeat.lock().unwrap().should_send();
+                alog!("read timeout: poll_fast={} hb_due={}", poll_fast, hb_due);
                 if session.lock().unwrap().should_poll_fast() {
                     flush_outbox(network, outbox_rx, None)?;
                     session.lock().unwrap().clear_flush_hint();

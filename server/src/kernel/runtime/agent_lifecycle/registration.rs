@@ -4,8 +4,8 @@ use tokio::sync::RwLock;
 
 use crate::protocol::{ServerCommand, WebEvent};
 
-use super::super::{effects::RuntimePorts, now_ts, task_flow};
-use super::connection::cleanup_removed_session;
+use super::super::{effects::RuntimePorts, now_ts, task_flow, command_sessions};
+use super::connection::cleanup_session_disconnect;
 use crate::kernel::state::{AgentIdentity, KernelState};
 
 pub(super) async fn handle_register(
@@ -35,15 +35,14 @@ pub(super) async fn handle_register(
     if let Some(old_session_id) = state.existing_session_for_agent(&agent_id) {
         if old_session_id != session_id {
             if let Some(old_session) = state.remove_existing_session_for_agent(&agent_id) {
+                eprintln!(
+                    "[server] superseding old session {} with new session {} for agent {}",
+                    old_session_id, session_id, registered_agent_id
+                );
                 let _ = old_session.sender.send(ServerCommand::Disconnect {
                     reason: Some("superseded by a newer session".to_string()),
                 });
-                cleanup_removed_session(
-                    &mut state,
-                    effects,
-                    old_session,
-                    "was superseded by a newer session",
-                );
+                cleanup_session_disconnect(effects, old_session);
             }
         }
     }
@@ -60,7 +59,8 @@ pub(super) async fn handle_register(
         sleep_interval,
         jitter,
         last_seen: now,
-        privilege,    };
+        privilege,
+    };
 
     if let Some(snapshot) = state.upsert_agent_identity(session_id, identity) {
         effects.persist_agent_online(snapshot.clone());
@@ -71,6 +71,7 @@ pub(super) async fn handle_register(
         }
         effects.publish(&WebEvent::AgentRegistered { agent: snapshot });
         task_flow::dispatch_pending_tasks_for_agent(&mut state, effects, &registered_agent_id);
+        command_sessions::dispatch_pending_commands_for_agent(&mut state, effects, &registered_agent_id);
     }
 }
 
@@ -88,6 +89,7 @@ pub(super) async fn handle_heartbeat(
         }
         if let Some(agent_id) = current_agent_id.clone() {
             task_flow::dispatch_pending_tasks_for_agent(&mut state, effects, &agent_id);
+            command_sessions::dispatch_pending_commands_for_agent(&mut state, effects, &agent_id);
         }
         effects.publish(&WebEvent::AgentHeartbeat {
             session_id,

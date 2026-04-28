@@ -84,10 +84,7 @@ pub(super) async fn run_https_json_listener(
                                     }
                                 }
                                 Err(error) => {
-                                    eprintln!(
-                                        "TLS handshake failed for {}: {}",
-                                        peer_addr, error
-                                    );
+                                    eprintln!("TLS handshake failed for {}: {}", peer_addr, error);
                                 }
                             }
                         });

@@ -31,6 +31,10 @@ impl NetworkService {
         Self { stream: None }
     }
 
+    fn is_read_timeout_kind(kind: std::io::ErrorKind) -> bool {
+        matches!(kind, std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut)
+    }
+
     // --- connect: TCP ---
 
     #[cfg(not(feature = "tls"))]
@@ -122,7 +126,7 @@ impl NetworkService {
                     }
                     buf.push(byte[0]);
                 }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                Err(ref e) if Self::is_read_timeout_kind(e.kind()) => {
                     if buf.is_empty() {
                         return Err(());
                     }
@@ -198,6 +202,18 @@ impl NetworkService {
 }
 
 // --- TLS config: accept any certificate (self-signed) ---
+
+#[cfg(test)]
+mod tests {
+    use super::NetworkService;
+
+    #[test]
+    fn read_timeouts_include_windows_timed_out() {
+        assert!(NetworkService::is_read_timeout_kind(std::io::ErrorKind::WouldBlock));
+        assert!(NetworkService::is_read_timeout_kind(std::io::ErrorKind::TimedOut));
+        assert!(!NetworkService::is_read_timeout_kind(std::io::ErrorKind::UnexpectedEof));
+    }
+}
 
 #[cfg(feature = "tls")]
 fn build_tls_client_config() -> ClientConfig {
