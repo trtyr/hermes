@@ -31,3 +31,6 @@ __pycache__/
 
 # OpenCode local config
 .opencode/
+
+# Local git worktrees
+.worktrees/
