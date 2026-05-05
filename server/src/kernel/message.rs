@@ -4,7 +4,7 @@ use tokio::sync::{mpsc, oneshot};
 
 use crate::protocol::{
     AgentMessage, AgentSnapshot, CommandExecutionSnapshot, CommandSessionResult,
-    CommandSessionSnapshot, ServerCommand,
+    CommandSessionSnapshot, ProxySessionSnapshot, ServerCommand,
 };
 
 #[derive(Debug)]
@@ -12,6 +12,7 @@ pub enum KernelMessage {
     Agent(AgentKernelMessage),
     Task(TaskKernelMessage),
     CommandSession(CommandSessionKernelMessage),
+    Proxy(ProxyKernelMessage),
 }
 
 #[derive(Debug)]
@@ -84,5 +85,36 @@ pub enum CommandSessionKernelMessage {
     Close {
         command_session_id: String,
         respond_to: oneshot::Sender<anyhow::Result<CommandSessionSnapshot>>,
+    },
+}
+
+#[derive(Debug)]
+pub enum ProxyKernelMessage {
+    StartSession {
+        agent_id: String,
+        proxy_id: String,
+        bind_addr: String,
+        respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
+    },
+    StopSession {
+        proxy_id: String,
+        respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
+    },
+    OpenStream {
+        proxy_id: String,
+        stream_id: String,
+        host: String,
+        port: u16,
+        client_sender: mpsc::UnboundedSender<Option<Vec<u8>>>,
+        respond_to: oneshot::Sender<anyhow::Result<()>>,
+    },
+    ClientData {
+        proxy_id: String,
+        stream_id: String,
+        data: Vec<u8>,
+    },
+    ClientClosed {
+        proxy_id: String,
+        stream_id: String,
     },
 }

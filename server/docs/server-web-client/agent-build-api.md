@@ -30,7 +30,7 @@
 
 ```json
 {
-  "target_triple": "aarch64-apple-darwin",
+  "target_triple": "x86_64-pc-windows-msvc",
   "listener_id": 2,
   "profile": "release"
 }
@@ -65,15 +65,15 @@
   "detail": "agent build created",
   "build": {
     "build_id": 7,
-    "target_triple": "aarch64-apple-darwin",
+    "target_triple": "x86_64-pc-windows-msvc",
     "profile": "release",
     "listener_id": 2,
     "server_addr": "127.0.0.1:2234",
     "embedded_agent_token": false,
     "status": "succeeded",
-    "artifact_path": "/abs/path/server/data/agent-builds/build-7/agent-aarch64-apple-darwin-agent",
-    "artifact_name": "agent-aarch64-apple-darwin-agent",
-    "detail": "built aarch64-apple-darwin with embedded server_addr=127.0.0.1:2234 binding=compile_time_only manifest=/abs/path/server/data/agent-builds/build-7/agent-aarch64-apple-darwin-agent.manifest.json",
+    "artifact_path": "/abs/path/server/data/agent-builds/build-7/agent-x86_64-pc-windows-msvc-agent.exe",
+    "artifact_name": "agent-x86_64-pc-windows-msvc-agent.exe",
+    "detail": "built x86_64-pc-windows-msvc with embedded server_addr=127.0.0.1:2234 binding=compile_time_only manifest=/abs/path/server/data/agent-builds/build-7/agent-x86_64-pc-windows-msvc-agent.exe.manifest.json",
     "created_at": 1743139200,
     "updated_at": 1743139208
   }
@@ -110,7 +110,7 @@
 
 ```json
 {
-  "target_triple": "aarch64-apple-darwin",
+  "target_triple": "x86_64-pc-windows-msvc",
   "profile": "release",
   "agent_token": "test-token"
 }

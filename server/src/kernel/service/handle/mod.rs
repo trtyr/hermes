@@ -7,12 +7,15 @@ use tokio::sync::{RwLock, mpsc};
 
 use super::{
     AgentBuildFacade, AgentCommandFacade, AgentQueryFacade, AuthFacade, CommandSessionFacade,
-    ListenerCommandFacade, ListenerQueryFacade, TaskFacade,
+    ListenerCommandFacade, ListenerQueryFacade, ProxyFacade, TaskFacade,
 };
 use crate::kernel::{
     auth::AuthService,
     bus::KernelBus,
-    message::{AgentKernelMessage, CommandSessionKernelMessage, KernelMessage, TaskKernelMessage},
+    message::{
+        AgentKernelMessage, CommandSessionKernelMessage, KernelMessage, ProxyKernelMessage,
+        TaskKernelMessage,
+    },
     runtime::EventBus,
     state::KernelState,
     storage::{AuditRecordFilter, Storage},

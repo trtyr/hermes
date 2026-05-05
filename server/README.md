@@ -131,7 +131,7 @@ Agent build semantics:
 
 - server generates agent binaries matched to a selected listener
 - builds are recorded in SQLite for later traceability
-- current supported workflows include host builds plus tested Windows and Linux cross-builds
+- current supported workflows include host builds plus tested Windows cross-builds
 - artifact generation is local; distribution is intentionally out of scope for now
 
 ## Agent Protocol
@@ -234,7 +234,7 @@ or:
 {
   "listener_id": 1,
   "profile": "release",
-  "target_triple": "x86_64-unknown-linux-musl"
+  "target_triple": "x86_64-pc-windows-msvc"
 }
 ```
 

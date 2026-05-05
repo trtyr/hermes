@@ -34,3 +34,6 @@ __pycache__/
 
 # Local git worktrees
 .worktrees/
+
+# Codegraph index
+.codegraph/

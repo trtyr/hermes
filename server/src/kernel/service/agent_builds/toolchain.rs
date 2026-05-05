@@ -24,10 +24,6 @@ pub(super) fn build_command_for_target(target_triple: &str, profile: &str) -> Co
         // Statically link CRT so the binary doesn't depend on vcruntime140.dll
         command.env("RUSTFLAGS", "-C target-feature=+crt-static");
         command
-    } else if target_triple.contains("linux-musl") {
-        let mut command = Command::new("cargo");
-        command.arg("zigbuild");
-        command
     } else {
         let mut command = Command::new("cargo");
         command.arg("build");
@@ -42,7 +38,7 @@ pub(super) fn build_command_for_target(target_triple: &str, profile: &str) -> Co
 }
 
 pub(super) async fn ensure_target_support(target_triple: &str) -> anyhow::Result<()> {
-    if target_triple.contains("windows-msvc") || target_triple.contains("linux-musl") {
+    if target_triple.contains("windows-msvc") {
         let status = Command::new("rustup")
             .arg("target")
             .arg("add")

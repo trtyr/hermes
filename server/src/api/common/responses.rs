@@ -30,6 +30,18 @@ pub(crate) struct CommandSessionsResponse {
 }
 
 #[derive(Serialize)]
+pub(crate) struct ProxySessionsResponse {
+    pub(crate) proxies: Vec<crate::protocol::ProxySessionSnapshot>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ProxySessionResponse {
+    pub(crate) success: bool,
+    pub(crate) detail: String,
+    pub(crate) proxy: crate::protocol::ProxySessionSnapshot,
+}
+
+#[derive(Serialize)]
 pub(crate) struct CommandExecutionsResponse {
     pub(crate) commands: Vec<crate::protocol::CommandExecutionSnapshot>,
     pub(crate) total: usize,

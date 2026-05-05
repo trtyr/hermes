@@ -6,12 +6,19 @@ pub struct KernelState {
     pub(super) tasks: HashMap<String, TaskRecord>,
     pub(super) command_sessions: HashMap<String, CommandSessionRecord>,
     pub(super) command_executions: HashMap<String, CommandExecutionRecord>,
+    pub(super) proxy_sessions: HashMap<String, ProxySessionRecord>,
+    pub(super) proxy_streams: HashMap<String, ProxyStreamRecord>,
     pub(super) pending_open_command_sessions:
         HashMap<String, oneshot::Sender<anyhow::Result<CommandSessionSnapshot>>>,
     pub(super) pending_command_executes: HashMap<String, PendingCommandExecute>,
     pub(super) pending_close_command_sessions:
         HashMap<String, oneshot::Sender<anyhow::Result<CommandSessionSnapshot>>>,
     pub(super) pending_agent_beacon_updates: HashMap<String, PendingAgentBeaconUpdate>,
+    pub(super) pending_proxy_stream_opens: HashMap<String, oneshot::Sender<anyhow::Result<()>>>,
+    pub(super) pending_proxy_session_starts:
+        HashMap<String, oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>>,
+    pub(super) pending_proxy_session_stops:
+        HashMap<String, oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>>,
 }
 
 pub struct AgentSession {
@@ -107,6 +114,26 @@ pub struct CommandExecutionRecord {
     pub success: Option<bool>,
 }
 
+#[derive(Clone)]
+pub struct ProxySessionRecord {
+    pub proxy_id: String,
+    pub agent_id: String,
+    pub bind_addr: String,
+    pub status: ProxySessionStatus,
+    pub active_stream_ids: HashSet<String>,
+    pub created_at: u64,
+    pub updated_at: u64,
+    pub last_error: Option<String>,
+}
+
+pub struct ProxyStreamRecord {
+    pub stream_id: String,
+    pub proxy_id: String,
+    pub target_host: String,
+    pub target_port: u16,
+    pub client_sender: mpsc::UnboundedSender<Option<Vec<u8>>>,
+}
+
 pub(super) struct PendingCommandExecute {
     pub(super) command_id: String,
     pub(super) sender: oneshot::Sender<anyhow::Result<CommandSessionResult>>,
@@ -125,10 +152,15 @@ impl KernelState {
             tasks: HashMap::new(),
             command_sessions: HashMap::new(),
             command_executions: HashMap::new(),
+            proxy_sessions: HashMap::new(),
+            proxy_streams: HashMap::new(),
             pending_open_command_sessions: HashMap::new(),
             pending_command_executes: HashMap::new(),
             pending_close_command_sessions: HashMap::new(),
             pending_agent_beacon_updates: HashMap::new(),
+            pending_proxy_stream_opens: HashMap::new(),
+            pending_proxy_session_starts: HashMap::new(),
+            pending_proxy_session_stops: HashMap::new(),
         }
     }
 }

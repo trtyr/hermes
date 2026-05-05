@@ -48,7 +48,7 @@ Release profile is tuned for minimal binary size (`opt-level = "z"`, `codegen-un
 
 Optional `tls` feature: `cargo build --features tls`.
 
-Cross-compilation: `--target x86_64-pc-windows-msvc` or `x86_64-unknown-linux-musl`.
+Cross-compilation: `--target x86_64-pc-windows-msvc`.
 
 ### Web Client (`client/`)
 

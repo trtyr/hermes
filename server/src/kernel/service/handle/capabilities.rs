@@ -49,6 +49,12 @@ impl KernelHandle {
         }
     }
 
+    pub fn proxy(&self) -> ProxyFacade {
+        ProxyFacade {
+            kernel: self.clone(),
+        }
+    }
+
     pub fn events(&self) -> EventBus {
         self.events.clone()
     }

@@ -23,9 +23,7 @@
 
         <!-- OS + arch -->
         <div class="flex items-center gap-1.5 text-sm text-slate-600">
-          <WindowsOutlined v-if="agent.os && agent.os.toLowerCase().includes('windows')" class="text-blue-500" />
-          <AppleOutlined v-else-if="agent.os && (agent.os.toLowerCase().includes('mac') || agent.os.toLowerCase().includes('darwin'))" class="text-gray-500" />
-          <DesktopOutlined v-else class="text-slate-500" />
+          <WindowsOutlined class="text-blue-500" />
           <span>{{ agent.os }} {{ agent.arch }}</span>
         </div>
 
@@ -268,7 +266,7 @@ import { ref, reactive, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import {
-  LeftOutlined, WindowsOutlined, AppleOutlined, DesktopOutlined,
+  LeftOutlined, WindowsOutlined,
   SafetyCertificateOutlined, SettingOutlined, CameraOutlined,
   FolderOpenOutlined, FolderOutlined, FileOutlined, DownloadOutlined,
   ExclamationCircleOutlined, ClockCircleOutlined,

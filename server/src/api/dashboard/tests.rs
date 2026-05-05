@@ -12,7 +12,7 @@ fn summarize_agents_counts_online_and_disabled() {
             listener_name: Some("default-agent-tcp".to_string()),
             hostname: Some("host-1".to_string()),
             username: Some("alice".to_string()),
-            os: Some("macos".to_string()),
+            os: Some("windows".to_string()),
             arch: Some("aarch64".to_string()),
             pid: Some(1001),
             internal_ip: Some("10.0.0.11".to_string()),

@@ -80,6 +80,33 @@ pub enum AgentMessage {
     CommandSessionClosed {
         command_session_id: String,
     },
+    ProxyOpened {
+        proxy_id: String,
+        bind_addr: String,
+    },
+    ProxyConnectResult {
+        proxy_id: String,
+        stream_id: String,
+        success: bool,
+        detail: Option<String>,
+    },
+    ProxyData {
+        proxy_id: String,
+        stream_id: String,
+        data_base64: String,
+    },
+    ProxyClosed {
+        proxy_id: String,
+        stream_id: String,
+    },
+    ProxyError {
+        proxy_id: String,
+        stream_id: Option<String>,
+        detail: String,
+    },
+    ProxySessionClosed {
+        proxy_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,6 +157,28 @@ pub enum ServerCommand {
     },
     CloseCommandSession {
         command_session_id: String,
+    },
+    OpenProxy {
+        proxy_id: String,
+        bind_addr: String,
+    },
+    ProxyConnect {
+        proxy_id: String,
+        stream_id: String,
+        host: String,
+        port: u16,
+    },
+    ProxyData {
+        proxy_id: String,
+        stream_id: String,
+        data_base64: String,
+    },
+    ProxyClose {
+        proxy_id: String,
+        stream_id: String,
+    },
+    CloseProxy {
+        proxy_id: String,
     },
 }
 
@@ -193,6 +242,27 @@ pub struct AuditRecord {
     pub target_id: Option<String>,
     pub detail: Option<String>,
     pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProxySessionStatus {
+    Opening,
+    Open,
+    Closed,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxySessionSnapshot {
+    pub proxy_id: String,
+    pub agent_id: String,
+    pub bind_addr: String,
+    pub status: ProxySessionStatus,
+    pub active_streams: usize,
+    pub created_at: u64,
+    pub updated_at: u64,
+    pub last_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -436,6 +506,16 @@ pub enum WebEvent {
     },
     CommandUpdated {
         command: CommandExecutionSnapshot,
+    },
+    ProxySessionOpened {
+        proxy: ProxySessionSnapshot,
+    },
+    ProxySessionUpdated {
+        proxy: ProxySessionSnapshot,
+    },
+    ProxySessionClosed {
+        proxy_id: String,
+        agent_id: String,
     },
     AgentBuildCreated {
         build: AgentBuildRecord,

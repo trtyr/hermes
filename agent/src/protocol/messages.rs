@@ -69,6 +69,33 @@ pub enum AgentMessage {
     CommandSessionClosed {
         command_session_id: String,
     },
+    ProxyOpened {
+        proxy_id: String,
+        bind_addr: String,
+    },
+    ProxyConnectResult {
+        proxy_id: String,
+        stream_id: String,
+        success: bool,
+        detail: Option<String>,
+    },
+    ProxyData {
+        proxy_id: String,
+        stream_id: String,
+        data_base64: String,
+    },
+    ProxyClosed {
+        proxy_id: String,
+        stream_id: String,
+    },
+    ProxyError {
+        proxy_id: String,
+        stream_id: Option<String>,
+        detail: String,
+    },
+    ProxySessionClosed {
+        proxy_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -112,6 +139,28 @@ pub enum ServerCommand {
     },
     CloseCommandSession {
         command_session_id: String,
+    },
+    OpenProxy {
+        proxy_id: String,
+        bind_addr: String,
+    },
+    ProxyConnect {
+        proxy_id: String,
+        stream_id: String,
+        host: String,
+        port: u16,
+    },
+    ProxyData {
+        proxy_id: String,
+        stream_id: String,
+        data_base64: String,
+    },
+    ProxyClose {
+        proxy_id: String,
+        stream_id: String,
+    },
+    CloseProxy {
+        proxy_id: String,
     },
 }
 

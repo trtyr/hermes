@@ -10,6 +10,15 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
+macro_rules! nlog {
+    ($($arg:tt)*) => {{
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("agent_debug.log") {
+            let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis();
+            let _ = writeln!(f, "[{}] {}", ts, format!($($arg)*));
+        }
+    }};
+}
+
 #[cfg(feature = "tls")]
 use rustls::{ClientConfig, ClientConnection, StreamOwned};
 #[cfg(feature = "tls")]
@@ -43,10 +52,15 @@ impl NetworkService {
             Ok(s) => {
                 s.set_read_timeout(Some(Duration::from_secs(30))).ok();
                 s.set_write_timeout(Some(Duration::from_secs(30))).ok();
+                let _ = s.set_nodelay(true);
+                nlog!("NET connect OK to {}, nodelay=true", addr);
                 self.stream = Some(s);
                 true
             }
-            Err(_) => false,
+            Err(e) => {
+                nlog!("NET connect FAIL to {}: {}", addr, e);
+                false
+            }
         }
     }
 
@@ -100,23 +114,33 @@ impl NetworkService {
 
     pub fn send(&mut self, msg: &impl serde::Serialize) -> Result<(), ()> {
         let json = serde_json::to_string(msg).map_err(|_| ())?;
+        nlog!("NET SEND: {} bytes: {}", json.len(), &json[..json.len().min(200)]);
         let stream = self.stream.as_mut().ok_or(())?;
-        writeln!(stream, "{}", json).map_err(|_| ())?;
-        Ok(())
+        let result = writeln!(stream, "{}", json);
+        match &result {
+            Ok(()) => nlog!("NET SEND OK"),
+            Err(e) => nlog!("NET SEND ERR: {}", e),
+        }
+        result.map_err(|_| ())
     }
 
     // --- read_line ---
 
     pub fn read_line(&mut self, timeout: Duration) -> Result<Option<String>, ()> {
         let stream = self.stream.as_mut().ok_or(())?;
-        Self::set_stream_read_timeout(stream, timeout).map_err(|_| ())?;
+        Self::set_stream_read_timeout(stream, timeout).map_err(|e| {
+            nlog!("read_line: set_timeout err: {}", e);
+        })?;
 
         let mut buf = Vec::new();
         let mut byte = [0u8; 1];
 
         loop {
             match stream.read(&mut byte) {
-                Ok(0) => return Ok(None),
+                Ok(0) => {
+                    nlog!("read_line: EOF (server closed)");
+                    return Ok(None);
+                }
                 Ok(1) => {
                     if byte[0] == b'\n' {
                         while buf.last() == Some(&b'\r') {
@@ -131,7 +155,10 @@ impl NetworkService {
                         return Err(());
                     }
                 }
-                Err(_) => return Ok(None),
+                Err(ref e) => {
+                    nlog!("read_line: fatal err: {} (kind={:?})", e, e.kind());
+                    return Ok(None);
+                }
                 Ok(_) => unreachable!(),
             }
         }
@@ -142,19 +169,24 @@ impl NetworkService {
     pub fn receive_hello(&mut self) -> Option<ServerHello> {
         let stream = self.stream.as_mut()?;
         Self::set_stream_read_timeout(stream, Duration::from_millis(250)).ok();
+        nlog!("receive_hello: waiting up to 250ms");
 
         let mut buf = Vec::new();
         let mut byte = [0u8; 1];
 
         loop {
             match stream.read(&mut byte) {
-                Ok(0) => return None,
+                Ok(0) => {
+                    nlog!("receive_hello: EOF");
+                    return None;
+                }
                 Ok(1) => {
                     if byte[0] == b'\n' {
                         while buf.last() == Some(&b'\r') {
                             buf.pop();
                         }
                         let line = String::from_utf8_lossy(&buf).to_string();
+                        nlog!("receive_hello: got line: {}", &line[..line.len().min(200)]);
                         let cmd: ServerCommand = serde_json::from_str(&line).ok()?;
                         match cmd {
                             ServerCommand::Hello {
@@ -162,17 +194,24 @@ impl NetworkService {
                                 auth_mode,
                                 ..
                             } => {
+                                nlog!("receive_hello: parsed Hello");
                                 return Some(ServerHello {
                                     session_nonce,
                                     auth_mode,
                                 });
                             }
-                            _ => return None,
+                            other => {
+                                nlog!("receive_hello: got non-Hello command, ignoring");
+                                return None;
+                            }
                         }
                     }
                     buf.push(byte[0]);
                 }
-                Err(_) => return None,
+                Err(ref e) => {
+                    nlog!("receive_hello: read err: {} (kind={:?})", e, e.kind());
+                    return None;
+                }
                 Ok(_) => unreachable!(),
             }
         }

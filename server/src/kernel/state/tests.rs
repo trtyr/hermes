@@ -574,7 +574,7 @@ fn registered_agent_heartbeat_timeout_uses_triple_interval_plus_jitter_and_grace
         listener_name: Some("default-agent-tcp".to_string()),
         hostname: Some("host-1".to_string()),
         username: Some("tester".to_string()),
-        os: Some("linux".to_string()),
+        os: Some("windows".to_string()),
         arch: Some("amd64".to_string()),
         pid: Some(1001),
         internal_ip: Some("10.0.0.1".to_string()),

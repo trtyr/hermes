@@ -5,6 +5,7 @@ mod bootstrap;
 mod command_sessions;
 mod dispatch;
 mod effects;
+mod proxy;
 mod task_flow;
 mod watchdog;
 
@@ -24,7 +25,10 @@ use tokio::{
 use super::{
     auth::AuthService,
     bus::KernelBus,
-    message::{AgentKernelMessage, CommandSessionKernelMessage, KernelMessage, TaskKernelMessage},
+    message::{
+        AgentKernelMessage, CommandSessionKernelMessage, KernelMessage, ProxyKernelMessage,
+        TaskKernelMessage,
+    },
     service::KernelHandle,
     state::KernelState,
     storage::Storage,

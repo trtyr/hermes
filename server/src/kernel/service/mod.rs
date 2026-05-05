@@ -6,6 +6,7 @@ mod command_sessions;
 mod handle;
 mod listener_commands;
 mod listener_queries;
+mod proxy;
 mod tasks;
 
 pub use agent_builds::AgentBuildFacade;
@@ -16,4 +17,5 @@ pub use command_sessions::{CommandSessionFacade, is_command_session_timeout};
 pub use handle::KernelHandle;
 pub use listener_commands::ListenerCommandFacade;
 pub use listener_queries::ListenerQueryFacade;
+pub use proxy::ProxyFacade;
 pub use tasks::TaskFacade;

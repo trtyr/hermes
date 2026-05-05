@@ -1,6 +1,7 @@
 //! Operations - local command execution helpers
 
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct AgentConfig {
@@ -16,7 +17,7 @@ pub struct AgentConfig {
 pub fn execute_operation(
     command: &str,
     payload: Option<&str>,
-    _cfg: &AgentConfig,
+    cfg: &AgentConfig,
 ) -> (bool, String) {
     let cmd = match payload {
         Some(p) if !p.trim().is_empty() => format!("{} {}", command.trim(), p.trim()),
@@ -27,7 +28,7 @@ pub fn execute_operation(
         return (true, String::new());
     }
 
-    exec_cmd(&cmd, None)
+    exec_cmd(&cmd, None, cfg.command_timeout_secs)
 }
 
 pub fn build_operation_command(command: &str, payload: Option<&str>) -> String {
@@ -52,65 +53,60 @@ pub fn spawn_operation(
     spawn_shell_process(&command, cwd)
 }
 
-pub fn execute_shell(command: &str, cwd: Option<&str>, _timeout: u64) -> (bool, String) {
-    exec_cmd(command, cwd)
+pub fn execute_shell(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, String) {
+    exec_cmd(command, cwd, timeout_secs)
 }
 
 pub fn terminate_process(pid: u32) -> bool {
-    if cfg!(target_os = "windows") {
-        Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T", "/F"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false)
-    } else {
-        Command::new("kill")
-            .args(["-TERM", &pid.to_string()])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false)
-    }
+    Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }
 
-fn exec_cmd(command: &str, cwd: Option<&str>) -> (bool, String) {
-    let output = spawn_shell_process(command, cwd).and_then(|process| process.wait_with_output());
+fn exec_cmd(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, String) {
+    let child = match spawn_shell_process(command, cwd) {
+        Ok(c) => c,
+        Err(_) => return (false, "exec failed".to_string()),
+    };
 
-    match output {
-        Ok(o) => {
-            let code = o.status.code().unwrap_or(-1);
-            let out = String::from_utf8_lossy(&o.stdout).to_string();
-            let err = String::from_utf8_lossy(&o.stderr).to_string();
-            let merged = if err.is_empty() {
-                out
-            } else {
-                format!("{out}\n{err}")
-            };
-            let trimmed = merged.trim();
-            (code == 0, trimmed.to_string())
+    let output = match wait_child(child, timeout_secs) {
+        ChildResult::Finished(output) => output,
+        ChildResult::TimedOut => {
+            return (false, format!("command timed out after {timeout_secs}s"));
         }
-        Err(_) => (false, "exec failed".to_string()),
-    }
+        ChildResult::Failed => {
+            return (false, "exec failed".to_string());
+        }
+    };
+
+    let code = output.status.code().unwrap_or(-1);
+    let out = decode_output(&output.stdout);
+    let err = decode_output(&output.stderr);
+    let merged = if err.trim().is_empty() {
+        out
+    } else if out.trim().is_empty() {
+        err
+    } else {
+        format!("{out}\n{err}")
+    };
+    let trimmed = merged.trim();
+    (code == 0, trimmed.to_string())
 }
 
 fn windows_shell_command(command: &str) -> String {
-    format!("chcp 65001 >nul && {command}")
+    // No chcp prefix — let commands run in native code page (e.g. GBK/936 on Chinese Windows).
+    // The decode_output() function handles encoding conversion properly.
+    command.to_string()
 }
 
 fn spawn_shell_process(command: &str, cwd: Option<&str>) -> std::io::Result<std::process::Child> {
-    let mut process = if cfg!(target_os = "windows") {
-        let mut process = Command::new("cmd");
-        let command = windows_shell_command(command);
-        process.args(["/C", &command]);
-        process
-    } else {
-        let mut process = Command::new("sh");
-        process.args(["-lc", command]);
-        process
-    };
+    let mut process = Command::new("cmd");
+    let command = windows_shell_command(command);
+    process.args(["/C", &command]);
     if let Some(cwd) = cwd {
         process.current_dir(cwd);
     }
@@ -124,13 +120,58 @@ fn spawn_shell_process(command: &str, cwd: Option<&str>) -> std::io::Result<std:
 pub fn default_cwd() -> String {
     std::env::current_dir()
         .map(|path| path.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| {
-            if cfg!(target_os = "windows") {
-                "C:\\".to_string()
-            } else {
-                "/".to_string()
+        .unwrap_or_else(|_| "C:\\".to_string())
+}
+
+/// Decode raw bytes from a child process output.
+/// Tries UTF-8 first; if the bytes are not valid UTF-8,
+/// falls back to GBK (code page 936, the ANSI code page on Chinese Windows).
+pub fn decode_output(raw: &[u8]) -> String {
+    if raw.is_empty() {
+        return String::new();
+    }
+    // Fast path: valid UTF-8
+    if let Ok(s) = std::str::from_utf8(raw) {
+        return s.to_string();
+    }
+    // Windows: try system ANSI code page (GBK/936 on Chinese systems)
+    let (decoded, _encoding_used, _had_errors) = encoding_rs::GBK.decode(raw);
+    decoded.to_string()
+}
+
+pub enum ChildResult {
+    Finished(std::process::Output),
+    TimedOut,
+    Failed,
+}
+
+/// Wait for a child process with an optional timeout.
+/// If timeout_secs is 0, waits indefinitely.
+pub fn wait_child(child: std::process::Child, timeout_secs: u64) -> ChildResult {
+    if timeout_secs == 0 {
+        match child.wait_with_output() {
+            Ok(output) => ChildResult::Finished(output),
+            Err(_) => ChildResult::Failed,
+        }
+    } else {
+        let pid = child.id();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = child.wait_with_output();
+            let _ = tx.send(result);
+        });
+        match rx.recv_timeout(Duration::from_secs(timeout_secs)) {
+            Ok(Ok(output)) => ChildResult::Finished(output),
+            Ok(Err(_)) => ChildResult::Failed,
+            Err(_) => {
+                // Timeout — kill the process
+                terminate_process(pid);
+                // Drain the result so the thread doesn't panic
+                let _ = rx.recv();
+                ChildResult::TimedOut
             }
-        })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -138,11 +179,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn windows_shell_command_prefixes_utf8_code_page_switch() {
+    fn windows_shell_command_returns_command_unchanged() {
         assert_eq!(
             windows_shell_command("dir /b"),
-            "chcp 65001 >nul && dir /b"
+            "dir /b"
         );
+    }
+
+    #[test]
+    fn decode_output_utf8_passthrough() {
+        let input = "hello world".as_bytes();
+        assert_eq!(decode_output(input), "hello world");
+    }
+
+    #[test]
+    fn decode_output_empty() {
+        assert_eq!(decode_output(&[]), "");
     }
 }
 

@@ -264,11 +264,7 @@ async fn run_build(
         ));
     }
 
-    let binary_name = if target_triple.contains("windows") {
-        "agent.exe"
-    } else {
-        "agent"
-    };
+    let binary_name = "agent.exe";
     let profile_dir = if profile == "release" {
         "release"
     } else {

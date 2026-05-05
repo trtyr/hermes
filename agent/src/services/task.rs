@@ -1,7 +1,7 @@
 //! Task Service - task execution
 
 use crate::kernel::Plugin;
-use crate::ops::{spawn_operation, terminate_process, AgentConfig};
+use crate::ops::{decode_output, spawn_operation, terminate_process, wait_child, AgentConfig, ChildResult};
 use crate::protocol::{AgentMessage, AgentTaskStatus};
 use std::collections::HashMap;
 use std::sync::{
@@ -13,6 +13,7 @@ use std::sync::{
 pub struct TaskService {
     running: Arc<Mutex<HashMap<String, RunningTaskHandle>>>,
     sender: Sender<AgentMessage>,
+    command_timeout_secs: u64,
 }
 
 #[derive(Clone)]
@@ -24,10 +25,10 @@ struct RunningTaskHandle {
 
 impl TaskService {
     pub fn new(config: AgentConfig, sender: Sender<AgentMessage>) -> Self {
-        let _ = config;
         Self {
             running: Arc::new(Mutex::new(HashMap::new())),
             sender,
+            command_timeout_secs: config.command_timeout_secs,
         }
     }
 
@@ -89,6 +90,7 @@ impl TaskService {
         let tid = task_id.to_string();
         let cmd = command.to_string();
         let pay = payload.map(String::from);
+        let timeout_secs = self.command_timeout_secs;
         let handle = RunningTaskHandle {
             pid: Arc::new(Mutex::new(None)),
             cancel_requested: Arc::new(AtomicBool::new(false)),
@@ -101,7 +103,10 @@ impl TaskService {
             .insert(tid.clone(), handle.clone());
 
         std::thread::spawn(move || {
-            let child = match spawn_operation(&cmd, pay.as_deref(), None) {
+            // For generic commands ("shell" etc.), the payload IS the actual command.
+            // The task "command" field is just a type tag, not something to execute.
+            let actual_cmd = pay.as_deref().unwrap_or(&cmd);
+            let child = match spawn_operation(actual_cmd, None, None) {
                 Ok(child) => child,
                 Err(_) => {
                     running.lock().unwrap().remove(&tid);
@@ -126,13 +131,13 @@ impl TaskService {
                 handle.killed.store(true, Ordering::SeqCst);
             }
 
-            let result = child.wait_with_output();
+            let result = wait_child(child, timeout_secs);
             running.lock().unwrap().remove(&tid);
 
             match result {
-                Ok(output) => {
-                    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                ChildResult::Finished(output) => {
+                    let stdout = decode_output(&output.stdout);
+                    let stderr = decode_output(&output.stderr);
                     let merged = if err_is_empty(&stderr) {
                         stdout
                     } else if stdout.trim().is_empty() {
@@ -162,7 +167,14 @@ impl TaskService {
                         });
                     }
                 }
-                Err(_) => {
+                ChildResult::TimedOut => {
+                    let _ = sender.send(AgentMessage::TaskResult {
+                        task_id: tid.clone(),
+                        success: false,
+                        output: format!("command timed out after {timeout_secs}s"),
+                    });
+                }
+                ChildResult::Failed => {
                     let _ = sender.send(AgentMessage::TaskResult {
                         task_id: tid.clone(),
                         success: false,

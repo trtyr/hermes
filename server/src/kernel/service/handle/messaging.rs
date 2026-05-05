@@ -28,4 +28,11 @@ impl KernelHandle {
     ) -> anyhow::Result<(), mpsc::error::SendError<KernelMessage>> {
         self.send(KernelMessage::CommandSession(message)).await
     }
+
+    pub(in crate::kernel::service) async fn send_proxy_message(
+        &self,
+        message: ProxyKernelMessage,
+    ) -> anyhow::Result<(), mpsc::error::SendError<KernelMessage>> {
+        self.send(KernelMessage::Proxy(message)).await
+    }
 }

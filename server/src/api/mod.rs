@@ -94,6 +94,14 @@ pub async fn run_http_api(
             post(agents::take_screenshot),
         )
         .route(
+            "/agents/{agent_id}/proxy",
+            get(agents::list_proxy).post(agents::start_proxy),
+        )
+        .route(
+            "/agents/{agent_id}/proxy/{proxy_id}",
+            axum::routing::delete(agents::stop_proxy),
+        )
+        .route(
             "/listeners",
             get(listeners::list_listeners).post(listeners::create_listener),
         )

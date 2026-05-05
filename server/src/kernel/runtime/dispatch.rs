@@ -18,6 +18,9 @@ pub(super) async fn kernel_loop(
             KernelMessage::CommandSession(session_message) => {
                 route_command_session_message(&state, &effects, session_message).await;
             }
+            KernelMessage::Proxy(proxy_message) => {
+                route_proxy_message(&state, &effects, proxy_message).await;
+            }
         }
     }
 }
@@ -165,8 +168,67 @@ async fn route_command_session_message(
             command_session_id,
             respond_to,
         } => {
-            command_sessions::close_command_session(state, effects, command_session_id, respond_to)
+            command_sessions::close_command_session(
+                state,
+                effects,
+                command_session_id,
+                respond_to,
+            )
+            .await;
+        }
+    }
+}
+
+async fn route_proxy_message(
+    state: &Arc<RwLock<KernelState>>,
+    effects: &RuntimePorts,
+    message: ProxyKernelMessage,
+) {
+    match message {
+        ProxyKernelMessage::StartSession {
+            agent_id,
+            proxy_id,
+            bind_addr,
+            respond_to,
+        } => {
+            proxy::start_proxy_session(state, effects, agent_id, proxy_id, bind_addr, respond_to)
                 .await;
+        }
+        ProxyKernelMessage::StopSession {
+            proxy_id,
+            respond_to,
+        } => {
+            proxy::stop_proxy_session(state, effects, proxy_id, respond_to).await;
+        }
+        ProxyKernelMessage::OpenStream {
+            proxy_id,
+            stream_id,
+            host,
+            port,
+            client_sender,
+            respond_to,
+        } => {
+            proxy::open_stream(
+                state,
+                effects,
+                proxy_id,
+                stream_id,
+                host,
+                port,
+                client_sender,
+                respond_to,
+            )
+            .await;
+        }
+        ProxyKernelMessage::ClientData {
+            proxy_id,
+            stream_id,
+            data,
+        } => {
+            proxy::client_data(state, effects, proxy_id, stream_id, data).await;
+        }
+        ProxyKernelMessage::ClientClosed { proxy_id, stream_id } => {
+            proxy::client_closed(state, effects, proxy_id, stream_id).await;
         }
     }
 }
