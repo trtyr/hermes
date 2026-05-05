@@ -1,11 +1,45 @@
 //! Platform-native system information
 
 pub fn get_hostname() -> String {
-    std::env::var("COMPUTERNAME").unwrap_or_else(|_| "unknown".to_string())
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::System::SystemInformation::GetComputerNameW;
+        const MAX_NAME: usize = 256;
+        let mut buf = [0u16; MAX_NAME];
+        let mut len = MAX_NAME as u32;
+        unsafe {
+            if GetComputerNameW(buf.as_mut_ptr(), &mut len) != 0 {
+                String::from_utf16_lossy(&buf[..len as usize])
+            } else {
+                "unknown".to_string()
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::var("COMPUTERNAME").unwrap_or_else(|_| "unknown".to_string())
+    }
 }
 
 pub fn get_username() -> String {
-    std::env::var("USERNAME").unwrap_or_else(|_| "unknown".to_string())
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::System::SystemInformation::GetUserNameW;
+        const UNLEN: usize = 256;
+        let mut buf = [0u16; UNLEN];
+        let mut len = UNLEN as u32;
+        unsafe {
+            if GetUserNameW(buf.as_mut_ptr(), &mut len) != 0 {
+                String::from_utf16_lossy(&buf[..(len - 1) as usize])
+            } else {
+                "unknown".to_string()
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::var("USERNAME").unwrap_or_else(|_| "unknown".to_string())
+    }
 }
 
 pub fn get_pid() -> u32 {

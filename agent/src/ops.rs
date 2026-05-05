@@ -1,6 +1,5 @@
 //! Operations - local command execution helpers
 
-use std::process::{Command, Stdio};
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -58,13 +57,25 @@ pub fn execute_shell(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bo
 }
 
 pub fn terminate_process(pid: u32) -> bool {
-    Command::new("taskkill")
-        .args(["/PID", &pid.to_string(), "/T", "/F"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+        unsafe {
+            let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+            if handle == 0 {
+                return false;
+            }
+            let result = TerminateProcess(handle, 1);
+            CloseHandle(handle);
+            result != 0
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = pid;
+        false
+    }
 }
 
 fn exec_cmd(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, String) {
@@ -97,23 +108,47 @@ fn exec_cmd(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, Strin
     (code == 0, trimmed.to_string())
 }
 
-fn windows_shell_command(command: &str) -> String {
-    // No chcp prefix — let commands run in native code page (e.g. GBK/936 on Chinese Windows).
-    // The decode_output() function handles encoding conversion properly.
-    command.to_string()
-}
-
 fn spawn_shell_process(command: &str, cwd: Option<&str>) -> std::io::Result<std::process::Child> {
-    let mut process = Command::new("cmd");
-    let command = windows_shell_command(command);
-    process.args(["/C", &command]);
-    if let Some(cwd) = cwd {
-        process.current_dir(cwd);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let (program, args) = if command.starts_with('"') {
+            if let Some(end) = command[1..].find('"') {
+                let prog = &command[1..end + 1];
+                let rest = command[end + 2..].trim();
+                (prog.to_string(), rest.to_string())
+            } else {
+                (command.to_string(), String::new())
+            }
+        } else {
+            match command.split_once(' ') {
+                Some((prog, rest)) => (prog.to_string(), rest.to_string()),
+                None => (command.to_string(), String::new()),
+            }
+        };
+        let mut cmd = std::process::Command::new(&program);
+        if !args.is_empty() {
+            cmd.raw_arg(&args);
+        }
+        if let Some(cwd) = cwd {
+            cmd.current_dir(cwd);
+        }
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        cmd.spawn()
     }
-    process
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
+    #[cfg(not(windows))]
+    {
+        let mut cmd = std::process::Command::new("sh");
+        cmd.arg("-c").arg(command);
+        if let Some(cwd) = cwd {
+            cmd.current_dir(cwd);
+        }
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+    }
 }
 
 /// Default working directory - hardcoded fallback
@@ -177,14 +212,6 @@ pub fn wait_child(child: std::process::Child, timeout_secs: u64) -> ChildResult 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn windows_shell_command_returns_command_unchanged() {
-        assert_eq!(
-            windows_shell_command("dir /b"),
-            "dir /b"
-        );
-    }
 
     #[test]
     fn decode_output_utf8_passthrough() {

