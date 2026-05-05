@@ -3,7 +3,7 @@
 pub fn get_hostname() -> String {
     #[cfg(windows)]
     {
-        use windows_sys::Win32::System::SystemInformation::GetComputerNameW;
+        use windows_sys::Win32::System::WindowsProgramming::GetComputerNameW;
         const MAX_NAME: usize = 256;
         let mut buf = [0u16; MAX_NAME];
         let mut len = MAX_NAME as u32;
@@ -24,7 +24,7 @@ pub fn get_hostname() -> String {
 pub fn get_username() -> String {
     #[cfg(windows)]
     {
-        use windows_sys::Win32::System::SystemInformation::GetUserNameW;
+        use windows_sys::Win32::System::WindowsProgramming::GetUserNameW;
         const UNLEN: usize = 256;
         let mut buf = [0u16; UNLEN];
         let mut len = UNLEN as u32;

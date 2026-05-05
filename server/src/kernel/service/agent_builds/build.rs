@@ -1,6 +1,10 @@
+use std::sync::{Arc, Mutex};
+
+use tokio::io::AsyncBufReadExt;
+
 use super::*;
 
-use crate::protocol::{ListenerRecord, WebEvent};
+use crate::{kernel::storage::Storage, protocol::{ListenerRecord, WebEvent}};
 use toolchain::{
     build_command_for_target, detect_host_target_triple, ensure_target_support, sanitize_target,
 };
@@ -76,6 +80,7 @@ impl AgentBuildFacade {
         let jitter = jitter.unwrap_or(0);
 
         let kernel = self.kernel.clone();
+        let storage = self.kernel.storage.clone();
         let build_id = build.build_id;
         tokio::spawn(async move {
             let result = run_build(
@@ -87,6 +92,7 @@ impl AgentBuildFacade {
                 listener,
                 heartbeat_secs,
                 jitter,
+                storage,
             )
             .await;
 
@@ -207,6 +213,7 @@ async fn run_build(
     listener: Option<ListenerRecord>,
     heartbeat_secs: u64,
     jitter: u32,
+    storage: Storage,
 ) -> anyhow::Result<(String, String, String)> {
     let agent_project_path = PathBuf::from(DEFAULT_AGENT_PROJECT_PATH);
     let artifact_root = PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));
@@ -224,7 +231,10 @@ async fn run_build(
     if protocol == "tls" {
         command.args(["--features", "tls"]);
     }
-    command.current_dir(&agent_project_path);
+    command
+        .current_dir(&agent_project_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
     let server_module_path = agent_project_path.join(AGENT_SERVER_MODULE_PATH);
     let previous_server_module = fs::read_to_string(&server_module_path)?;
     fs::write(
@@ -238,10 +248,60 @@ async fn run_build(
         ),
     )?;
 
-    let output = command.output().await;
+    let mut child = command.spawn()?;
+    let stdout = child.stdout.take().expect("stdout piped");
+    let stderr = child.stderr.take().expect("stderr piped");
+
+    let accumulated = Arc::new(Mutex::new(String::new()));
+    let acc_stdout = accumulated.clone();
+    let acc_stderr = accumulated.clone();
+
+    let stdout_reader = tokio::spawn(async move {
+        let reader = tokio::io::BufReader::new(stdout);
+        let mut lines = reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let mut buf = acc_stdout.lock().unwrap();
+            buf.push_str(&line);
+            buf.push('\n');
+        }
+    });
+
+    let stderr_reader = tokio::spawn(async move {
+        let reader = tokio::io::BufReader::new(stderr);
+        let mut lines = reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let mut buf = acc_stderr.lock().unwrap();
+            buf.push_str(&line);
+            buf.push('\n');
+        }
+    });
+
+    // Periodically flush accumulated output to database
+    let flush_accumulated = accumulated.clone();
+    let flush_storage = storage.clone();
+    let flush_handle = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        loop {
+            interval.tick().await;
+            let detail = flush_accumulated.lock().unwrap().clone();
+            if let Err(e) = flush_storage.update_agent_build_detail(build_id, &detail).await {
+                eprintln!("[agent-build] failed to flush build {build_id} detail: {e}");
+            }
+        }
+    });
+
+    let status = child.wait().await;
+
+    // Stop periodic flush
+    flush_handle.abort();
+
+    // Wait for readers to finish draining
+    let _ = stdout_reader.await;
+    let _ = stderr_reader.await;
+
     let restore_result = fs::write(&server_module_path, previous_server_module);
-    let output = match (output, restore_result) {
-        (Ok(output), Ok(())) => output,
+    let status = match (status, restore_result) {
+        (Ok(status), Ok(())) => status,
         (Err(build_error), Ok(())) => return Err(build_error.into()),
         (Ok(_), Err(restore_error)) => {
             return Err(anyhow::anyhow!(
@@ -257,10 +317,18 @@ async fn run_build(
             ));
         }
     };
-    if !output.status.success() {
+
+    let detail = accumulated.lock().unwrap().clone();
+
+    // Final flush with complete output
+    if let Err(e) = storage.update_agent_build_detail(build_id, &detail).await {
+        eprintln!("[agent-build] failed to final-flush build {build_id} detail: {e}");
+    }
+
+    if !status.success() {
         return Err(anyhow::anyhow!(
             "agent build failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
+            detail.trim()
         ));
     }
 

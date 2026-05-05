@@ -73,6 +73,26 @@ impl Storage {
         .context("sqlite create agent build record join error")?
     }
 
+    pub async fn update_agent_build_detail(
+        &self,
+        build_id: i64,
+        detail: &str,
+    ) -> anyhow::Result<()> {
+        let path = self.sqlite_path.clone();
+        let detail = detail.to_string();
+        tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+            let connection = open_connection(&path)?;
+            connection.execute(
+                "UPDATE agent_builds SET detail = ?2, updated_at = ?3 WHERE build_id = ?1",
+                params![build_id, detail, now_ts()],
+            )?;
+            Ok(())
+        })
+        .await
+        .context("sqlite update agent build detail join error")??;
+        Ok(())
+    }
+
     pub async fn delete_agent_build_record(&self, build_id: i64) -> anyhow::Result<bool> {
         let path = self.sqlite_path.clone();
         tokio::task::spawn_blocking(move || {

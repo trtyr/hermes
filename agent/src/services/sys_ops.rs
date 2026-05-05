@@ -23,7 +23,7 @@ pub fn handle(task_id: &str, command: &str, sender: &Sender<AgentMessage>) {
 fn handle_ps(task_id: &str, sender: &Sender<AgentMessage>) {
     #[cfg(windows)]
     {
-        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
         use windows_sys::Win32::System::Diagnostics::ToolHelp::{
             CreateToolhelp32Snapshot, Process32FirstW, Process32NextW,
             PROCESSENTRY32W, TH32CS_SNAPPROCESS,
@@ -32,7 +32,7 @@ fn handle_ps(task_id: &str, sender: &Sender<AgentMessage>) {
         let mut result = String::new();
         unsafe {
             let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-            if snapshot == -1 as isize {
+            if snapshot == INVALID_HANDLE_VALUE {
                 let _ = sender.send(fail(task_id, "Failed to create process snapshot".to_string()));
                 return;
             }
@@ -100,7 +100,12 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
 #[cfg(windows)]
 unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
     use windows_sys::Win32::Graphics::Gdi::*;
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetSystemMetrics, SetProcessDPIAware, SM_CXSCREEN, SM_CYSCREEN,
+    };
+
+    // Ensure DPI awareness for correct full-screen capture on high-DPI displays
+    SetProcessDPIAware();
 
     let width = GetSystemMetrics(SM_CXSCREEN);
     let height = GetSystemMetrics(SM_CYSCREEN);

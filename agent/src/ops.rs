@@ -63,7 +63,7 @@ pub fn terminate_process(pid: u32) -> bool {
         use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
         unsafe {
             let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
-            if handle == 0 {
+            if handle.is_null() {
                 return false;
             }
             let result = TerminateProcess(handle, 1);

@@ -189,8 +189,40 @@ fn execute_session_line(
         };
     }
 
+    // Check for built-in system operations (ps, screenshot)
+    if super::sys_ops::is_sys_op(trimmed) {
+        return execute_builtin_sys_op(trimmed);
+    }
+
+    // Check for built-in file operations (upload, download, browse)
+    if super::file_ops::is_file_op(trimmed) {
+        return (false, format!("{}: use task dispatch instead", trimmed), String::new(), cwd.to_string());
+    }
+
     let (success, output) = execute_shell(line, Some(cwd), command_timeout_secs);
     (success, output, String::new(), cwd.to_string())
+}
+
+fn execute_builtin_sys_op(command: &str) -> (bool, String, String, String) {
+    use std::sync::mpsc;
+    let (tx, rx) = mpsc::channel();
+    let task_id = format!("session-builtin-{}", command);
+    let cmd = command.to_string();
+
+    std::thread::spawn(move || {
+        super::sys_ops::handle(&task_id, &cmd, &tx);
+    });
+
+    match rx.recv_timeout(std::time::Duration::from_secs(30)) {
+        Ok(AgentMessage::TaskResult { success, output, .. }) => {
+            if success {
+                (true, output, String::new(), String::new())
+            } else {
+                (false, output, String::new(), String::new())
+            }
+        }
+        _ => (false, "builtin op failed".to_string(), String::new(), String::new()),
+    }
 }
 
 fn parse_cd_target(line: &str) -> Option<&str> {

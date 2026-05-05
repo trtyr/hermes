@@ -99,6 +99,14 @@
           <template v-else-if="column.key === 'action'">
             <div class="flex items-center gap-2">
               <a-button
+                type="link"
+                size="small"
+                @click="openBuildLog(record)"
+              >
+                <template #icon><FileTextOutlined /></template>
+                查看日志
+              </a-button>
+              <a-button
                 v-if="record.status === 'succeeded'"
                 type="link"
                 size="small"
@@ -124,6 +132,36 @@
         </template>
       </a-table>
     </div>
+
+    <!-- Build Log Drawer -->
+    <a-drawer
+      :open="logDrawerVisible"
+      :title="`构建日志 #${logBuildId}`"
+      :width="700"
+      @close="closeBuildLog"
+    >
+      <template #extra>
+        <a-button size="small" @click="fetchBuildLog">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </a-button>
+      </template>
+      <div
+        ref="logContainerRef"
+        class="bg-gray-900 text-green-400 p-4 rounded text-xs font-mono whitespace-pre-wrap break-all"
+        style="max-height: calc(100vh - 200px); overflow-y: auto"
+      >
+        <template v-if="logContent">{{ logContent }}</template>
+        <span v-else class="text-gray-500">暂无日志输出...</span>
+      </div>
+      <div v-if="logBuildStatus === 'pending'" class="mt-3 text-sm text-slate-500 flex items-center gap-2">
+        <span class="relative flex h-2.5 w-2.5 shrink-0">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
+          <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-400"></span>
+        </span>
+        构建进行中，日志自动刷新中...
+      </div>
+    </a-drawer>
 
     <!-- Build Modal -->
     <a-modal
@@ -206,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import {
   RocketOutlined,
@@ -214,6 +252,7 @@ import {
   PlusOutlined,
   DownloadOutlined,
   DeleteOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
@@ -223,6 +262,7 @@ import {
   createAgentBuild,
   deleteAgentBuild,
   getBuildDownloadUrl,
+  fetchAgentBuild,
 } from '@/api/agentBuild';
 import { fetchListeners, ListenerRecord } from '@/api/listener';
 import { useConnectionStore } from '@/store/connection';
@@ -264,6 +304,14 @@ const buildForm = ref({
 const listeners = ref<ListenerRecord[]>([]);
 const listenersLoading = ref(false);
 const eventStore = useEventStore();
+
+// Log drawer state
+const logDrawerVisible = ref(false);
+const logBuildId = ref<number | null>(null);
+const logBuildStatus = ref('');
+const logContent = ref('');
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+const logContainerRef = ref<HTMLElement | null>(null);
 
 const columns = [
   { title: 'ID', dataIndex: 'build_id', key: 'build_id', width: 50 },
@@ -396,6 +444,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (unsubscribe) unsubscribe();
   if (refreshTimer) clearTimeout(refreshTimer);
+  stopPolling();
 });
 
 // Build action
@@ -427,6 +476,61 @@ const handleBuild = async () => {
     message.error(err.message || '创建构建失败');
   } finally {
     building.value = false;
+  }
+};
+
+// Log drawer functions
+const openBuildLog = (record: AgentBuildRecord) => {
+  logBuildId.value = record.build_id;
+  logBuildStatus.value = record.status;
+  logContent.value = record.detail || '';
+  logDrawerVisible.value = true;
+  fetchBuildLog();
+  if (record.status === 'pending') {
+    startPolling();
+  }
+};
+
+const closeBuildLog = () => {
+  logDrawerVisible.value = false;
+  stopPolling();
+};
+
+const fetchBuildLog = async () => {
+  if (!logBuildId.value) return;
+  try {
+    const build = await fetchAgentBuild(logBuildId.value);
+    logContent.value = build.detail || '';
+    logBuildStatus.value = build.status;
+    if (build.status !== 'pending') {
+      stopPolling();
+      // Also refresh the table so the status is up to date
+      loadBuilds();
+    }
+    await nextTick();
+    scrollToBottom();
+  } catch {
+    // Silently fail — will retry on next poll
+  }
+};
+
+const startPolling = () => {
+  stopPolling();
+  pollTimer = setInterval(() => {
+    fetchBuildLog();
+  }, 2000);
+};
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+};
+
+const scrollToBottom = () => {
+  if (logContainerRef.value) {
+    logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
   }
 };
 
