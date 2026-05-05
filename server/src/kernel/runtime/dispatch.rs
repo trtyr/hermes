@@ -194,12 +194,6 @@ async fn route_proxy_message(
             proxy::start_proxy_session(state, effects, agent_id, proxy_id, bind_addr, respond_to)
                 .await;
         }
-        ProxyKernelMessage::StopSession {
-            proxy_id,
-            respond_to,
-        } => {
-            proxy::stop_proxy_session(state, effects, proxy_id, respond_to).await;
-        }
         ProxyKernelMessage::OpenStream {
             proxy_id,
             stream_id,
@@ -229,6 +223,12 @@ async fn route_proxy_message(
         }
         ProxyKernelMessage::ClientClosed { proxy_id, stream_id } => {
             proxy::client_closed(state, effects, proxy_id, stream_id).await;
+        }
+        ProxyKernelMessage::DeleteSession {
+            proxy_id,
+            respond_to,
+        } => {
+            proxy::delete_proxy_session(state, effects, proxy_id, respond_to).await;
         }
     }
 }

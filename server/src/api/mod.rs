@@ -99,7 +99,7 @@ pub async fn run_http_api(
         )
         .route(
             "/agents/{agent_id}/proxy/{proxy_id}",
-            axum::routing::delete(agents::stop_proxy),
+            axum::routing::delete(agents::delete_proxy),
         )
         .route(
             "/listeners",

@@ -15,7 +15,7 @@ mod tasking;
 pub(crate) use beacon::update_agent_beacon_config;
 pub(crate) use file_ops::{browse_file, download_file, upload_file};
 pub(crate) use mutations::{delete_agent, disable_agent, enable_agent, update_agent};
-pub(crate) use proxy::{list_proxy, start_proxy, stop_proxy};
+pub(crate) use proxy::{delete_proxy, list_proxy, start_proxy};
 pub(crate) use queries::{get_agent, list_agents, list_persisted_agents};
 pub(crate) use screenshot::take_screenshot;
 pub(crate) use tasking::{disconnect_agent, dispatch_task};

@@ -96,10 +96,6 @@ pub enum ProxyKernelMessage {
         bind_addr: String,
         respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
     },
-    StopSession {
-        proxy_id: String,
-        respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
-    },
     OpenStream {
         proxy_id: String,
         stream_id: String,
@@ -116,5 +112,9 @@ pub enum ProxyKernelMessage {
     ClientClosed {
         proxy_id: String,
         stream_id: String,
+    },
+    DeleteSession {
+        proxy_id: String,
+        respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
     },
 }

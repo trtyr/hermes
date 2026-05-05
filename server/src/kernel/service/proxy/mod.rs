@@ -69,10 +69,15 @@ impl ProxyFacade {
         }
     }
 
-    pub async fn stop(&self, proxy_id: String) -> anyhow::Result<ProxySessionSnapshot> {
+    pub async fn list_for_agent(&self, agent_id: &str) -> Vec<ProxySessionSnapshot> {
+        let state = self.kernel.state.read().await;
+        state.proxy_session_snapshots_for_agent(agent_id)
+    }
+
+    pub async fn delete(&self, proxy_id: String) -> anyhow::Result<ProxySessionSnapshot> {
         let (tx, rx) = oneshot::channel();
         self.kernel
-            .send_proxy_message(ProxyKernelMessage::StopSession {
+            .send_proxy_message(ProxyKernelMessage::DeleteSession {
                 proxy_id: proxy_id.clone(),
                 respond_to: tx,
             })
@@ -84,14 +89,9 @@ impl ProxyFacade {
         }
 
         match timeout(PROXY_CLOSE_TIMEOUT, rx).await {
-            Ok(result) => result.map_err(|_| anyhow::anyhow!("proxy close channel closed"))?,
-            Err(_) => Err(anyhow::anyhow!("proxy close timed out")),
+            Ok(result) => result.map_err(|_| anyhow::anyhow!("proxy delete channel closed"))?,
+            Err(_) => Err(anyhow::anyhow!("proxy delete timed out")),
         }
-    }
-
-    pub async fn list_for_agent(&self, agent_id: &str) -> Vec<ProxySessionSnapshot> {
-        let state = self.kernel.state.read().await;
-        state.proxy_session_snapshots_for_agent(agent_id)
     }
 }
 

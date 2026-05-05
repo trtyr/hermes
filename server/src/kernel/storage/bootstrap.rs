@@ -66,9 +66,31 @@ impl Storage {
                 .map(|value| value + 1)
                 .unwrap_or(1);
 
+            let proxy_sessions = {
+                use super::proxy_sessions::DbProxySession;
+                let mut stmt = connection.prepare(
+                    "SELECT proxy_id, agent_id, bind_addr, status, active_streams, last_error, created_at, updated_at \
+                     FROM agent_proxy_sessions ORDER BY created_at DESC",
+                )?;
+                let rows = stmt.query_map([], |row| {
+                    Ok(DbProxySession {
+                        proxy_id: row.get(0)?,
+                        agent_id: row.get(1)?,
+                        bind_addr: row.get(2)?,
+                        status: row.get(3)?,
+                        active_streams: row.get(4)?,
+                        last_error: row.get(5)?,
+                        created_at: row.get(6)?,
+                        updated_at: row.get(7)?,
+                    })
+                })?;
+                rows.collect::<rusqlite::Result<Vec<_>>>()?
+            };
+
             Ok(StorageBootstrap {
                 tasks,
                 next_task_seq,
+                proxy_sessions,
             })
         })
         .await
@@ -154,6 +176,16 @@ impl Storage {
                     detail TEXT,
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
+                 );
+                 CREATE TABLE IF NOT EXISTS agent_proxy_sessions (
+                     proxy_id TEXT PRIMARY KEY,
+                     agent_id TEXT NOT NULL,
+                     bind_addr TEXT NOT NULL,
+                     status TEXT NOT NULL,
+                     active_streams INTEGER NOT NULL DEFAULT 0,
+                     last_error TEXT,
+                     created_at INTEGER NOT NULL,
+                     updated_at INTEGER NOT NULL
                  );",
             )?;
             ensure_agent_disabled_column(&connection)?;

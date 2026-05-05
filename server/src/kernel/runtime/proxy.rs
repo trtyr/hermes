@@ -3,7 +3,7 @@ use std::sync::Arc;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use tokio::sync::{oneshot, RwLock};
 
-use crate::protocol::{ProxySessionSnapshot, ServerCommand, WebEvent};
+use crate::protocol::{ProxySessionSnapshot, ProxySessionStatus, ServerCommand, WebEvent};
 
 use super::{agent_lifecycle::send_server_command_to_agent, effects::RuntimePorts, now_ts};
 use crate::kernel::state::KernelState;
@@ -29,6 +29,16 @@ pub(super) async fn start_proxy_session(
         now,
         respond_to,
     );
+    effects.persist_proxy_session(
+        &proxy_id,
+        &agent_id,
+        &bind_addr,
+        &ProxySessionStatus::Opening,
+        0,
+        None,
+        now,
+        now,
+    );
     let _ = send_server_command_to_agent(
         &mut state,
         effects,
@@ -38,27 +48,6 @@ pub(super) async fn start_proxy_session(
             bind_addr,
         },
         "command sender closed while opening proxy",
-    );
-}
-
-pub(super) async fn stop_proxy_session(
-    state: &Arc<RwLock<KernelState>>,
-    effects: &RuntimePorts,
-    proxy_id: String,
-    respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
-) {
-    let mut state = state.write().await;
-    let Some(agent_id) = state.proxy_agent_id(&proxy_id) else {
-        let _ = respond_to.send(Err(anyhow::anyhow!("proxy session not found")));
-        return;
-    };
-    state.register_pending_proxy_stop(proxy_id.clone(), respond_to);
-    let _ = send_server_command_to_agent(
-        &mut state,
-        effects,
-        &agent_id,
-        ServerCommand::CloseProxy { proxy_id },
-        "command sender closed while closing proxy",
     );
 }
 
@@ -153,6 +142,16 @@ pub(super) async fn handle_proxy_opened(
 ) {
     let mut state = state.write().await;
     if let Some(snapshot) = state.activate_proxy_session(&proxy_id, now_ts()) {
+        effects.persist_proxy_session(
+            &snapshot.proxy_id,
+            &snapshot.agent_id,
+            &snapshot.bind_addr,
+            &snapshot.status,
+            snapshot.active_streams,
+            snapshot.last_error.as_deref(),
+            snapshot.created_at,
+            snapshot.updated_at,
+        );
         effects.publish(&WebEvent::ProxySessionOpened { proxy: snapshot });
     }
 }
@@ -241,9 +240,42 @@ pub(super) async fn handle_proxy_session_closed(
 ) {
     let mut state = state.write().await;
     if let Some(snapshot) = state.close_proxy_session(&proxy_id, now_ts()) {
+        effects.persist_proxy_session(
+            &snapshot.proxy_id,
+            &snapshot.agent_id,
+            &snapshot.bind_addr,
+            &snapshot.status,
+            snapshot.active_streams,
+            snapshot.last_error.as_deref(),
+            snapshot.created_at,
+            snapshot.updated_at,
+        );
         effects.publish(&WebEvent::ProxySessionClosed {
             proxy_id: snapshot.proxy_id,
             agent_id: snapshot.agent_id,
         });
+    }
+}
+
+pub(super) async fn delete_proxy_session(
+    state: &Arc<RwLock<KernelState>>,
+    effects: &RuntimePorts,
+    proxy_id: String,
+    respond_to: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
+) {
+    let mut state = state.write().await;
+    let snapshot = state.remove_proxy_session(&proxy_id);
+    match snapshot {
+        Some(snapshot) => {
+            effects.delete_proxy_session(&proxy_id);
+            effects.publish(&WebEvent::ProxySessionClosed {
+                proxy_id: snapshot.proxy_id.clone(),
+                agent_id: snapshot.agent_id.clone(),
+            });
+            let _ = respond_to.send(Ok(snapshot));
+        }
+        None => {
+            let _ = respond_to.send(Err(anyhow::anyhow!("proxy session not found")));
+        }
     }
 }

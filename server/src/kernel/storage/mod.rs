@@ -20,9 +20,11 @@ mod audits;
 mod bootstrap;
 mod helpers;
 mod listeners;
+mod proxy_sessions;
 mod tasks;
 
 use helpers::*;
+use proxy_sessions::DbProxySession;
 use tasks::persist_task_sync;
 
 #[derive(Clone)]
@@ -33,6 +35,7 @@ pub struct Storage {
 pub struct StorageBootstrap {
     pub tasks: Vec<TaskSnapshot>,
     pub next_task_seq: u64,
+    pub proxy_sessions: Vec<DbProxySession>,
 }
 
 pub struct AgentRecordFilter {

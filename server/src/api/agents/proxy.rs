@@ -90,7 +90,7 @@ pub(crate) async fn list_proxy(
     (StatusCode::OK, Json(ProxySessionsResponse { proxies })).into_response()
 }
 
-pub(crate) async fn stop_proxy(
+pub(crate) async fn delete_proxy(
     Path((agent_id, proxy_id)): Path<(String, String)>,
     headers: HeaderMap,
     State(state): State<AppState>,
@@ -99,11 +99,11 @@ pub(crate) async fn stop_proxy(
         return response;
     }
     let operator = extract_operator_for_request(&state, &headers, None);
-    match state.kernel.proxy().stop(proxy_id.clone()).await {
+    match state.kernel.proxy().delete(proxy_id.clone()).await {
         Ok(proxy) => {
             state.kernel.append_audit_record(
                 operator,
-                "close_proxy".to_string(),
+                "delete_proxy".to_string(),
                 "agent".to_string(),
                 Some(agent_id),
                 Some(format!("proxy_id={}", proxy_id)),
@@ -113,7 +113,7 @@ pub(crate) async fn stop_proxy(
                 StatusCode::OK,
                 Json(ProxySessionResponse {
                     success: true,
-                    detail: "proxy closed".to_string(),
+                    detail: "proxy deleted".to_string(),
                     proxy,
                 }),
             )

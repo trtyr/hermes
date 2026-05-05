@@ -15,6 +15,35 @@ pub async fn new_kernel(
     let (events, _) = broadcast::channel(event_buffer_size);
     let mut kernel_state = KernelState::new();
     kernel_state.load_tasks(bootstrap.tasks);
+    {
+        use crate::protocol::ProxySessionStatus;
+        let proxy_sessions: Vec<_> = bootstrap
+            .proxy_sessions
+            .into_iter()
+            .map(|session| {
+                // After restart, proxy sessions are no longer live.
+                // Load them as Closed so the record is preserved but non-functional.
+                let status = match session.status.as_str() {
+                    "open" | "opening" => ProxySessionStatus::Closed,
+                    other => match other {
+                        "closed" => ProxySessionStatus::Closed,
+                        "error" => ProxySessionStatus::Error,
+                        _ => ProxySessionStatus::Closed,
+                    },
+                };
+                (
+                    session.proxy_id,
+                    session.agent_id,
+                    session.bind_addr,
+                    status,
+                    session.created_at,
+                    session.updated_at,
+                    session.last_error,
+                )
+            })
+            .collect();
+        kernel_state.load_proxy_sessions(proxy_sessions);
+    }
     let state = Arc::new(RwLock::new(kernel_state));
 
     let handle = KernelHandle::new(

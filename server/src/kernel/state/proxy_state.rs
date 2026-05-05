@@ -188,4 +188,43 @@ impl KernelState {
             .map(|record| record.proxy_id.clone())
             .collect()
     }
+
+    pub fn remove_proxy_session(&mut self, proxy_id: &str) -> Option<ProxySessionSnapshot> {
+        let record = self.proxy_sessions.remove(proxy_id)?;
+        // Clean up any streams belonging to this session
+        for stream_id in &record.active_stream_ids {
+            self.proxy_streams.remove(stream_id);
+        }
+        // Clean up pending channels
+        self.pending_proxy_session_starts.remove(proxy_id);
+        self.pending_proxy_session_stops.remove(proxy_id);
+        Some(ProxySessionSnapshot {
+            proxy_id: record.proxy_id,
+            agent_id: record.agent_id,
+            bind_addr: record.bind_addr,
+            status: record.status,
+            active_streams: 0,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+            last_error: record.last_error,
+        })
+    }
+
+    pub fn load_proxy_sessions(&mut self, sessions: Vec<(String, String, String, ProxySessionStatus, u64, u64, Option<String>)>) {
+        for (proxy_id, agent_id, bind_addr, status, created_at, updated_at, last_error) in sessions {
+            self.proxy_sessions.insert(
+                proxy_id.clone(),
+                ProxySessionRecord {
+                    proxy_id,
+                    agent_id,
+                    bind_addr,
+                    status,
+                    active_stream_ids: HashSet::new(),
+                    created_at,
+                    updated_at,
+                    last_error,
+                },
+            );
+        }
+    }
 }
