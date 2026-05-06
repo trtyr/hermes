@@ -6,7 +6,7 @@ mod protocol;
 
 use agent::gateway::run_agent_gateway;
 use api::run_http_api;
-use kernel::{AgentAuthMode, Config, new_kernel};
+use kernel::{AgentAuthConfig, AgentAuthMode, Config, new_kernel};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<(), anyhow::Error> {
@@ -16,6 +16,12 @@ async fn main() -> anyhow::Result<(), anyhow::Error> {
     let web_username = config.web_username().map(ToString::to_string);
     let web_password = config.web_password().map(ToString::to_string);
     let session_ttl_secs = config.session_ttl_secs();
+    let agent_auth_mode = match config.agent_token() {
+        Some(_) => config.agent_auth_mode(),
+        None => AgentAuthMode::PlainToken,
+    };
+    let agent_auth_config = AgentAuthConfig::shared(agent_token.clone(), agent_auth_mode);
+
     let kernel = new_kernel(
         1024,
         512,
@@ -24,19 +30,15 @@ async fn main() -> anyhow::Result<(), anyhow::Error> {
         web_username.clone(),
         web_password.clone(),
         session_ttl_secs,
+        agent_auth_config.clone(),
     )
     .await?;
-    let agent_auth_mode = match config.agent_token() {
-        Some(_) => config.agent_auth_mode(),
-        None => AgentAuthMode::PlainToken,
-    };
 
     tokio::try_join!(
         run_agent_gateway(
             kernel.clone(),
             config.tcp_addr(),
-            agent_token,
-            agent_auth_mode
+            agent_auth_config,
         ),
         run_http_api(kernel, config.api_addr(),)
     )?;

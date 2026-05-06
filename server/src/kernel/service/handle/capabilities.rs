@@ -68,4 +68,10 @@ impl KernelHandle {
     pub fn storage(&self) -> &Storage {
         &self.storage
     }
+
+    pub fn agent_auth_config(
+        &self,
+    ) -> &Arc<std::sync::RwLock<crate::kernel::config::AgentAuthConfig>> {
+        &self.agent_auth_config
+    }
 }

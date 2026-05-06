@@ -10,7 +10,7 @@ mod state;
 mod storage;
 
 pub use auth::{AuthIdentity, SESSION_COOKIE_NAME, WebSession};
-pub use config::{AgentAuthMode, Config};
+pub use config::{AgentAuthConfig, AgentAuthMode, Config};
 pub use message::AgentKernelMessage;
 pub use runtime::new_kernel;
 pub use service::{KernelHandle, is_command_session_timeout};

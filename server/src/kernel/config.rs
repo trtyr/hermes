@@ -1,4 +1,5 @@
 use std::net::Ipv4Addr;
+use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
 use toml::from_str;
@@ -113,5 +114,36 @@ impl Config {
             .and_then(|auth| auth.session_ttl_secs)
             .unwrap_or(8 * 60 * 60)
             .max(60)
+    }
+
+    pub fn write_auth_config(
+        agent_token: Option<String>,
+        agent_auth_mode: AgentAuthMode,
+    ) -> anyhow::Result<()> {
+        let config_file = std::fs::read_to_string("config.toml")?;
+        let mut config: Config = from_str(&config_file)?;
+        let auth = config.auth.get_or_insert_with(AuthConfig::default);
+        auth.agent_token = agent_token;
+        auth.agent_auth_mode = Some(agent_auth_mode);
+        let updated = toml::to_string_pretty(&config)?;
+        std::fs::write("config.toml", updated)?;
+        Ok(())
+    }
+}
+
+/// Shared runtime config for agent authentication, readable by the listener
+/// manager and writable by the API layer.
+#[derive(Debug, Clone)]
+pub struct AgentAuthConfig {
+    pub agent_token: Option<String>,
+    pub agent_auth_mode: AgentAuthMode,
+}
+
+impl AgentAuthConfig {
+    pub fn shared(agent_token: Option<String>, agent_auth_mode: AgentAuthMode) -> Arc<RwLock<Self>> {
+        Arc::new(RwLock::new(Self {
+            agent_token,
+            agent_auth_mode,
+        }))
     }
 }

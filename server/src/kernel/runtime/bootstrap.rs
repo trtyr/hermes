@@ -8,6 +8,7 @@ pub async fn new_kernel(
     web_username: Option<String>,
     web_password: Option<String>,
     session_ttl_secs: u64,
+    agent_auth_config: Arc<std::sync::RwLock<crate::kernel::config::AgentAuthConfig>>,
 ) -> anyhow::Result<KernelHandle> {
     let storage = Storage::new(sqlite_path).await?;
     let bootstrap = storage.bootstrap().await?;
@@ -52,6 +53,7 @@ pub async fn new_kernel(
         events.clone(),
         storage,
         AuthService::new(api_token, web_username, web_password, session_ttl_secs),
+        agent_auth_config,
         Arc::new(AtomicU64::new(1)),
         Arc::new(AtomicU64::new(bootstrap.next_task_seq)),
         Arc::new(AtomicU64::new(1)),

@@ -8,6 +8,7 @@ mod command_sessions;
 mod common;
 mod dashboard;
 mod listeners;
+mod settings;
 mod system;
 mod tasks;
 mod web_terminal;
@@ -18,7 +19,7 @@ use axum::{
     http::{HeaderMap, Method, StatusCode, header},
     middleware::{self, Next},
     response::IntoResponse,
-    routing::{get, patch, post},
+    routing::{get, patch, post, put},
 };
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};
@@ -53,6 +54,10 @@ pub async fn run_http_api(
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/me", get(auth::me))
+        .route(
+            "/server/auth-settings",
+            get(settings::get_auth_settings).put(settings::update_auth_settings),
+        )
         .route("/dashboard/stats", get(dashboard::dashboard_stats))
         .route(
             "/agent-builds",
