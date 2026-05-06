@@ -11,8 +11,8 @@ sqlite_path = "data/server.db"
 
 [auth]
 api_token = "dev-api-token"
-agent_token = ""
-agent_auth_mode = "plain_token"
+agent_token = "hermes-test-2026"
+agent_auth_mode = "challenge_response"
 web_username = "admin"
 web_password = "123456"
 session_ttl_secs = 28800
