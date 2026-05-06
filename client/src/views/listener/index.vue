@@ -1,5 +1,54 @@
 <template>
   <div class="h-full w-full flex flex-col p-4 relative">
+    <!-- Agent认证设置 -->
+    <a-card
+      title="Agent 认证"
+      class="mb-4"
+      :bordered="true"
+      size="small"
+    >
+      <template #extra>
+        <a-tooltip title="新 Agent 连接时的认证方式和令牌">
+          <QuestionCircleOutlined class="text-slate-400" />
+        </a-tooltip>
+      </template>
+      <div class="flex items-start gap-6">
+        <div class="flex-1">
+          <label class="text-xs text-slate-500 mb-1 block">认证令牌</label>
+          <a-input-password
+            v-model:value="authForm.agent_token"
+            placeholder="留空则不认证"
+            :disabled="authLoading"
+            size="small"
+            class="max-w-xs"
+          />
+        </div>
+        <div class="flex-1">
+          <label class="text-xs text-slate-500 mb-1 block">认证模式</label>
+          <a-radio-group v-model:value="authForm.agent_auth_mode" :disabled="authLoading" size="small">
+            <a-radio-button value="plain_token">共享令牌</a-radio-button>
+            <a-radio-button value="challenge_response">挑战-响应</a-radio-button>
+          </a-radio-group>
+        </div>
+        <div class="flex items-end gap-2" style="padding-top: 1px;">
+          <a-button type="primary" size="small" :loading="authLoading" @click="saveAuthSettings">
+            保存
+          </a-button>
+          <a-button size="small" :loading="authLoading" @click="loadAuthSettings">
+            刷新
+          </a-button>
+        </div>
+      </div>
+      <div class="text-xs text-slate-400 mt-2">
+        <template v-if="authForm.agent_auth_mode === 'plain_token'">
+          Agent 注册时明文携带令牌，Server 对比验证。令牌需在生成 Agent 时一并嵌入。
+        </template>
+        <template v-else>
+          Server 发送随机 nonce，Agent 用 HMAC-SHA256 签名响应，令牌不在网络上传输。需在生成 Agent 时嵌入相同令牌。
+        </template>
+      </div>
+    </a-card>
+
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-semibold text-slate-800 flex items-center gap-2 m-0">
@@ -130,12 +179,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { message, Modal } from 'ant-design-vue';
-import { 
-  ApiOutlined, 
-  ReloadOutlined, 
+import {
+  ApiOutlined,
+  ReloadOutlined,
   PlusOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
@@ -146,6 +196,7 @@ import {
   stopListener, 
   deleteListener 
 } from '@/api/listener';
+import { getAuthSettings, updateAuthSettings } from '@/api/settings';
 import CreateListenerModal from './components/CreateListenerModal.vue';
 
 const listeners = ref<ListenerRecord[]>([]);
@@ -187,8 +238,41 @@ const loadListeners = async () => {
   }
 };
 
+// Agent Auth Settings
+const authForm = reactive({ agent_token: '', agent_auth_mode: 'plain_token' });
+const authLoading = ref(false);
+
+const loadAuthSettings = async () => {
+  authLoading.value = true;
+  try {
+    const settings = await getAuthSettings();
+    authForm.agent_token = settings.agent_token || '';
+    authForm.agent_auth_mode = settings.agent_auth_mode || 'plain_token';
+  } catch (_e: any) {
+    // silently fail - user can click refresh
+  } finally {
+    authLoading.value = false;
+  }
+};
+
+const saveAuthSettings = async () => {
+  authLoading.value = true;
+  try {
+    const result = await updateAuthSettings({
+      agent_token: authForm.agent_token,
+      agent_auth_mode: authForm.agent_auth_mode
+    });
+    message.success(result.detail || '认证设置已更新');
+  } catch (e: any) {
+    message.error(e.message || '保存失败');
+  } finally {
+    authLoading.value = false;
+  }
+};
+
 onMounted(() => {
   loadListeners();
+  loadAuthSettings();
 });
 
 // Batch Actions

@@ -34,73 +34,13 @@
           <AgentsDistCard :stats="stats" />
           <ListenersDistCard :stats="stats" />
         </div>
-
-        <!-- Agent认证设置 -->
-        <a-card title="Agent 认证设置" class="dashboard-card" :bordered="false">
-          <template #extra>
-            <a-tooltip title="配置 Agent 连接时的认证方式和令牌。修改后约1秒生效，无需重启。">
-              <QuestionCircleOutlined class="text-slate-400" />
-            </a-tooltip>
-          </template>
-          <a-form layout="vertical" :model="authForm">
-            <a-form-item label="认证令牌 (Agent Token)">
-              <a-input-password
-                v-model:value="authForm.agent_token"
-                placeholder="留空则不启用认证"
-                :disabled="authLoading"
-              />
-              <div class="text-xs text-slate-400 mt-1">
-                此令牌需在生成 Agent 时一并嵌入
-              </div>
-            </a-form-item>
-            <a-form-item label="认证模式">
-              <a-radio-group v-model:value="authForm.agent_auth_mode" :disabled="authLoading">
-                <a-radio-button value="plain_token">
-                  <template #default>
-                    <span class="flex items-center gap-1">
-                      <UnlockOutlined />
-                      共享令牌
-                    </span>
-                  </template>
-                </a-radio-button>
-                <a-radio-button value="challenge_response">
-                  <template #default>
-                    <span class="flex items-center gap-1">
-                      <SafetyCertificateOutlined />
-                      挑战-响应 (HMAC)
-                    </span>
-                  </template>
-                </a-radio-button>
-              </a-radio-group>
-              <div class="text-xs text-slate-400 mt-1">
-                <template v-if="authForm.agent_auth_mode === 'plain_token'">
-                  Agent 注册时明文携带令牌，Server 对比验证
-                </template>
-                <template v-else>
-                  Server 发送随机 nonce，Agent 用 HMAC-SHA256 签名响应，令牌不传输
-                </template>
-              </div>
-            </a-form-item>
-            <a-form-item>
-              <a-button type="primary" :loading="authLoading" @click="saveAuthSettings" :disabled="!authForm.agent_auth_mode">
-                <template #icon><SaveOutlined /></template>
-                保存设置
-              </a-button>
-              <a-button class="ml-2" :loading="authLoading" @click="loadAuthSettings">
-                刷新
-              </a-button>
-            </a-form-item>
-          </a-form>
-        </a-card>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
-import { message } from 'ant-design-vue';
-import { QuestionCircleOutlined, UnlockOutlined, SafetyCertificateOutlined, SaveOutlined } from '@ant-design/icons-vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 
 // Subcomponents
 import ConnectionBadge from './components/ConnectionBadge.vue';
@@ -114,7 +54,6 @@ import { useConnectionStore } from '@/store/connection';
 import { useEventStore } from '@/store/events';
 import { fetchDashboardStats } from '@/api/dashboard';
 import type { DashboardStats } from '@/api/dashboard';
-import { getAuthSettings, updateAuthSettings } from '@/api/settings';
 
 const connectionStore = useConnectionStore();
 const eventStore = useEventStore();
@@ -147,35 +86,6 @@ watch(() => connectionStore.activeProfileId, (newId) => {
   }
 });
 
-// Agent Auth Settings
-const authForm = reactive({ agent_token: '', agent_auth_mode: 'plain_token' });
-const authLoading = ref(false);
-
-const loadAuthSettings = async () => {
-  try {
-    const settings = await getAuthSettings();
-    authForm.agent_token = settings.agent_token || '';
-    authForm.agent_auth_mode = settings.agent_auth_mode || 'plain_token';
-  } catch (_e: any) {
-    // silently fail - user can click refresh
-  }
-};
-
-const saveAuthSettings = async () => {
-  authLoading.value = true;
-  try {
-    const result = await updateAuthSettings({
-      agent_token: authForm.agent_token,
-      agent_auth_mode: authForm.agent_auth_mode
-    });
-    message.success(result.detail || '认证设置已更新');
-  } catch (e: any) {
-    message.error(e.message || '保存失败');
-  } finally {
-    authLoading.value = false;
-  }
-};
-
 // Auto-refresh: debounced event-driven + periodic fallback
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let periodicTimer: ReturnType<typeof setInterval> | null = null;
@@ -191,7 +101,6 @@ function scheduleDebouncedReload() {
 onMounted(() => {
   if (connectionStore.activeProfile) {
     loadStats();
-    loadAuthSettings();
   }
 
   // WebSocket-driven refresh with 3s debounce
