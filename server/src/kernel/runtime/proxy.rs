@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
-use tokio::sync::{oneshot, RwLock};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use tokio::sync::{RwLock, oneshot};
 
 use crate::protocol::{ProxySessionSnapshot, ProxySessionStatus, ServerCommand, WebEvent};
 
@@ -130,7 +130,10 @@ pub(super) async fn client_closed(
         &mut state,
         effects,
         &agent_id,
-        ServerCommand::ProxyClose { proxy_id, stream_id },
+        ServerCommand::ProxyClose {
+            proxy_id,
+            stream_id,
+        },
         "command sender closed while closing proxy stream",
     );
 }
@@ -169,7 +172,12 @@ pub(super) async fn handle_proxy_connect_result(
     let snapshot = if success {
         state.confirm_proxy_stream_open(&proxy_id, &stream_id)
     } else {
-        state.fail_proxy_stream_open(&proxy_id, &stream_id, detail.unwrap_or_else(|| "proxy connect failed".to_string()), now)
+        state.fail_proxy_stream_open(
+            &proxy_id,
+            &stream_id,
+            detail.unwrap_or_else(|| "proxy connect failed".to_string()),
+            now,
+        )
     };
     if let Some(proxy) = snapshot {
         effects.publish(&WebEvent::ProxySessionUpdated { proxy });

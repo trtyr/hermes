@@ -15,40 +15,15 @@ use ops::AgentConfig;
 use protocol::{AgentMessage, Config, ServerCommand};
 use services::{HeartbeatService, NetworkService, ProxyService, SessionService, TaskService};
 use std::{
-    io::Write,
     sync::{mpsc, Arc, Mutex},
     time::Duration,
 };
 
-macro_rules! alog {
-    ($($arg:tt)*) => {{
-        let msg = format!($($arg)*);
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("agent_debug.log") {
-            let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-            let _ = writeln!(f, "[{}] {}", ts, msg);
-        }
-    }};
-}
-
-macro_rules! agent_log {
-    ($($arg:tt)*) => {{
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("C:\\Users\\macuser\\Desktop\\agent.log") {
-            let _ = writeln!(f, "[{}] {}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(), format!($($arg)*));
-        }
-    }};
-}
+// Agent never writes to disk — no logging, no file I/O outside of explicit
+// user-requested operations (file upload/download, screenshot save).
+macro_rules! alog { ($($arg:tt)*) => {{}} }
 
 fn main() {
-    // Install panic handler that writes to debug log
-    std::panic::set_hook(Box::new(|panic_info| {
-        if let Ok(mut f) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("agent_debug.log")
-        {
-            let _ = writeln!(f, "[PANIC] {}", panic_info);
-        }
-    }));
 
     let cfg = match Config::load() {
         Ok(c) => c,

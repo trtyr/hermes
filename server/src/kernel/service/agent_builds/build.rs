@@ -4,7 +4,10 @@ use tokio::io::AsyncBufReadExt;
 
 use super::*;
 
-use crate::{kernel::storage::Storage, protocol::{ListenerRecord, WebEvent}};
+use crate::{
+    kernel::storage::Storage,
+    protocol::{ListenerRecord, WebEvent},
+};
 use toolchain::{
     build_command_for_target, detect_host_target_triple, ensure_target_support, sanitize_target,
 };
@@ -284,7 +287,10 @@ async fn run_build(
         loop {
             interval.tick().await;
             let detail = flush_accumulated.lock().unwrap().clone();
-            if let Err(e) = flush_storage.update_agent_build_detail(build_id, &detail).await {
+            if let Err(e) = flush_storage
+                .update_agent_build_detail(build_id, &detail)
+                .await
+            {
                 eprintln!("[agent-build] failed to flush build {build_id} detail: {e}");
             }
         }
@@ -326,10 +332,7 @@ async fn run_build(
     }
 
     if !status.success() {
-        return Err(anyhow::anyhow!(
-            "agent build failed: {}",
-            detail.trim()
-        ));
+        return Err(anyhow::anyhow!("agent build failed: {}", detail.trim()));
     }
 
     let binary_name = "agent.exe";

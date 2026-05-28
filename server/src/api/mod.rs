@@ -19,7 +19,7 @@ use axum::{
     http::{HeaderMap, Method, StatusCode, header},
     middleware::{self, Next},
     response::IntoResponse,
-    routing::{get, patch, post, put},
+    routing::{get, patch, post},
 };
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};

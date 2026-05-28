@@ -81,7 +81,7 @@
         </a-tab-pane>
 
         <a-tab-pane key="files" tab="文件" force-render class="h-full">
-          <div class="flex flex-col h-full">
+          <div class="flex flex-col min-h-0 flex-1 overflow-y-auto">
             <!-- Path bar -->
             <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
               <a-input
@@ -98,11 +98,15 @@
               <a-button size="small" type="primary" :loading="browseLoading" @click="browseFromInput">
                 浏览
               </a-button>
+              <a-button size="small" @click="fileOpsVisible = true">
+                <template #icon><UploadOutlined /></template>
+                上传
+              </a-button>
             </div>
 
             <!-- File list -->
-            <div class="flex-1 overflow-auto">
-              <a-spin :spinning="browseLoading" class="h-full">
+            <div class="flex-1 overflow-y-auto min-h-0">
+              <a-spin :spinning="browseLoading">
                 <template v-if="browseError">
                   <div class="flex flex-col items-center justify-center h-full min-h-[200px] text-slate-400">
                     <ExclamationCircleOutlined style="font-size: 36px; opacity: 0.4; color: #faad14" />
@@ -358,6 +362,8 @@
       </div>
     </a-modal>
   </div>
+
+  <FileOpsModal v-model:visible="fileOpsVisible" :agent="agent" />
 </template>
 
 <script setup lang="ts">
@@ -370,7 +376,7 @@ import {
   FolderOpenOutlined, FolderOutlined, FileOutlined, DownloadOutlined,
   ExclamationCircleOutlined, ClockCircleOutlined,
   DisconnectOutlined, DeleteOutlined,
-  ApiOutlined, CopyOutlined, PlusOutlined
+  ApiOutlined, CopyOutlined, PlusOutlined, UploadOutlined
 } from '@ant-design/icons-vue';
 import {
   fetchAgentDetail, disconnectAgent,
@@ -382,6 +388,7 @@ import type { ProxySessionRecord } from '@/api/proxy';
 import { useTerminal } from './hooks/useTerminal';
 import { useAppStore } from '@/store/app';
 import { useEventStore } from '@/store/events';
+import FileOpsModal from './components/FileOpsModal.vue';
 import 'xterm/css/xterm.css';
 
 const route = useRoute();
@@ -393,6 +400,7 @@ const agentId = route.params.id as string;
 // Agent data
 const agent = ref<Agent | null>(null);
 const activeTab = ref('terminal');
+const fileOpsVisible = ref(false);
 
 // Screenshot state
 const screenshotLoading = ref(false);
@@ -766,12 +774,14 @@ const copyProxyAddr = (addr: string) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .session-tabs .ant-tabs-tabpane {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .session-tabs .ant-tabs-content-holder {

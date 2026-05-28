@@ -22,7 +22,7 @@ Thumbs.db
 .env
 *.log
 
-# Stale compiled .js files in src/ (Vite uses .ts/.vue directly)
+# Stale compiled .js files in client/src/ (Vite uses .ts/.vue directly)
 client/src/**/*.js
 
 # Python cache
@@ -37,3 +37,9 @@ __pycache__/
 
 # Codegraph index
 .codegraph/
+
+# Tool directories
+.crabmap/
+.omo/
+.sisyphus/
+.ferrimind/

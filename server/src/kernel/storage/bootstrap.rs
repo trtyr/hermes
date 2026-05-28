@@ -177,16 +177,51 @@ impl Storage {
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
                  );
-                 CREATE TABLE IF NOT EXISTS agent_proxy_sessions (
-                     proxy_id TEXT PRIMARY KEY,
-                     agent_id TEXT NOT NULL,
-                     bind_addr TEXT NOT NULL,
-                     status TEXT NOT NULL,
-                     active_streams INTEGER NOT NULL DEFAULT 0,
-                     last_error TEXT,
-                     created_at INTEGER NOT NULL,
-                     updated_at INTEGER NOT NULL
-                 );",
+                  CREATE TABLE IF NOT EXISTS agent_proxy_sessions (
+                      proxy_id TEXT PRIMARY KEY,
+                      agent_id TEXT NOT NULL,
+                      bind_addr TEXT NOT NULL,
+                      status TEXT NOT NULL,
+                      active_streams INTEGER NOT NULL DEFAULT 0,
+                      last_error TEXT,
+                      created_at INTEGER NOT NULL,
+                      updated_at INTEGER NOT NULL
+                  );
+                  CREATE TABLE IF NOT EXISTS vuln_alert_rules (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      name TEXT NOT NULL,
+                      enabled INTEGER NOT NULL DEFAULT 1,
+                      severity_filter_json TEXT NOT NULL DEFAULT '[]',
+                      vuln_id_pattern TEXT,
+                      target_filter_json TEXT,
+                      notify_webhook INTEGER NOT NULL DEFAULT 0,
+                      notify_discord INTEGER NOT NULL DEFAULT 0,
+                      notify_feishu INTEGER NOT NULL DEFAULT 0,
+                      notify_dingtalk INTEGER NOT NULL DEFAULT 0,
+                      created_at INTEGER NOT NULL,
+                      updated_at INTEGER NOT NULL
+                  );
+                  CREATE TABLE IF NOT EXISTS vuln_alert_events (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      rule_id INTEGER NOT NULL,
+                      rule_name TEXT NOT NULL,
+                      vuln_id TEXT NOT NULL,
+                      severity TEXT NOT NULL,
+                      title TEXT NOT NULL,
+                      description TEXT,
+                      target_agent_id TEXT,
+                      target_host TEXT,
+                      matched_at INTEGER NOT NULL,
+                      notified INTEGER NOT NULL DEFAULT 0,
+                      notification_result TEXT
+                  );
+                  CREATE TABLE IF NOT EXISTS vuln_suppression_windows (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      vuln_id_pattern TEXT,
+                      target_filter_json TEXT,
+                      expires_at INTEGER NOT NULL,
+                      created_at INTEGER NOT NULL
+                  );",
             )?;
             ensure_agent_disabled_column(&connection)?;
             ensure_agent_metadata_columns(&connection)?;

@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" font-family="SimSun, SimHei, Microsoft YaHei, sans-serif">
+  
+  <defs>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="1.5" dy="1.5" stdDeviation="2" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrowN" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="680" fill="#fafbfc"/>
+
+  <!-- Title -->
+  <text x="500" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">Hermes 系统 E-R 图</text>
+
+  <!-- ===== ENTITY 1: listener ===== -->
+  <g filter="url(#shadow)">
+    <rect x="25" y="55" width="230" height="150" rx="6" fill="white" stroke="#1a73e8" stroke-width="2"/>
+    <rect x="25" y="55" width="230" height="28" rx="6" fill="#1a73e8"/>
+    <rect x="25" y="73" width="230" height="10" fill="#1a73e8"/>
+    <text x="140" y="74" text-anchor="middle" font-size="12" font-weight="bold" fill="white">listener（监听器）</text>
+    <line x1="40" y1="100" x2="240" y2="100" stroke="#e0e0e0" stroke-width="0.5"/>
+    <text x="33" y="118" font-size="10" fill="#333">listener_id (PK)</text>
+    <text x="33" y="136" font-size="10" fill="#333">name, kind</text>
+    <text x="33" y="154" font-size="10" fill="#333">bind_host, bind_port</text>
+    <text x="33" y="172" font-size="10" fill="#333">enabled, runtime_status</text>
+    <text x="33" y="190" font-size="10" fill="#333">config_json</text>
+  </g>
+
+  <!-- ===== ENTITY 2: audits ===== -->
+  <g filter="url(#shadow)">
+    <rect x="745" y="55" width="230" height="120" rx="6" fill="white" stroke="#4caf50" stroke-width="2"/>
+    <rect x="745" y="55" width="230" height="28" rx="6" fill="#4caf50"/>
+    <rect x="745" y="73" width="230" height="10" fill="#4caf50"/>
+    <text x="860" y="74" text-anchor="middle" font-size="12" font-weight="bold" fill="white">audits（审计日志）</text>
+    <line x1="760" y1="100" x2="960" y2="100" stroke="#e0e0e0" stroke-width="0.5"/>
+    <text x="753" y="118" font-size="10" fill="#333">audit_id (PK)</text>
+    <text x="753" y="136" font-size="10" fill="#333">operator, action</text>
+    <text x="753" y="154" font-size="10" fill="#333">target_kind, target_id</text>
+    <text x="753" y="172" font-size="10" fill="#333">detail, created_at</text>
+  </g>
+
+  <!-- ===== ENTITY 3: agents ===== -->
+  <g filter="url(#shadow)">
+    <rect x="25" y="290" width="230" height="165" rx="6" fill="white" stroke="#e65100" stroke-width="2"/>
+    <rect x="25" y="290" width="230" height="28" rx="6" fill="#e65100"/>
+    <rect x="25" y="308" width="230" height="10" fill="#e65100"/>
+    <text x="140" y="309" text-anchor="middle" font-size="12" font-weight="bold" fill="white">agents（Agent端）</text>
+    <line x1="40" y1="335" x2="240" y2="335" stroke="#e0e0e0" stroke-width="0.5"/>
+    <text x="33" y="353" font-size="10" fill="#333">agent_id (PK)</text>
+    <text x="33" y="369" font-size="10" fill="#333">listener_id (FK)</text>
+    <text x="33" y="385" font-size="10" fill="#333">hostname, os, arch, pid</text>
+    <text x="33" y="401" font-size="10" fill="#333">internal_ip, privilege</text>
+    <text x="33" y="417" font-size="10" fill="#333">is_online, is_disabled</text>
+    <text x="33" y="433" font-size="10" fill="#333">sleep_interval, jitter</text>
+    <text x="33" y="449" font-size="10" fill="#333">last_seen, updated_at</text>
+  </g>
+
+  <!-- ===== ENTITY 4: agent_builds ===== -->
+  <g filter="url(#shadow)">
+    <rect x="445" y="290" width="230" height="140" rx="6" fill="white" stroke="#9c27b0" stroke-width="2"/>
+    <rect x="445" y="290" width="230" height="28" rx="6" fill="#9c27b0"/>
+    <rect x="445" y="308" width="230" height="10" fill="#9c27b0"/>
+    <text x="560" y="309" text-anchor="middle" font-size="12" font-weight="bold" fill="white">agent_builds（构建记录）</text>
+    <line x1="460" y1="335" x2="660" y2="335" stroke="#e0e0e0" stroke-width="0.5"/>
+    <text x="453" y="353" font-size="10" fill="#333">build_id (PK)</text>
+    <text x="453" y="369" font-size="10" fill="#333">listener_id (FK)</text>
+    <text x="453" y="385" font-size="10" fill="#333">target_triple, profile</text>
+    <text x="453" y="401" font-size="10" fill="#333">server_addr</text>
+    <text x="453" y="417" font-size="10" fill="#333">artifact_path, status</text>
+    <text x="453" y="433" font-size="10" fill="#333">created_at, updated_at</text>
+  </g>
+
+  <!-- ===== ENTITY 5: tasks ===== -->
+  <g filter="url(#shadow)">
+    <rect x="25" y="500" width="230" height="150" rx="6" fill="white" stroke="#d32f2f" stroke-width="2"/>
+    <rect x="25" y="500" width="230" height="28" rx="6" fill="#d32f2f"/>
+    <rect x="25" y="518" width="230" height="10" fill="#d32f2f"/>
+    <text x="140" y="519" text-anchor="middle" font-size="12" font-weight="bold" fill="white">tasks（任务）</text>
+    <line x1="40" y1="545" x2="240" y2="545" stroke="#e0e0e0" stroke-width="0.5"/>
+    <text x="33" y="563" font-size="10" fill="#333">task_id (PK)</text>
+    <text x="33" y="579" font-size="10" fill="#333">target_agent_id (FK)</text>
+    <text x="33" y="595" font-size="10" fill="#333">parent_task_id (FK→self)</text>
+    <text x="33" y="611" font-size="10" fill="#333">command, payload</text>
+    <text x="33" y="627" font-size="10" fill="#333">status, success</text>
+    <text x="33" y="643" font-size="10" fill="#333">output, children_json</text>
+  </g>
+
+  <!-- ===== ENTITY 6: agent_proxy_sessions ===== -->
+  <g filter="url(#shadow)">
+    <rect x="445" y="520" width="240" height="130" rx="6" fill="white" stroke="#00838f" stroke-width="2"/>
+    <rect x="445" y="520" width="240" height="28" rx="6" fill="#00838f"/>
+    <rect x="445" y="538" width="240" height="10" fill="#00838f"/>
+    <text x="565" y="539" text-anchor="middle" font-size="12" font-weight="bold" fill="white">agent_proxy_sessions</text>
+    <line x1="460" y1="565" x2="670" y2="565" stroke="#e0e0e0" stroke-width="0.5"/>
+    <text x="453" y="583" font-size="10" fill="#333">proxy_id (PK)</text>
+    <text x="453" y="599" font-size="10" fill="#333">agent_id (FK)</text>
+    <text x="453" y="615" font-size="10" fill="#333">bind_addr, status</text>
+    <text x="453" y="631" font-size="10" fill="#333">active_streams</text>
+    <text x="453" y="647" font-size="10" fill="#333">created_at, updated_at</text>
+  </g>
+
+  <!-- ===== RELATIONSHIP LINES ===== -->
+
+  <!-- listener → agents: 1:N -->
+  <line x1="140" y1="205" x2="140" y2="290" stroke="#555" stroke-width="1.5" marker-end="url(#arrowN)"/>
+  <rect x="95" y="238" width="90" height="18" rx="3" fill="white" stroke="#ddd" stroke-width="0.8"/>
+  <text x="140" y="251" text-anchor="middle" font-size="9" fill="#555">listener_id</text>
+  <text x="155" y="218" font-size="11" fill="#1a73e8" font-weight="bold">1</text>
+  <text x="153" y="278" font-size="11" fill="#e65100" font-weight="bold">N</text>
+
+  <!-- listener → agent_builds: 1:N -->
+  <line x1="255" y1="90" x2="520" y2="290" stroke="#555" stroke-width="1.5" marker-end="url(#arrowN)"/>
+  <rect x="360" y="165" width="90" height="18" rx="3" fill="white" stroke="#ddd" stroke-width="0.8"/>
+  <text x="405" y="178" text-anchor="middle" font-size="9" fill="#555">listener_id</text>
+  <text x="270" y="112" font-size="11" fill="#1a73e8" font-weight="bold">1</text>
+  <text x="492" y="275" font-size="11" fill="#9c27b0" font-weight="bold">N</text>
+
+  <!-- agents → tasks: 1:N -->
+  <line x1="140" y1="455" x2="140" y2="500" stroke="#555" stroke-width="1.5" marker-end="url(#arrowN)"/>
+  <rect x="95" y="470" width="90" height="18" rx="3" fill="white" stroke="#ddd" stroke-width="0.8"/>
+  <text x="140" y="483" text-anchor="middle" font-size="9" fill="#555">target_agent_id</text>
+  <text x="155" y="448" font-size="11" fill="#e65100" font-weight="bold">1</text>
+  <text x="153" y="493" font-size="11" fill="#d32f2f" font-weight="bold">N</text>
+
+  <!-- agents → agent_proxy_sessions: 1:N -->
+  <path d="M 255 370 C 350 370, 350 585, 505 585" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#arrowN)"/>
+  <rect x="335" y="460" width="90" height="18" rx="3" fill="white" stroke="#ddd" stroke-width="0.8"/>
+  <text x="380" y="473" text-anchor="middle" font-size="9" fill="#555">agent_id</text>
+  <text x="270" y="390" font-size="11" fill="#e65100" font-weight="bold">1</text>
+  <text x="482" y="575" font-size="11" fill="#00838f" font-weight="bold">N</text>
+
+  <!-- tasks → tasks: 自关联 1:N -->
+  <path d="M 255 570 C 295 570, 310 585, 290 605 C 280 615, 265 615, 255 610" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#arrowN)"/>
+  <rect x="275" y="590" width="100" height="18" rx="3" fill="white" stroke="#ddd" stroke-width="0.8"/>
+  <text x="325" y="603" text-anchor="middle" font-size="9" fill="#555">parent_task_id</text>
+  <text x="300" y="582" font-size="10" fill="#888">1:N</text>
+
+  <!-- audits note -->
+  <text x="860" y="215" text-anchor="middle" font-size="10" fill="#4caf50" font-style="italic">独立实体，无外键约束</text>
+  <line x1="860" y1="225" x2="860" y2="238" stroke="#4caf50" stroke-width="0.8" stroke-dasharray="3,3"/>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="740" y="380" width="230" height="175" rx="6" fill="white" stroke="#ddd" stroke-width="1.5"/>
+  <text x="855" y="402" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">图例</text>
+  <rect x="755" y="415" width="14" height="10" rx="2" fill="#1a73e8"/>
+  <text x="778" y="425" font-size="10" fill="#333">PK — 主键</text>
+  <text x="755" y="443" font-size="10" fill="#333">FK — 外键</text>
+  <line x1="770" y1="458" x2="800" y2="458" stroke="#555" stroke-width="1.5"/>
+  <text x="810" y="462" font-size="10" fill="#555">引用关系</text>
+  <text x="755" y="480" font-size="10" fill="#333">1 : N — 一对多</text>
+  <text x="755" y="498" font-size="9" fill="#888">6 个实体，5 组外键关系</text>
+  <text x="755" y="516" font-size="9" fill="#888">tasks.parent_task_id 自引用</text>
+  <text x="755" y="534" font-size="9" fill="#888">audits 独立于其他实体</text>
+  <text x="755" y="552" font-size="9" fill="#888">不同颜色区分不同实体</text>
+
+</svg>

@@ -10,14 +10,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-macro_rules! nlog {
-    ($($arg:tt)*) => {{
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("agent_debug.log") {
-            let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis();
-            let _ = writeln!(f, "[{}] {}", ts, format!($($arg)*));
-        }
-    }};
-}
+macro_rules! nlog { ($($arg:tt)*) => {{}} }
 
 #[cfg(feature = "tls")]
 use rustls::{ClientConfig, ClientConnection, StreamOwned};

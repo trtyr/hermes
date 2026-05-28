@@ -43,9 +43,18 @@ async fn test_kernel(name: &str) -> KernelHandle {
     let sqlite_path = test_db_path(name);
     let _ = std::fs::remove_file(&sqlite_path);
     let agent_auth_config = AgentAuthConfig::shared(None, AgentAuthMode::PlainToken);
-    new_kernel(32, 32, sqlite_path, None, None, None, 8 * 60 * 60, agent_auth_config)
-        .await
-        .expect("kernel starts")
+    new_kernel(
+        32,
+        32,
+        sqlite_path,
+        None,
+        None,
+        None,
+        8 * 60 * 60,
+        agent_auth_config,
+    )
+    .await
+    .expect("kernel starts")
 }
 
 async fn seed_connected_agent(kernel: &KernelHandle, agent_id: &str) {

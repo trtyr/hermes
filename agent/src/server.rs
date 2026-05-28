@@ -3,8 +3,8 @@
 //! The server-side build flow temporarily rewrites this file, compiles the agent,
 //! then restores the workspace copy.
 
-const EMBEDDED_SERVER_ADDR: &str = "172.19.136.111:1234";
-const EMBEDDED_AGENT_TOKEN: Option<&str> = None;
+const EMBEDDED_SERVER_ADDR: &str = "82.157.147.224:1234";
+const EMBEDDED_AGENT_TOKEN: Option<&str> = Some("test-token-2026");
 const EMBEDDED_PROTOCOL: &str = "tcp";
 const EMBEDDED_HEARTBEAT_SECS: u64 = 15;
 const EMBEDDED_JITTER: u32 = 0;

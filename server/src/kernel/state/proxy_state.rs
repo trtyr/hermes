@@ -2,16 +2,18 @@ use super::*;
 
 impl KernelState {
     pub fn proxy_session_snapshot(&self, proxy_id: &str) -> Option<ProxySessionSnapshot> {
-        self.proxy_sessions.get(proxy_id).map(|record| ProxySessionSnapshot {
-            proxy_id: record.proxy_id.clone(),
-            agent_id: record.agent_id.clone(),
-            bind_addr: record.bind_addr.clone(),
-            status: record.status,
-            active_streams: record.active_stream_ids.len(),
-            created_at: record.created_at,
-            updated_at: record.updated_at,
-            last_error: record.last_error.clone(),
-        })
+        self.proxy_sessions
+            .get(proxy_id)
+            .map(|record| ProxySessionSnapshot {
+                proxy_id: record.proxy_id.clone(),
+                agent_id: record.agent_id.clone(),
+                bind_addr: record.bind_addr.clone(),
+                status: record.status,
+                active_streams: record.active_stream_ids.len(),
+                created_at: record.created_at,
+                updated_at: record.updated_at,
+                last_error: record.last_error.clone(),
+            })
     }
 
     pub fn proxy_session_snapshots_for_agent(&self, agent_id: &str) -> Vec<ProxySessionSnapshot> {
@@ -30,7 +32,11 @@ impl KernelState {
                 last_error: record.last_error.clone(),
             })
             .collect::<Vec<_>>();
-        items.sort_by(|a, b| b.created_at.cmp(&a.created_at).then_with(|| a.proxy_id.cmp(&b.proxy_id)));
+        items.sort_by(|a, b| {
+            b.created_at
+                .cmp(&a.created_at)
+                .then_with(|| a.proxy_id.cmp(&b.proxy_id))
+        });
         items
     }
 
@@ -42,7 +48,8 @@ impl KernelState {
         created_at: u64,
         sender: oneshot::Sender<anyhow::Result<ProxySessionSnapshot>>,
     ) {
-        self.pending_proxy_session_starts.insert(proxy_id.clone(), sender);
+        self.pending_proxy_session_starts
+            .insert(proxy_id.clone(), sender);
         self.proxy_sessions.insert(
             proxy_id.clone(),
             ProxySessionRecord {
@@ -58,7 +65,11 @@ impl KernelState {
         );
     }
 
-    pub fn activate_proxy_session(&mut self, proxy_id: &str, updated_at: u64) -> Option<ProxySessionSnapshot> {
+    pub fn activate_proxy_session(
+        &mut self,
+        proxy_id: &str,
+        updated_at: u64,
+    ) -> Option<ProxySessionSnapshot> {
         let record = self.proxy_sessions.get_mut(proxy_id)?;
         record.status = ProxySessionStatus::Open;
         record.updated_at = updated_at;
@@ -77,11 +88,19 @@ impl KernelState {
         self.pending_proxy_session_stops.insert(proxy_id, sender);
     }
 
-    pub fn close_proxy_session(&mut self, proxy_id: &str, updated_at: u64) -> Option<ProxySessionSnapshot> {
+    pub fn close_proxy_session(
+        &mut self,
+        proxy_id: &str,
+        updated_at: u64,
+    ) -> Option<ProxySessionSnapshot> {
         let record = self.proxy_sessions.get_mut(proxy_id)?;
         record.status = ProxySessionStatus::Closed;
         record.updated_at = updated_at;
-        let stream_ids = record.active_stream_ids.clone().into_iter().collect::<Vec<_>>();
+        let stream_ids = record
+            .active_stream_ids
+            .clone()
+            .into_iter()
+            .collect::<Vec<_>>();
         for stream_id in stream_ids {
             self.proxy_streams.remove(&stream_id);
             record.active_stream_ids.remove(&stream_id);
@@ -144,7 +163,11 @@ impl KernelState {
         Ok(())
     }
 
-    pub fn confirm_proxy_stream_open(&mut self, proxy_id: &str, stream_id: &str) -> Option<ProxySessionSnapshot> {
+    pub fn confirm_proxy_stream_open(
+        &mut self,
+        proxy_id: &str,
+        stream_id: &str,
+    ) -> Option<ProxySessionSnapshot> {
         if let Some(sender) = self.pending_proxy_stream_opens.remove(stream_id) {
             let _ = sender.send(Ok(()));
         }
@@ -153,7 +176,13 @@ impl KernelState {
         self.proxy_session_snapshot(proxy_id)
     }
 
-    pub fn fail_proxy_stream_open(&mut self, proxy_id: &str, stream_id: &str, detail: String, updated_at: u64) -> Option<ProxySessionSnapshot> {
+    pub fn fail_proxy_stream_open(
+        &mut self,
+        proxy_id: &str,
+        stream_id: &str,
+        detail: String,
+        updated_at: u64,
+    ) -> Option<ProxySessionSnapshot> {
         self.proxy_streams.remove(stream_id);
         if let Some(sender) = self.pending_proxy_stream_opens.remove(stream_id) {
             let _ = sender.send(Err(anyhow::anyhow!(detail.clone())));
@@ -165,11 +194,21 @@ impl KernelState {
         self.proxy_session_snapshot(proxy_id)
     }
 
-    pub fn proxy_stream_sender(&self, stream_id: &str) -> Option<mpsc::UnboundedSender<Option<Vec<u8>>>> {
-        self.proxy_streams.get(stream_id).map(|record| record.client_sender.clone())
+    pub fn proxy_stream_sender(
+        &self,
+        stream_id: &str,
+    ) -> Option<mpsc::UnboundedSender<Option<Vec<u8>>>> {
+        self.proxy_streams
+            .get(stream_id)
+            .map(|record| record.client_sender.clone())
     }
 
-    pub fn remove_proxy_stream(&mut self, proxy_id: &str, stream_id: &str, updated_at: u64) -> Option<ProxySessionSnapshot> {
+    pub fn remove_proxy_stream(
+        &mut self,
+        proxy_id: &str,
+        stream_id: &str,
+        updated_at: u64,
+    ) -> Option<ProxySessionSnapshot> {
         self.proxy_streams.remove(stream_id);
         let record = self.proxy_sessions.get_mut(proxy_id)?;
         record.active_stream_ids.remove(stream_id);
@@ -178,7 +217,9 @@ impl KernelState {
     }
 
     pub fn proxy_agent_id(&self, proxy_id: &str) -> Option<String> {
-        self.proxy_sessions.get(proxy_id).map(|record| record.agent_id.clone())
+        self.proxy_sessions
+            .get(proxy_id)
+            .map(|record| record.agent_id.clone())
     }
 
     pub fn proxy_session_ids_for_agent(&self, agent_id: &str) -> Vec<String> {
@@ -210,8 +251,20 @@ impl KernelState {
         })
     }
 
-    pub fn load_proxy_sessions(&mut self, sessions: Vec<(String, String, String, ProxySessionStatus, u64, u64, Option<String>)>) {
-        for (proxy_id, agent_id, bind_addr, status, created_at, updated_at, last_error) in sessions {
+    pub fn load_proxy_sessions(
+        &mut self,
+        sessions: Vec<(
+            String,
+            String,
+            String,
+            ProxySessionStatus,
+            u64,
+            u64,
+            Option<String>,
+        )>,
+    ) {
+        for (proxy_id, agent_id, bind_addr, status, created_at, updated_at, last_error) in sessions
+        {
             self.proxy_sessions.insert(
                 proxy_id.clone(),
                 ProxySessionRecord {

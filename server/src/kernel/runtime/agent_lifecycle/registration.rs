@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 
 use crate::protocol::{ServerCommand, WebEvent};
 
-use super::super::{effects::RuntimePorts, now_ts, task_flow, command_sessions};
+use super::super::{command_sessions, effects::RuntimePorts, now_ts, task_flow};
 use super::connection::cleanup_session_disconnect;
 use crate::kernel::state::{AgentIdentity, KernelState};
 
@@ -71,7 +71,11 @@ pub(super) async fn handle_register(
         }
         effects.publish(&WebEvent::AgentRegistered { agent: snapshot });
         task_flow::dispatch_pending_tasks_for_agent(&mut state, effects, &registered_agent_id);
-        command_sessions::dispatch_pending_commands_for_agent(&mut state, effects, &registered_agent_id);
+        command_sessions::dispatch_pending_commands_for_agent(
+            &mut state,
+            effects,
+            &registered_agent_id,
+        );
     }
 }
 

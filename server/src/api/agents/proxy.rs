@@ -15,7 +15,10 @@ pub(crate) async fn start_proxy(
                 StatusCode::CONFLICT,
                 Json(ApiResponse {
                     success: false,
-                    detail: format!("agent {} is disabled; enable it before opening proxy", agent_id),
+                    detail: format!(
+                        "agent {} is disabled; enable it before opening proxy",
+                        agent_id
+                    ),
                     task_id: None,
                 }),
             )
@@ -53,7 +56,10 @@ pub(crate) async fn start_proxy(
                 "open_proxy".to_string(),
                 "agent".to_string(),
                 Some(agent_id),
-                Some(format!("proxy_id={} bind_addr={}", proxy.proxy_id, proxy.bind_addr)),
+                Some(format!(
+                    "proxy_id={} bind_addr={}",
+                    proxy.proxy_id, proxy.bind_addr
+                )),
                 now_ts(),
             );
             (

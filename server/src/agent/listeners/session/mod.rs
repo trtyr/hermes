@@ -118,7 +118,9 @@ where
                                                 agent_id, peer_addr
                                             );
                                             // Tell the agent to disconnect so it can reconnect later
-                                            let _ = sender.send(ServerCommand::Disconnect { reason: Some("agent is disabled".to_string()) });
+                                            let _ = sender.send(ServerCommand::Disconnect {
+                                                reason: Some("agent is disabled".to_string()),
+                                            });
                                             break;
                                         }
                                         Ok(_) => {}

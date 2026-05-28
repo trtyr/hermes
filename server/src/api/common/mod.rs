@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     kernel::{AuthIdentity, KernelHandle, SESSION_COOKIE_NAME},
-    protocol::{ListenerKind, ListenerRecord, TaskStatus, WebEvent},
+    protocol::{
+        ListenerKind, ListenerRecord, TaskStatus, WebEvent,
+    },
 };
 
 mod app_state;

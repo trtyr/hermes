@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -33,7 +33,7 @@ pub struct ProxyFacade {
 impl ProxyFacade {
     pub async fn start(&self, agent_id: String) -> anyhow::Result<ProxySessionSnapshot> {
         let proxy_id = format!("proxy-{}", PROXY_SEQ.fetch_add(1, Ordering::Relaxed));
-        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let listener = TcpListener::bind("0.0.0.0:0").await?;
         let bind_addr = listener.local_addr()?.to_string();
 
         let (tx, rx) = oneshot::channel();
@@ -113,7 +113,9 @@ async fn handle_socks5_client(
     let mut req_head = [0u8; 4];
     stream.read_exact(&mut req_head).await?;
     if req_head[0] != 0x05 || req_head[1] != 0x01 {
-        stream.write_all(&[0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).await?;
+        stream
+            .write_all(&[0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+            .await?;
         anyhow::bail!("only CONNECT supported");
     }
 
@@ -136,7 +138,9 @@ async fn handle_socks5_client(
             std::net::Ipv6Addr::from(addr).to_string()
         }
         _ => {
-            stream.write_all(&[0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).await?;
+            stream
+                .write_all(&[0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+                .await?;
             anyhow::bail!("unsupported address type");
         }
     };
@@ -163,12 +167,16 @@ async fn handle_socks5_client(
     match timeout(PROXY_STREAM_OPEN_TIMEOUT, rx).await {
         Ok(Ok(Ok(()))) => {}
         Ok(Ok(Err(_))) | Ok(Err(_)) | Err(_) => {
-            stream.write_all(&[0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).await?;
+            stream
+                .write_all(&[0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+                .await?;
             anyhow::bail!("proxy stream open failed");
         }
     }
 
-    stream.write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]).await?;
+    stream
+        .write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+        .await?;
 
     let (mut reader, mut writer) = stream.into_split();
     let write_task = tokio::spawn(async move {

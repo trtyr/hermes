@@ -1,6 +1,11 @@
+---
+timestamp: 2026-05-28T10:25:35Z
+commit: 31ffbf4
+---
+
 # Hermes Server — Agent Working Guide
 
-## What This Is
+## OVERVIEW
 
 Hermes Server is the control plane in a three-part C2 architecture:
 
@@ -123,3 +128,14 @@ Three auth paths coexist:
 5. Add state logic in `src/kernel/state/` if new state is needed.
 6. Add storage logic in `src/kernel/storage/` if persistence is needed.
 7. Route events through `RuntimePorts` for side effects (persistence + WebSocket broadcast).
+
+## NOTES
+
+- `KernelState` is held by the kernel loop, accessed via `Arc<Mutex<KernelState>>` through facades.
+- `RuntimePorts` abstracts all I/O: storage writes, event bus publish, agent message sending.
+- E2E tests with names like `database_consistency`, `concurrent_stress`, `fault_matrix` exist — consult `scripts/e2e/` before writing new tests.
+- Temp SQLite databases are created per test in `kernel/runtime/tests.rs`.
+- Server must be compiled before running E2E: `cargo build` then `make e2e`.
+- No Docker config, no CI pipeline — local `make ci` only.
+- CORS is wide-open (`Any` origin) by design for development.
+- There's a documented release checklist at `docs/server-architecture/release-process.md`.

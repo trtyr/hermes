@@ -62,7 +62,7 @@ pub(crate) async fn update_auth_settings(
                     task_id: None,
                 }),
             )
-                .into_response()
+                .into_response();
         }
     };
 

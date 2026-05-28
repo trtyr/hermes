@@ -235,7 +235,10 @@ pub(super) async fn handle_agent_frame(
             )
             .await;
         }
-        AgentMessage::ProxyOpened { proxy_id, bind_addr: _ } => {
+        AgentMessage::ProxyOpened {
+            proxy_id,
+            bind_addr: _,
+        } => {
             super::proxy::handle_proxy_opened(state, effects, proxy_id).await;
         }
         AgentMessage::ProxyConnectResult {
@@ -256,7 +259,10 @@ pub(super) async fn handle_agent_frame(
         } => {
             super::proxy::handle_proxy_data(state, effects, proxy_id, stream_id, data_base64).await;
         }
-        AgentMessage::ProxyClosed { proxy_id, stream_id } => {
+        AgentMessage::ProxyClosed {
+            proxy_id,
+            stream_id,
+        } => {
             super::proxy::handle_proxy_closed(state, effects, proxy_id, stream_id).await;
         }
         AgentMessage::ProxyError {
