@@ -12,42 +12,62 @@ impl StatePersistence {
         Self { storage }
     }
 
-    pub(super) fn persist_task(&self, task: TaskSnapshot) {
-        self.storage.persist_task(task);
+    pub(super) async fn persist_task(&self, task: TaskSnapshot) {
+        let storage = self.storage.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            storage.persist_task(task);
+        })
+        .await;
     }
 
-    pub(super) fn persist_agent_online(&self, agent: AgentSnapshot) {
-        self.storage.persist_agent_snapshot(agent, true);
+    pub(super) async fn persist_agent_online(&self, agent: AgentSnapshot) {
+        let storage = self.storage.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            storage.persist_agent_snapshot(agent, true);
+        })
+        .await;
     }
 
-    pub(super) fn mark_agent_offline(&self, agent_id: String, updated_at: u64) {
-        self.storage.mark_agent_offline(agent_id, updated_at);
+    pub(super) async fn mark_agent_offline(&self, agent_id: String, updated_at: u64) {
+        let storage = self.storage.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            storage.mark_agent_offline(agent_id, updated_at);
+        })
+        .await;
     }
 
-    pub(super) fn persist_proxy_session(
+    pub(super) async fn persist_proxy_session(
         &self,
-        proxy_id: &str,
-        agent_id: &str,
-        bind_addr: &str,
-        status: &ProxySessionStatus,
+        proxy_id: String,
+        agent_id: String,
+        bind_addr: String,
+        status: ProxySessionStatus,
         active_streams: usize,
-        last_error: Option<&str>,
+        last_error: Option<String>,
         created_at: u64,
         updated_at: u64,
     ) {
-        self.storage.persist_proxy_session(
-            proxy_id,
-            agent_id,
-            bind_addr,
-            status,
-            active_streams,
-            last_error,
-            created_at,
-            updated_at,
-        );
+        let storage = self.storage.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            storage.persist_proxy_session(
+                &proxy_id,
+                &agent_id,
+                &bind_addr,
+                &status,
+                active_streams,
+                last_error.as_deref(),
+                created_at,
+                updated_at,
+            );
+        })
+        .await;
     }
 
-    pub(super) fn delete_proxy_session(&self, proxy_id: &str) {
-        self.storage.delete_proxy_session(proxy_id);
+    pub(super) async fn delete_proxy_session(&self, proxy_id: String) {
+        let storage = self.storage.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            storage.delete_proxy_session(&proxy_id);
+        })
+        .await;
     }
 }

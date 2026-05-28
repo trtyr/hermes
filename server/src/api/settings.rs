@@ -25,7 +25,17 @@ pub(crate) async fn get_auth_settings(
         return err;
     }
 
-    let cfg = state.kernel.agent_auth_config().read().unwrap();
+    let Ok(cfg) = state.kernel.agent_auth_config().read() else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse {
+                success: false,
+                detail: "auth config lock poisoned".into(),
+                task_id: None,
+            }),
+        )
+            .into_response();
+    };
     let mode_str = match cfg.agent_auth_mode {
         AgentAuthMode::PlainToken => "plain_token",
         AgentAuthMode::ChallengeResponse => "challenge_response",
@@ -84,7 +94,17 @@ pub(crate) async fn update_auth_settings(
     // Update the in-memory shared config — the listener manager's
     // reconcile loop will pick up the new values within ~1 second.
     {
-        let mut cfg = state.kernel.agent_auth_config().write().unwrap();
+        let Ok(mut cfg) = state.kernel.agent_auth_config().write() else {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse {
+                    success: false,
+                    detail: "auth config lock poisoned".into(),
+                    task_id: None,
+                }),
+            )
+                .into_response();
+        };
         cfg.agent_token = new_token.clone();
         cfg.agent_auth_mode = new_mode;
     }

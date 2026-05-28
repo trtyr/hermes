@@ -33,14 +33,56 @@ impl Storage {
         let path = self.sqlite_path.clone();
         tokio::task::spawn_blocking(move || {
             let connection = open_connection(&path)?;
-            let mut statement = connection.prepare(
+            let mut where_parts: Vec<String> = Vec::new();
+            let mut param_values: Vec<String> = Vec::new();
+
+            if let Some(operator) = filter.operator {
+                let idx = param_values.len() + 1;
+                where_parts.push(format!("operator LIKE ?{idx} COLLATE NOCASE"));
+                param_values.push(format!("%{operator}%"));
+            }
+
+            if let Some(action) = filter.action {
+                let idx = param_values.len() + 1;
+                where_parts.push(format!("action = ?{idx} COLLATE NOCASE"));
+                param_values.push(action);
+            }
+
+            if let Some(target_kind) = filter.target_kind {
+                let idx = param_values.len() + 1;
+                where_parts.push(format!("target_kind = ?{idx} COLLATE NOCASE"));
+                param_values.push(target_kind);
+            }
+
+            if let Some(target_id) = filter.target_id {
+                let idx = param_values.len() + 1;
+                where_parts.push(format!("COALESCE(target_id, '') LIKE ?{idx} COLLATE NOCASE"));
+                param_values.push(format!("%{target_id}%"));
+            }
+
+            let sql = if where_parts.is_empty() {
                 "SELECT audit_id, operator, action, target_kind, target_id, detail, created_at
                  FROM audits
-                 ORDER BY audit_id DESC",
-            )?;
+                 ORDER BY audit_id DESC"
+                    .to_string()
+            } else {
+                format!(
+                    "SELECT audit_id, operator, action, target_kind, target_id, detail, created_at
+                     FROM audits
+                     WHERE {}
+                     ORDER BY audit_id DESC",
+                    where_parts.join(" AND ")
+                )
+            };
 
-            let mut records = statement
-                .query_map([], |row| {
+            let mut statement = connection.prepare(&sql)?;
+            let params: Vec<&dyn rusqlite::types::ToSql> = param_values
+                .iter()
+                .map(|value| value as &dyn rusqlite::types::ToSql)
+                .collect();
+
+            let records = statement
+                .query_map(params.as_slice(), |row| {
                     Ok(AuditRecord {
                         audit_id: row.get(0)?,
                         operator: row.get(1)?,
@@ -52,33 +94,6 @@ impl Storage {
                     })
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
-
-            if let Some(operator) = filter.operator {
-                let operator = operator.to_lowercase();
-                records.retain(|record| record.operator.to_lowercase().contains(&operator));
-            }
-
-            if let Some(action) = filter.action {
-                let action = action.to_lowercase();
-                records.retain(|record| record.action.to_lowercase() == action);
-            }
-
-            if let Some(target_kind) = filter.target_kind {
-                let target_kind = target_kind.to_lowercase();
-                records.retain(|record| record.target_kind.to_lowercase() == target_kind);
-            }
-
-            if let Some(target_id) = filter.target_id {
-                let target_id = target_id.to_lowercase();
-                records.retain(|record| {
-                    record
-                        .target_id
-                        .as_deref()
-                        .unwrap_or_default()
-                        .to_lowercase()
-                        .contains(&target_id)
-                });
-            }
 
             Ok(records)
         })

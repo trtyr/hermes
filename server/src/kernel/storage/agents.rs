@@ -87,15 +87,22 @@ impl Storage {
         let path = self.sqlite_path.clone();
         tokio::task::spawn_blocking(move || {
             let connection = open_connection(&path)?;
-            let mut records = load_agent_records(&connection)?;
+            let mut where_parts: Vec<String> = Vec::new();
+            let mut param_values: Vec<i64> = Vec::new();
 
             if let Some(online) = filter.online {
-                records.retain(|record| record.is_online == online);
+                let idx = param_values.len() + 1;
+                where_parts.push(format!("is_online = ?{idx}"));
+                param_values.push(if online { 1 } else { 0 });
             }
 
             if let Some(disabled) = filter.disabled {
-                records.retain(|record| record.is_disabled == disabled);
+                let idx = param_values.len() + 1;
+                where_parts.push(format!("is_disabled = ?{idx}"));
+                param_values.push(if disabled { 1 } else { 0 });
             }
+
+            let mut records = load_agent_records(&connection, &where_parts, &param_values)?;
 
             if let Some(keyword) = filter.keyword {
                 let keyword = keyword.to_lowercase();
@@ -250,17 +257,38 @@ impl Storage {
     }
 }
 
-fn load_agent_records(connection: &Connection) -> anyhow::Result<Vec<AgentRecord>> {
-    let mut statement = connection.prepare(
+fn load_agent_records(
+    connection: &Connection,
+    where_parts: &[String],
+    param_values: &[i64],
+) -> anyhow::Result<Vec<AgentRecord>> {
+    let sql = if where_parts.is_empty() {
         "SELECT agent_id, session_id, listener_id, listener_name, hostname, username, os, arch, pid, internal_ip,
                 tags_json, sleep_interval, jitter, peer_addr, connected_at, last_seen,
                 is_online, is_disabled, privilege, updated_at
          FROM agents
-         ORDER BY updated_at DESC, agent_id ASC",
-    )?;
+         ORDER BY updated_at DESC, agent_id ASC"
+            .to_string()
+    } else {
+        format!(
+            "SELECT agent_id, session_id, listener_id, listener_name, hostname, username, os, arch, pid, internal_ip,
+                    tags_json, sleep_interval, jitter, peer_addr, connected_at, last_seen,
+                    is_online, is_disabled, privilege, updated_at
+             FROM agents
+             WHERE {}
+             ORDER BY updated_at DESC, agent_id ASC",
+            where_parts.join(" AND ")
+        )
+    };
+
+    let mut statement = connection.prepare(&sql)?;
+    let params: Vec<&dyn rusqlite::types::ToSql> = param_values
+        .iter()
+        .map(|value| value as &dyn rusqlite::types::ToSql)
+        .collect();
 
     let records = statement
-        .query_map([], |row| {
+        .query_map(params.as_slice(), |row| {
             let tags_json: String = row.get(10)?;
             let peer_addr: String = row.get(13)?;
             Ok(AgentRecord {

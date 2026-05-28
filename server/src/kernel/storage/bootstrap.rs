@@ -215,14 +215,15 @@ impl Storage {
                       notified INTEGER NOT NULL DEFAULT 0,
                       notification_result TEXT
                   );
-                  CREATE TABLE IF NOT EXISTS vuln_suppression_windows (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      vuln_id_pattern TEXT,
-                      target_filter_json TEXT,
-                      expires_at INTEGER NOT NULL,
-                      created_at INTEGER NOT NULL
-                  );",
+                   CREATE TABLE IF NOT EXISTS vuln_suppression_windows (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       vuln_id_pattern TEXT,
+                       target_filter_json TEXT,
+                       expires_at INTEGER NOT NULL,
+                       created_at INTEGER NOT NULL
+                   );",
             )?;
+            ensure_indexes(&connection)?;
             ensure_agent_disabled_column(&connection)?;
             ensure_agent_metadata_columns(&connection)?;
             ensure_agent_listener_columns(&connection)?;
@@ -231,4 +232,26 @@ impl Storage {
         .await
         .context("sqlite init join error")?
     }
+}
+
+fn ensure_indexes(connection: &Connection) -> anyhow::Result<()> {
+    connection.execute_batch(
+        "CREATE INDEX IF NOT EXISTS idx_agents_online ON agents(is_online);
+         CREATE INDEX IF NOT EXISTS idx_agents_updated ON agents(updated_at);
+         CREATE INDEX IF NOT EXISTS idx_agents_listener ON agents(listener_id);
+         CREATE INDEX IF NOT EXISTS idx_audits_created ON audits(created_at);
+         CREATE INDEX IF NOT EXISTS idx_audits_action ON audits(action);
+         CREATE INDEX IF NOT EXISTS idx_audits_target_kind ON audits(target_kind);
+         CREATE INDEX IF NOT EXISTS idx_tasks_target_agent ON tasks(target_agent_id);
+         CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+         CREATE INDEX IF NOT EXISTS idx_tasks_updated ON tasks(updated_at);
+         CREATE INDEX IF NOT EXISTS idx_builds_status ON agent_builds(status);
+         CREATE INDEX IF NOT EXISTS idx_builds_created ON agent_builds(created_at);
+         CREATE INDEX IF NOT EXISTS idx_proxy_sessions_agent ON agent_proxy_sessions(agent_id);
+         CREATE INDEX IF NOT EXISTS idx_proxy_sessions_status ON agent_proxy_sessions(status);
+         CREATE INDEX IF NOT EXISTS idx_vuln_events_rule ON vuln_alert_events(rule_id);
+         CREATE INDEX IF NOT EXISTS idx_vuln_events_matched ON vuln_alert_events(matched_at);",
+    )?;
+
+    Ok(())
 }

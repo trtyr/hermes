@@ -25,16 +25,26 @@ impl RuntimePorts {
     }
 
     pub(super) fn task_updated(&self, task: TaskSnapshot) {
-        self.persistence.persist_task(task.clone());
+        let persistence = self.persistence.clone();
+        let task_for_persist = task.clone();
+        tokio::spawn(async move {
+            persistence.persist_task(task_for_persist).await;
+        });
         self.publisher.publish(&WebEvent::TaskUpdated { task });
     }
 
     pub(super) fn persist_agent_online(&self, agent: AgentSnapshot) {
-        self.persistence.persist_agent_online(agent);
+        let persistence = self.persistence.clone();
+        tokio::spawn(async move {
+            persistence.persist_agent_online(agent).await;
+        });
     }
 
     pub(super) fn mark_agent_offline(&self, agent_id: String, updated_at: u64) {
-        self.persistence.mark_agent_offline(agent_id, updated_at);
+        let persistence = self.persistence.clone();
+        tokio::spawn(async move {
+            persistence.mark_agent_offline(agent_id, updated_at).await;
+        });
     }
 
     pub(super) fn persist_proxy_session(
@@ -48,19 +58,33 @@ impl RuntimePorts {
         created_at: u64,
         updated_at: u64,
     ) {
-        self.persistence.persist_proxy_session(
-            proxy_id,
-            agent_id,
-            bind_addr,
-            status,
-            active_streams,
-            last_error,
-            created_at,
-            updated_at,
-        );
+        let persistence = self.persistence.clone();
+        let proxy_id = proxy_id.to_owned();
+        let agent_id = agent_id.to_owned();
+        let bind_addr = bind_addr.to_owned();
+        let status = status.clone();
+        let last_error = last_error.map(str::to_owned);
+        tokio::spawn(async move {
+            persistence
+                .persist_proxy_session(
+                    proxy_id,
+                    agent_id,
+                    bind_addr,
+                    status,
+                    active_streams,
+                    last_error,
+                    created_at,
+                    updated_at,
+                )
+                .await;
+        });
     }
 
     pub(super) fn delete_proxy_session(&self, proxy_id: &str) {
-        self.persistence.delete_proxy_session(proxy_id);
+        let persistence = self.persistence.clone();
+        let proxy_id = proxy_id.to_owned();
+        tokio::spawn(async move {
+            persistence.delete_proxy_session(proxy_id).await;
+        });
     }
 }

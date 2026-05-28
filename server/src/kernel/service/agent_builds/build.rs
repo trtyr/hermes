@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::path::Path;
 
 use tokio::io::AsyncBufReadExt;
 
@@ -221,6 +222,14 @@ async fn run_build(
     let agent_project_path = PathBuf::from(DEFAULT_AGENT_PROJECT_PATH);
     let artifact_root = PathBuf::from(DEFAULT_AGENT_ARTIFACT_DIR).join(format!("build-{build_id}"));
     fs::create_dir_all(&artifact_root)?;
+    let copied_agent_project_path = artifact_root.join("agent-src");
+    let copied_agent_src_path = copied_agent_project_path.join("src");
+
+    copy_dir_recursive(&agent_project_path.join("src"), &copied_agent_src_path)?;
+    fs::copy(
+        agent_project_path.join("Cargo.toml"),
+        copied_agent_project_path.join("Cargo.toml"),
+    )?;
 
     ensure_target_support(&target_triple).await?;
 
@@ -235,11 +244,10 @@ async fn run_build(
         command.args(["--features", "tls"]);
     }
     command
-        .current_dir(&agent_project_path)
+        .current_dir(&copied_agent_project_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    let server_module_path = agent_project_path.join(AGENT_SERVER_MODULE_PATH);
-    let previous_server_module = fs::read_to_string(&server_module_path)?;
+    let server_module_path = copied_agent_project_path.join(AGENT_SERVER_MODULE_PATH);
     fs::write(
         &server_module_path,
         render_server_module(
@@ -263,7 +271,9 @@ async fn run_build(
         let reader = tokio::io::BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let mut buf = acc_stdout.lock().unwrap();
+            let Ok(mut buf) = acc_stdout.lock() else {
+                break;
+            };
             buf.push_str(&line);
             buf.push('\n');
         }
@@ -273,7 +283,9 @@ async fn run_build(
         let reader = tokio::io::BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            let mut buf = acc_stderr.lock().unwrap();
+            let Ok(mut buf) = acc_stderr.lock() else {
+                break;
+            };
             buf.push_str(&line);
             buf.push('\n');
         }
@@ -286,7 +298,12 @@ async fn run_build(
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
         loop {
             interval.tick().await;
-            let detail = flush_accumulated.lock().unwrap().clone();
+            let detail = {
+                let Ok(buf) = flush_accumulated.lock() else {
+                    break;
+                };
+                buf.clone()
+            };
             if let Err(e) = flush_storage
                 .update_agent_build_detail(build_id, &detail)
                 .await
@@ -305,26 +322,9 @@ async fn run_build(
     let _ = stdout_reader.await;
     let _ = stderr_reader.await;
 
-    let restore_result = fs::write(&server_module_path, previous_server_module);
-    let status = match (status, restore_result) {
-        (Ok(status), Ok(())) => status,
-        (Err(build_error), Ok(())) => return Err(build_error.into()),
-        (Ok(_), Err(restore_error)) => {
-            return Err(anyhow::anyhow!(
-                "agent build server module restore failed: {}",
-                restore_error
-            ));
-        }
-        (Err(build_error), Err(restore_error)) => {
-            return Err(anyhow::anyhow!(
-                "agent build failed: {}; server module restore also failed: {}",
-                build_error,
-                restore_error
-            ));
-        }
-    };
+    let status = status?;
 
-    let detail = accumulated.lock().unwrap().clone();
+    let detail = snapshot_accumulated(&accumulated);
 
     // Final flush with complete output
     if let Err(e) = storage.update_agent_build_detail(build_id, &detail).await {
@@ -341,7 +341,7 @@ async fn run_build(
     } else {
         "debug"
     };
-    let source_artifact = agent_project_path
+    let source_artifact = copied_agent_project_path
         .join("target")
         .join(&target_triple)
         .join(profile_dir)
@@ -398,6 +398,34 @@ async fn run_build(
             manifest_path.display()
         ),
     ))
+}
+
+fn copy_dir_recursive(source: &Path, destination: &Path) -> anyhow::Result<()> {
+    fs::create_dir_all(destination)?;
+
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let destination_path = destination.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &destination_path)?;
+        } else if file_type.is_file() {
+            if let Some(parent) = destination_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(entry.path(), destination_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn snapshot_accumulated(accumulated: &Arc<Mutex<String>>) -> String {
+    let Ok(buf) = accumulated.lock() else {
+        return String::new();
+    };
+    buf.clone()
 }
 
 fn render_server_module(

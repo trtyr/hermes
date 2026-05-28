@@ -25,7 +25,9 @@ pub async fn run_listener_manager(
     let mut active = HashMap::<i64, ActiveListener>::new();
     loop {
         let (token, mode) = {
-            let cfg = agent_auth_config.read().unwrap();
+            let cfg = agent_auth_config
+                .read()
+                .unwrap_or_else(|error| error.into_inner());
             (cfg.agent_token.clone(), cfg.agent_auth_mode)
         };
         reconcile_listeners(&kernel, &token, mode, &mut active).await;

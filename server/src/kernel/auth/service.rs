@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use anyhow::Context;
 
@@ -30,27 +30,24 @@ impl AuthService {
     }
 
     pub fn auth_required(&self) -> bool {
-        let state = self.state.read().expect("auth state poisoned");
+        let state = self.read_state();
         state.web_username.is_some() && state.web_password.is_some()
             || state.legacy_api_token.is_some()
     }
 
     pub fn session_ttl_secs(&self) -> u64 {
-        self.state
-            .read()
-            .expect("auth state poisoned")
-            .session_ttl_secs
+        self.read_state().session_ttl_secs
     }
 
     pub fn web_login_configured(&self) -> bool {
-        let state = self.state.read().expect("auth state poisoned");
+        let state = self.read_state();
         state.web_username.is_some() && state.web_password.is_some()
     }
 
     pub fn validate_web_credentials(&self, username: &str, password: &str) -> Option<String> {
         let username = username.trim();
         let password = password.trim();
-        let state = self.state.read().expect("auth state poisoned");
+        let state = self.read_state();
         let expected_username = state.web_username.as_deref()?;
         let expected_password = state.web_password.as_deref()?;
         if username == expected_username && password == expected_password {
@@ -67,25 +64,21 @@ impl AuthService {
             username: username.to_string(),
             expires_at,
         };
-        self.state
-            .write()
-            .expect("auth state poisoned")
+        self.write_state()
             .sessions
             .insert(session.session_token.clone(), session.clone());
         Ok(session)
     }
 
     pub fn remove_session(&self, session_token: &str) -> bool {
-        self.state
-            .write()
-            .expect("auth state poisoned")
+        self.write_state()
             .sessions
             .remove(session_token)
             .is_some()
     }
 
     pub fn lookup_session_token(&self, session_token: &str) -> Option<WebSession> {
-        let state = self.state.read().expect("auth state poisoned");
+        let state = self.read_state();
         let session = state.sessions.get(session_token)?.clone();
         if session.expires_at > now_ts() {
             Some(session)
@@ -103,7 +96,7 @@ impl AuthService {
             });
         }
 
-        let state = self.state.read().expect("auth state poisoned");
+        let state = self.read_state();
         if state.legacy_api_token.as_deref() == Some(provided_token) {
             Some(AuthIdentity {
                 username: None,
@@ -113,6 +106,14 @@ impl AuthService {
         } else {
             None
         }
+    }
+
+    fn read_state(&self) -> RwLockReadGuard<'_, AuthState> {
+        self.state.read().unwrap_or_else(|error| error.into_inner())
+    }
+
+    fn write_state(&self) -> RwLockWriteGuard<'_, AuthState> {
+        self.state.write().unwrap_or_else(|error| error.into_inner())
     }
 }
 

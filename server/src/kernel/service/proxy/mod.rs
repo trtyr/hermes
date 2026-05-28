@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -19,9 +19,14 @@ const PROXY_CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
 
 static PROXY_SEQ: AtomicU64 = AtomicU64::new(1);
 static STREAM_SEQ: AtomicU64 = AtomicU64::new(1);
-static LOCAL_PROXY_TASKS: OnceLock<Mutex<HashMap<String, JoinHandle<()>>>> = OnceLock::new();
+static LOCAL_PROXY_TASKS: OnceLock<Mutex<HashMap<String, ProxyTasks>>> = OnceLock::new();
 
-fn local_proxy_tasks() -> &'static Mutex<HashMap<String, JoinHandle<()>>> {
+struct ProxyTasks {
+    accept: JoinHandle<()>,
+    clients: Arc<Mutex<Vec<JoinHandle<()>>>>,
+}
+
+fn local_proxy_tasks() -> &'static Mutex<HashMap<String, ProxyTasks>> {
     LOCAL_PROXY_TASKS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -49,19 +54,32 @@ impl ProxyFacade {
 
         let kernel = self.kernel.clone();
         let proxy_id_for_task = proxy_id.clone();
+        let clients = Arc::new(Mutex::new(Vec::<JoinHandle<()>>::new()));
+        let clients_for_loop = Arc::clone(&clients);
         let accept_task = tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
                 let kernel = kernel.clone();
                 let proxy_id = proxy_id_for_task.clone();
-                tokio::spawn(async move {
+                let clients = Arc::clone(&clients_for_loop);
+                let handle = tokio::spawn(async move {
                     let _ = handle_socks5_client(kernel, proxy_id, stream).await;
                 });
+
+                let mut client_tasks = clients.lock().unwrap_or_else(|error| error.into_inner());
+                client_tasks.retain(|task| !task.is_finished());
+                client_tasks.push(handle);
             }
         });
         local_proxy_tasks()
             .lock()
-            .unwrap()
-            .insert(proxy_id.clone(), accept_task);
+            .unwrap_or_else(|error| error.into_inner())
+            .insert(
+                proxy_id.clone(),
+                ProxyTasks {
+                    accept: accept_task,
+                    clients,
+                },
+            );
 
         match timeout(PROXY_OPEN_TIMEOUT, rx).await {
             Ok(result) => result.map_err(|_| anyhow::anyhow!("proxy start channel closed"))?,
@@ -84,8 +102,20 @@ impl ProxyFacade {
             .await
             .map_err(anyhow::Error::new)?;
 
-        if let Some(handle) = local_proxy_tasks().lock().unwrap().remove(&proxy_id) {
-            handle.abort();
+        if let Some(handle) = local_proxy_tasks()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .remove(&proxy_id)
+        {
+            handle.accept.abort();
+            for client_handle in handle
+                .clients
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .drain(..)
+            {
+                client_handle.abort();
+            }
         }
 
         match timeout(PROXY_CLOSE_TIMEOUT, rx).await {
