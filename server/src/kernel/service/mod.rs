@@ -5,6 +5,8 @@ mod auth;
 mod command_sessions;
 mod handle;
 mod listener_commands;
+#[cfg(test)]
+mod listener_tests;
 mod listener_queries;
 mod proxy;
 mod tasks;

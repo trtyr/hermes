@@ -153,7 +153,7 @@ import { useAppStore } from '@/store/app';
 import SessionFilesTab from './components/SessionFilesTab.vue';
 import SessionScreenshotTab from './components/SessionScreenshotTab.vue';
 import SessionProxyTab from './components/SessionProxyTab.vue';
-import 'xterm/css/xterm.css';
+import '@xterm/xterm/css/xterm.css';
 
 const route = useRoute();
 const router = useRouter();

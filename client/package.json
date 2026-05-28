@@ -4,7 +4,7 @@
   "description": "",
   "main": ".commitlintrc.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
@@ -34,12 +34,17 @@
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
+    "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^6.0.5",
+    "@vue/test-utils": "^2.4.10",
     "autoprefixer": "^10.4.27",
+    "happy-dom": "^20.9.0",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vite": "^8.0.1",
+    "vitest": "^4.1.7",
     "vue-tsc": "^3.2.6"
   }
 }

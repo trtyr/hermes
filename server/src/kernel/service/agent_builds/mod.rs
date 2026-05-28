@@ -13,6 +13,9 @@ mod build;
 mod queries;
 mod toolchain;
 
+#[cfg(test)]
+mod tests;
+
 const DEFAULT_AGENT_PROJECT_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../agent");
 const DEFAULT_AGENT_ARTIFACT_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/agent-builds");
 

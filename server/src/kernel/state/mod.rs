@@ -18,6 +18,9 @@ mod task_state;
 mod types;
 
 #[cfg(test)]
+mod proxy_state_tests;
+
+#[cfg(test)]
 mod tests;
 
 pub(crate) use types::*;

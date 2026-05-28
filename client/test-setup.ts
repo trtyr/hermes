@@ -1,0 +1,17 @@
+// Provide localStorage polyfill for Node.js 22+ compatibility
+// Node.js v22+ adds experimental localStorage that conflicts with jsdom.
+import { vi } from 'vitest';
+
+const store = new Map<string, string>();
+
+globalThis.localStorage = {
+  getItem: (key: string) => store.get(key) ?? null,
+  setItem: (key: string, value: string) => { store.set(key, value); },
+  removeItem: (key: string) => { store.delete(key); },
+  clear: () => { store.clear(); },
+  get length() { return store.size; },
+  key: (index: number) => {
+    const keys = Array.from(store.keys());
+    return keys[index] ?? null;
+  },
+} as Storage;

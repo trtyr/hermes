@@ -14,6 +14,8 @@ use crate::{
 
 mod app_state;
 mod auth;
+#[cfg(test)]
+mod auth_tests;
 mod paging;
 mod requests;
 mod responses;

@@ -13,6 +13,9 @@ use super::KernelHandle;
 use crate::kernel::message::ProxyKernelMessage;
 use crate::protocol::ProxySessionSnapshot;
 
+#[cfg(test)]
+mod tests;
+
 const PROXY_OPEN_TIMEOUT: Duration = Duration::from_secs(5);
 const PROXY_STREAM_OPEN_TIMEOUT: Duration = Duration::from_secs(10);
 const PROXY_CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
