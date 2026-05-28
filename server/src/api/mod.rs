@@ -28,10 +28,7 @@ use crate::console;
 use crate::kernel::KernelHandle;
 use common::*;
 
-pub async fn run_http_api(
-    kernel: KernelHandle,
-    api_addr: (std::net::Ipv4Addr, u16),
-) -> anyhow::Result<(), anyhow::Error> {
+pub fn build_router(kernel: KernelHandle) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([
@@ -50,7 +47,7 @@ pub async fn run_http_api(
             header::HeaderName::from_static("x-operator"),
         ]);
 
-    let app = Router::new()
+    Router::new()
         .route("/health", get(system::health))
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
@@ -185,7 +182,14 @@ pub async fn run_http_api(
         .route("/web/terminal/ws", get(web_terminal::terminal_ws_events))
         .layer(middleware::from_fn(log_http_request))
         .layer(cors)
-        .with_state(AppState { kernel });
+        .with_state(AppState { kernel })
+}
+
+pub async fn run_http_api(
+    kernel: KernelHandle,
+    api_addr: (std::net::Ipv4Addr, u16),
+) -> anyhow::Result<(), anyhow::Error> {
+    let app = build_router(kernel);
 
     let listener = tokio::net::TcpListener::bind(api_addr).await?;
     console::startup_http_api(listener.local_addr()?);

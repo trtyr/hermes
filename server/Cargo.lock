@@ -882,6 +882,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "toml",
+ "tower",
  "tower-http",
 ]
 
