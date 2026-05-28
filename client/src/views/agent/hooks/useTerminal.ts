@@ -91,8 +91,7 @@ export function useTerminal(agentId: string) {
     if (sessionId.value) {
       try {
         await closeTerminalSession(sessionId.value);
-      } catch (e) {
-        console.error('Failed to close terminal session silently', e);
+      } catch {
       }
     }
   });

@@ -26,7 +26,7 @@ import { useRoute } from 'vue-router';
 import { CodeOutlined } from '@ant-design/icons-vue';
 import { useAppStore } from '@/store/app';
 import { useTerminal } from './hooks/useTerminal';
-import 'xterm/css/xterm.css';
+import '@xterm/xterm/css/xterm.css';
 
 const route = useRoute();
 const appStore = useAppStore();

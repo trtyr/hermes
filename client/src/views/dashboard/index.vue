@@ -71,7 +71,6 @@ async function loadStats() {
   try {
     stats.value = await fetchDashboardStats();
   } catch (err: any) {
-    console.error('Failed to load dashboard stats:', err);
     error.value = err.message || '网络请求失败，请检查后端是否正常运行。';
   } finally {
     loading.value = false;

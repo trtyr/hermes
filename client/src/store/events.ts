@@ -6,7 +6,7 @@ import type { Agent } from '@/api/agent';
 // After this many consecutive reconnect failures, assume the session is gone.
 const MAX_RETRIES_BEFORE_LOGOUT = 6;
 
-export type BackendEvent = 
+export type BackendEvent =
   | { type: 'snapshot'; agents: Agent[] }
   | { type: 'agent_connected'; session_id: number; peer_addr: string; connected_at: number }
   | { type: 'agent_registered'; agent: Agent }
@@ -16,11 +16,11 @@ export type BackendEvent =
   | { type: 'agent_disabled'; agent_id: string }
   | { type: 'agent_enabled'; agent_id: string }
   | { type: 'agent_deleted'; agent_id: string }
-  | { type: 'task_dispatched'; [key: string]: any }
-  | { type: 'task_result'; [key: string]: any }
-  | { type: 'task_updated'; [key: string]: any }
-  | { type: 'agent_build_created'; build: any }
-  | { type: 'agent_build_completed'; build: any }
+  | { type: 'task_dispatched'; task_id: string; target_agent_id: string }
+  | { type: 'task_result'; task_id: string; success: boolean; output: string }
+  | { type: 'task_updated'; task_id: string }
+  | { type: 'agent_build_created'; build_id: string; status: string }
+  | { type: 'agent_build_completed'; build_id: string; status: string }
   | { type: 'agent_build_deleted'; build_id: number };
 
 export const useEventStore = defineStore('events', () => {
@@ -74,12 +74,10 @@ export const useEventStore = defineStore('events', () => {
       const protocol = httpUrl.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${httpUrl.host}/events/ws?api_token=${profile.api_token}`;
 
-      console.log('[EventStore] Connecting to', wsUrl);
       const ws = new WebSocket(wsUrl);
       socket.value = ws;
 
       ws.onopen = () => {
-        console.log('[EventStore] WebSocket connected');
         isConnected.value = true;
         lastError.value = null;
         retryCount.value = 0;
@@ -89,25 +87,21 @@ export const useEventStore = defineStore('events', () => {
         try {
           const payload = JSON.parse(msg.data) as BackendEvent;
           notifySubscribers(payload);
-        } catch (e) {
-          console.error('[EventStore] Failed to parse message', e);
+        } catch {
         }
       };
 
-      ws.onerror = (e) => {
-        console.error('[EventStore] WebSocket error', e);
+      ws.onerror = () => {
         lastError.value = 'Connection error';
       };
 
       ws.onclose = (e) => {
-        console.log('[EventStore] WebSocket closed', e.code, e.reason);
         isConnected.value = false;
         socket.value = null;
         
         // Close code 1008 = policy violation (often auth failure)
         // Close code 4001+ = custom server codes that may indicate auth issues
         if (e.code === 1008 || e.code === 4001) {
-          console.warn('[EventStore] WebSocket closed with auth-related code, forcing logout');
           forceLogout();
           return;
         }
@@ -118,7 +112,6 @@ export const useEventStore = defineStore('events', () => {
       };
 
     } catch (e: any) {
-      console.error('[EventStore] Connection setup failed', e);
       lastError.value = e.message;
       scheduleReconnect();
     }
@@ -142,13 +135,11 @@ export const useEventStore = defineStore('events', () => {
 
     // If we've retried too many times, force logout
     if (retryCount.value >= MAX_RETRIES_BEFORE_LOGOUT) {
-      console.warn('[EventStore] Max reconnect attempts reached, forcing logout');
       forceLogout();
       return;
     }
 
     const delay = Math.min(1000 * Math.pow(2, retryCount.value), 30000);
-    console.log(`[EventStore] Reconnecting in ${delay}ms... (attempt ${retryCount.value + 1}/${MAX_RETRIES_BEFORE_LOGOUT})`);
     
     reconnectTimer.value = setTimeout(() => {
       reconnectTimer.value = null;

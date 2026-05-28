@@ -1,12 +1,15 @@
 <template>
-  <div class="flex-shrink-0 w-full bg-slate-100 border-b border-gray-200 pt-2 px-2 flex items-end space-x-1 overflow-x-auto z-10 transition-colors duration-300 h-[42px]">
-    <div
+  <div class="flex-shrink-0 w-full bg-slate-100 border-b border-gray-200 pt-2 px-2 flex items-end space-x-1 overflow-x-auto z-10 transition-colors duration-300 h-[42px]" role="tablist">
+    <button
       v-for="tab in appStore.visitedViews"
       :key="tab.path"
+      type="button"
+      role="tab"
+      :aria-selected="route.path === tab.path"
       @click="router.push(tab.path)"
       :class="[
         'group relative flex items-center h-[34px] px-4 min-w-[120px] max-w-[200px] cursor-pointer select-none transition-all duration-200',
-        'rounded-t-lg mx-[-1px]', 
+        'rounded-t-lg mx-[-1px] border-0 bg-transparent', 
         route.path === tab.path
           ? 'bg-white text-primary font-medium z-10'
           : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -33,7 +36,7 @@
         class="ml-2 text-[10px] p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
         :class="route.path === tab.path ? '!opacity-100' : ''"
       />
-    </div>
+    </button>
   </div>
 </template>
 

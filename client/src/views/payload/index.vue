@@ -134,34 +134,13 @@
     </div>
 
     <!-- Build Log Drawer -->
-    <a-drawer
-      :open="logDrawerVisible"
-      :title="`构建日志 #${logBuildId}`"
-      :width="700"
-      @close="closeBuildLog"
-    >
-      <template #extra>
-        <a-button size="small" @click="fetchBuildLog">
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </a-button>
-      </template>
-      <div
-        ref="logContainerRef"
-        class="bg-gray-900 text-green-400 p-4 rounded text-xs font-mono whitespace-pre-wrap break-all"
-        style="max-height: calc(100vh - 200px); overflow-y: auto"
-      >
-        <template v-if="logContent">{{ logContent }}</template>
-        <span v-else class="text-gray-500">暂无日志输出...</span>
-      </div>
-      <div v-if="logBuildStatus === 'pending'" class="mt-3 text-sm text-slate-500 flex items-center gap-2">
-        <span class="relative flex h-2.5 w-2.5 shrink-0">
-          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
-          <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-400"></span>
-        </span>
-        构建进行中，日志自动刷新中...
-      </div>
-    </a-drawer>
+    <BuildLogDrawer
+      v-model:visible="logDrawerVisible"
+      :build-id="logBuildId"
+      :initial-status="logBuildStatus"
+      :initial-detail="logBuildDetail"
+      @completed="loadBuilds"
+    />
 
     <!-- Build Modal -->
     <a-modal
@@ -244,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import {
   RocketOutlined,
@@ -261,12 +240,12 @@ import {
   fetchAgentBuilds,
   createAgentBuild,
   deleteAgentBuild,
-  getBuildDownloadUrl,
-  fetchAgentBuild,
 } from '@/api/agentBuild';
 import { fetchListeners, ListenerRecord } from '@/api/listener';
 import { useConnectionStore } from '@/store/connection';
 import { useEventStore } from '@/store/events';
+import { apiFetchBlob } from '@/api/request';
+import BuildLogDrawer from './components/BuildLogDrawer.vue';
 
 const builds = ref<AgentBuildRecord[]>([]);
 const loading = ref(false);
@@ -309,9 +288,7 @@ const eventStore = useEventStore();
 const logDrawerVisible = ref(false);
 const logBuildId = ref<number | null>(null);
 const logBuildStatus = ref('');
-const logContent = ref('');
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-const logContainerRef = ref<HTMLElement | null>(null);
+const logBuildDetail = ref('');
 
 const columns = [
   { title: 'ID', dataIndex: 'build_id', key: 'build_id', width: 50 },
@@ -367,16 +344,8 @@ const loadBuilds = async () => {
 };
 
 async function handleDownload(record: AgentBuildRecord) {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) return;
   try {
-    const url = getBuildDownloadUrl(record.build_id);
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${profile.api_token}` }
-    });
-    if (!res.ok) throw new Error('下载失败');
-    const blob = await res.blob();
+    const blob = await apiFetchBlob(`/agent-builds/${record.build_id}/download`);
     const downloadUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -416,7 +385,6 @@ const onPageChange = (page: number) => {
 };
 
 let unsubscribe: (() => void) | null = null;
-let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
   loadBuilds();
@@ -424,17 +392,13 @@ onMounted(() => {
   
   unsubscribe = eventStore.subscribe((event) => {
     if (event.type === 'agent_build_created' || event.type === 'agent_build_completed' || event.type === 'agent_build_deleted') {
-      // Debounce: don't refresh more than once per 2 seconds
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => loadBuilds(), 2000);
+      loadBuilds();
       
-      // Show toast on completion
       if (event.type === 'agent_build_completed') {
-        const build = event.build;
-        if (build.status === 'succeeded') {
-          message.success(`构建 #${build.build_id} 完成！`);
-        } else if (build.status === 'failed') {
-          message.error(`构建 #${build.build_id} 失败：${build.detail || '未知错误'}`);
+        if (event.status === 'succeeded') {
+          message.success(`构建 #${event.build_id} 完成！`);
+        } else if (event.status === 'failed') {
+          message.error(`构建 #${event.build_id} 失败`);
         }
       }
     }
@@ -443,8 +407,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (unsubscribe) unsubscribe();
-  if (refreshTimer) clearTimeout(refreshTimer);
-  stopPolling();
 });
 
 // Build action
@@ -470,8 +432,7 @@ const handleBuild = async () => {
     message.success('构建任务已提交');
     buildModalVisible.value = false;
     resetBuildForm();
-    // Reload after a short delay so pending builds show up
-    setTimeout(() => loadBuilds(), 500);
+    loadBuilds();
   } catch (err: any) {
     message.error(err.message || '创建构建失败');
   } finally {
@@ -483,55 +444,8 @@ const handleBuild = async () => {
 const openBuildLog = (record: AgentBuildRecord) => {
   logBuildId.value = record.build_id;
   logBuildStatus.value = record.status;
-  logContent.value = record.detail || '';
+  logBuildDetail.value = record.detail || '';
   logDrawerVisible.value = true;
-  fetchBuildLog();
-  if (record.status === 'pending') {
-    startPolling();
-  }
-};
-
-const closeBuildLog = () => {
-  logDrawerVisible.value = false;
-  stopPolling();
-};
-
-const fetchBuildLog = async () => {
-  if (!logBuildId.value) return;
-  try {
-    const build = await fetchAgentBuild(logBuildId.value);
-    logContent.value = build.detail || '';
-    logBuildStatus.value = build.status;
-    if (build.status !== 'pending') {
-      stopPolling();
-      // Also refresh the table so the status is up to date
-      loadBuilds();
-    }
-    await nextTick();
-    scrollToBottom();
-  } catch {
-    // Silently fail — will retry on next poll
-  }
-};
-
-const startPolling = () => {
-  stopPolling();
-  pollTimer = setInterval(() => {
-    fetchBuildLog();
-  }, 2000);
-};
-
-const stopPolling = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-};
-
-const scrollToBottom = () => {
-  if (logContainerRef.value) {
-    logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
-  }
 };
 
 const resetBuildForm = () => {

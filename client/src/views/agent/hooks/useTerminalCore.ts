@@ -1,6 +1,6 @@
 import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
 
 export function useTerminalCore() {
   const terminalContainer = ref<HTMLElement | null>(null);

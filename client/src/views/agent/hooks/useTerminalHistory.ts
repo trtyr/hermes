@@ -1,4 +1,4 @@
-import type { Terminal } from 'xterm';
+import type { Terminal } from '@xterm/xterm';
 
 export function useTerminalHistory() {
   let lineBuffer = '';

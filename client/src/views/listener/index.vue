@@ -293,7 +293,6 @@ async function handleBatchStart() {
       message.warning(`成功启动 ${succeeded} 项，失败 ${failed} 项`);
     }
     selectedRowKeys.value = [];
-    await new Promise(r => setTimeout(r, 2000));
     await loadListeners();
   } finally {
     batchStartLoading.value = false;
@@ -317,7 +316,6 @@ async function handleBatchStop() {
       message.warning(`成功停止 ${succeeded} 项，失败 ${failed} 项`);
     }
     selectedRowKeys.value = [];
-    await new Promise(r => setTimeout(r, 2000));
     await loadListeners();
   } finally {
     batchStopLoading.value = false;
@@ -357,7 +355,6 @@ const doStartListener = async (record: ListenerRecord) => {
   try {
     await startListener(record.listener_id);
     message.success(`监听器 ${record.name} 已启动`);
-    await new Promise(r => setTimeout(r, 2000));
     await loadListeners();
   } catch (err: any) {
     message.error(err.message || '操作失败');

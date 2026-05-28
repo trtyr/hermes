@@ -1,3 +1,4 @@
+import { apiFetch } from './request';
 import { useConnectionStore } from '@/store/connection';
 
 export interface TerminalSessionResponse {
@@ -13,59 +14,31 @@ export interface TerminalCommandResponse {
 }
 
 export async function openTerminalSession(agentId: string): Promise<{ success: boolean, message: string, data: TerminalSessionResponse }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/web/terminal/open`, {
+  return apiFetch<{ success: boolean, message: string, data: TerminalSessionResponse }>('/web/terminal/open', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ agent_id: agentId })
+    body: JSON.stringify({ agent_id: agentId }),
   });
-
-  if (!res.ok) throw new Error(`无法打开终端会话: ${res.statusText}`);
-  return res.json();
 }
 
 export async function submitTerminalCommand(sessionId: string, line: string): Promise<{ success: boolean, message: string, data: TerminalCommandResponse }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/web/terminal/command`, {
+  return apiFetch<{ success: boolean, message: string, data: TerminalCommandResponse }>('/web/terminal/command', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ session_id: sessionId, line })
+    body: JSON.stringify({ session_id: sessionId, line }),
   });
-
-  if (!res.ok) throw new Error(`命令提交失败: ${res.statusText}`);
-  return res.json();
 }
 
-export async function closeTerminalSession(sessionId: string): Promise<any> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/web/terminal/close`, {
+export async function closeTerminalSession(sessionId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>('/web/terminal/close', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ session_id: sessionId })
+    body: JSON.stringify({ session_id: sessionId }),
   });
-
-  if (!res.ok) throw new Error(`关闭终端会话失败: ${res.statusText}`);
-  return res.json();
 }
 
+/**
+ * Build the WebSocket URL for terminal sessions.
+ * This is not an HTTP fetch — it constructs a ws:// or wss:// URL
+ * with the api_token as a query parameter for WS auth.
+ */
 export function buildTerminalWsUrl(): string {
   const store = useConnectionStore();
   const profile = store.activeProfile;

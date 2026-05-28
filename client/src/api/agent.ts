@@ -1,4 +1,4 @@
-import { useConnectionStore } from '@/store/connection';
+import { apiFetch } from './request';
 
 export interface Agent {
   agent_id: string;
@@ -32,143 +32,64 @@ export interface AgentListResponse {
 }
 
 export async function fetchAgents(params: { limit?: number, offset?: number, keyword?: string, online?: boolean, disabled?: boolean, tag?: string } = {}): Promise<AgentListResponse> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
+  const searchParams = new URLSearchParams();
+  if (params.limit !== undefined) searchParams.append('limit', params.limit.toString());
+  if (params.offset !== undefined) searchParams.append('offset', params.offset.toString());
+  if (params.keyword) searchParams.append('keyword', params.keyword);
+  if (params.online !== undefined) searchParams.append('online', params.online.toString());
+  if (params.disabled !== undefined) searchParams.append('disabled', params.disabled.toString());
+  if (params.tag) searchParams.append('tag', params.tag);
 
-  const url = new URL(`${profile.server_url}/agents/history`);
-  if (params.limit !== undefined) url.searchParams.append('limit', params.limit.toString());
-  if (params.offset !== undefined) url.searchParams.append('offset', params.offset.toString());
-  if (params.keyword) url.searchParams.append('keyword', params.keyword);
-  if (params.online !== undefined) url.searchParams.append('online', params.online.toString());
-  if (params.disabled !== undefined) url.searchParams.append('disabled', params.disabled.toString());
-  if (params.tag) url.searchParams.append('tag', params.tag);
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  if (!res.ok) throw new Error(`获取节点列表失败: ${res.statusText}`);
-  return res.json();
+  const qs = searchParams.toString();
+  return apiFetch<AgentListResponse>(`/agents/history${qs ? `?${qs}` : ''}`);
 }
 
 export async function fetchAgentDetail(agentId: string): Promise<Agent> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}`, {
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  if (!res.ok) throw new Error(`获取节点详情失败: ${res.statusText}`);
-  return res.json();
+  return apiFetch<Agent>(`/agents/${agentId}`);
 }
 
 export async function updateBeaconConfig(agentId: string, sleep_interval: number, jitter: number): Promise<{ success: boolean, agent: Agent }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/beacon-config`, {
+  return apiFetch<{ success: boolean, agent: Agent }>(`/agents/${agentId}/beacon-config`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ sleep_interval, jitter })
+    body: JSON.stringify({ sleep_interval, jitter }),
   });
-
-  if (!res.ok) throw new Error(`更新 Beacon 配置失败: ${res.statusText}`);
-  return res.json();
 }
 
-export async function dispatchTask(agentId: string, payload: any): Promise<any> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/tasks`, {
+export async function dispatchTask(agentId: string, payload: Record<string, unknown>): Promise<{ success: boolean; task_id: string }> {
+  return apiFetch<{ success: boolean; task_id: string }>(`/agents/${agentId}/tasks`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
-
-  if (!res.ok) throw new Error(`下发任务失败: ${res.statusText}`);
-  return res.json();
 }
 
-export async function disconnectAgent(agentId: string): Promise<any> {
-  return executeAgentAction(agentId, 'disconnect');
+export async function disconnectAgent(agentId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}/disconnect`, { method: 'POST' });
 }
 
-export async function disableAgent(agentId: string): Promise<any> {
-  return executeAgentAction(agentId, 'disable');
+export async function disableAgent(agentId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}/disable`, { method: 'POST' });
 }
 
-export async function enableAgent(agentId: string): Promise<any> {
-  return executeAgentAction(agentId, 'enable');
+export async function enableAgent(agentId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}/enable`, { method: 'POST' });
 }
 
-export async function deleteAgent(agentId: string): Promise<any> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`
-    }
-  });
-
-  if (!res.ok) throw new Error(`删除节点失败: ${res.statusText}`);
-  return res.json();
+export async function deleteAgent(agentId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/agents/${agentId}`, { method: 'DELETE' });
 }
 
 export async function uploadFile(agentId: string, remotePath: string, contentBase64: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/upload`, {
+  return apiFetch<{ success: boolean; detail: string; task_id?: string }>(`/agents/${agentId}/upload`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ remote_path: remotePath, content_base64: contentBase64 })
+    body: JSON.stringify({ remote_path: remotePath, content_base64: contentBase64 }),
   });
-
-  if (!res.ok) throw new Error(`上传文件失败: ${res.statusText}`);
-  return res.json();
 }
 
 export async function downloadFile(agentId: string, remotePath: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/download`, {
+  return apiFetch<{ success: boolean; detail: string; task_id?: string }>(`/agents/${agentId}/download`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ remote_path: remotePath })
+    body: JSON.stringify({ remote_path: remotePath }),
   });
-
-  if (!res.ok) throw new Error(`下载文件失败: ${res.statusText}`);
-  return res.json();
 }
 
 export interface FileEntry {
@@ -179,71 +100,21 @@ export interface FileEntry {
 }
 
 export async function browseFile(agentId: string, path: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/browse`, {
+  return apiFetch<{ success: boolean; detail: string; task_id?: string }>(`/agents/${agentId}/browse`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ path })
+    body: JSON.stringify({ path }),
   });
-
-  if (!res.ok) throw new Error(`浏览目录失败: ${res.statusText}`);
-  return res.json();
 }
 
 export async function takeScreenshot(agentId: string): Promise<{ success: boolean; detail: string; task_id?: string }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/screenshot`, {
+  return apiFetch<{ success: boolean; detail: string; task_id?: string }>(`/agents/${agentId}/screenshot`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    }
   });
-
-  if (!res.ok) throw new Error(`截图失败: ${res.statusText}`);
-  return res.json();
 }
 
 export async function updateAgentTags(agentId: string, tags: string[]): Promise<{ success: boolean; detail: string }> {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}`, {
+  return apiFetch<{ success: boolean; detail: string }>(`/agents/${agentId}`, {
     method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ tags })
+    body: JSON.stringify({ tags }),
   });
-
-  if (!res.ok) throw new Error(`更新标签失败: ${res.statusText}`);
-  return res.json();
-}
-
-async function executeAgentAction(agentId: string, action: string) {
-  const store = useConnectionStore();
-  const profile = store.activeProfile;
-  if (!profile) throw new Error('未连接到后端服务器');
-
-  const res = await fetch(`${profile.server_url}/agents/${agentId}/${action}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${profile.api_token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  if (!res.ok) throw new Error(`执行操作 ${action} 失败: ${res.statusText}`);
-  return res.json();
 }

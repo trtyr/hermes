@@ -20,6 +20,7 @@ const MAX_NOTIFICATIONS = 100;
 export const useNotificationStore = defineStore('notifications', () => {
   const items = ref<Notification[]>([]);
   const unreadCount = computed(() => items.value.filter(n => !n.read).length);
+  let initialized = false;
 
   function add(notif: Omit<Notification, 'id' | 'timestamp' | 'read'>, silent = false) {
     items.value.unshift({
@@ -55,53 +56,55 @@ export const useNotificationStore = defineStore('notifications', () => {
     if (n) n.read = true;
   }
 
-  // Subscribe to backend events
-  const eventStore = useEventStore();
-  eventStore.subscribe((event: BackendEvent) => {
-    switch (event.type) {
-      case 'agent_registered':
-        add({
-          type: 'success',
-          title: 'Agent 上线',
-          message: `${event.agent.hostname || event.agent.agent_id} (${event.agent.internal_ip || event.agent.peer_addr})`,
-          route: '/agent',
-        });
-        break;
-      case 'agent_disconnected':
-        add({
-          type: 'warning',
-          title: 'Agent 离线',
-          message: event.agent_id || 'unknown',
-          route: '/agent',
-        });
-        break;
-      case 'task_result': {
-        const success = (event as any).success;
-        add({
-          type: success ? 'success' : 'error',
-          title: success ? '任务完成' : '任务失败',
-          message: `Task ${(event as any).task_id || ''}`,
-          route: '/agent',
-        });
-        break;
-      }
-      case 'agent_build_completed':
-        add({
-          type: (event as any).build?.status === 'completed' ? 'success' : 'error',
-          title: '载荷构建完成',
-          message: `Build #${(event as any).build?.build_id || ''} — ${(event as any).build?.status || ''}`,
-          route: '/payload',
-        });
-        break;
-      case 'agent_deleted':
-        add({
-          type: 'info',
-          title: 'Agent 已删除',
-          message: event.agent_id,
-        }, true);
-        break;
-    }
-  });
+  function init() {
+    if (initialized) return;
+    initialized = true;
 
-  return { items, unreadCount, add, markAllRead, clearAll, markRead };
+    const eventStore = useEventStore();
+    eventStore.subscribe((event: BackendEvent) => {
+      switch (event.type) {
+        case 'agent_registered':
+          add({
+            type: 'success',
+            title: 'Agent 上线',
+            message: `${event.agent.hostname || event.agent.agent_id} (${event.agent.internal_ip || event.agent.peer_addr})`,
+            route: '/agent',
+          });
+          break;
+        case 'agent_disconnected':
+          add({
+            type: 'warning',
+            title: 'Agent 离线',
+            message: event.agent_id || 'unknown',
+            route: '/agent',
+          });
+          break;
+        case 'task_result':
+          add({
+            type: event.success ? 'success' : 'error',
+            title: event.success ? '任务完成' : '任务失败',
+            message: `Task ${event.task_id}`,
+            route: '/agent',
+          });
+          break;
+        case 'agent_build_completed':
+          add({
+            type: event.status === 'completed' ? 'success' : 'error',
+            title: '载荷构建完成',
+            message: `Build #${event.build_id} — ${event.status}`,
+            route: '/payload',
+          });
+          break;
+        case 'agent_deleted':
+          add({
+            type: 'info',
+            title: 'Agent 已删除',
+            message: event.agent_id,
+          }, true);
+          break;
+      }
+    });
+  }
+
+  return { items, unreadCount, add, markAllRead, clearAll, markRead, init };
 });

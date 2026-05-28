@@ -14,11 +14,11 @@ export function useAgentWebSocket(
   onMounted(() => {
     unsubscribe = eventStore.subscribe((event) => {
       if (event.type === 'snapshot') {
-        const onlineIds = new Set(event.agents.map((a: any) => a.agent_id));
+        const onlineIds = new Set(event.agents.map(a => a.agent_id));
         agents.value.forEach(agent => {
           if (onlineIds.has(agent.agent_id)) {
             agent.is_online = true;
-            const snap = event.agents.find((a: any) => a.agent_id === agent.agent_id);
+            const snap = event.agents.find(a => a.agent_id === agent.agent_id);
             if (snap) {
               agent.last_seen = snap.last_seen;
               agent.peer_addr = snap.peer_addr;

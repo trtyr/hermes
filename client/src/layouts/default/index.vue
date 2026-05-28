@@ -15,8 +15,8 @@
         <div class="flex-1 w-full bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden relative">
           <router-view v-slot="{ Component }">
             <transition name="fade-slide" mode="out-in">
-              <keep-alive>
-                <component :is="Component" :key="route.path + contentRefreshKey" />
+              <keep-alive :include="cachedRoutes">
+                <component :is="Component" :key="$route.fullPath + contentRefreshKey" />
               </keep-alive>
             </transition>
           </router-view>
@@ -36,6 +36,7 @@ import AppTabs from './components/AppTabs.vue';
 const route = useRoute();
 const contentRefreshKey = ref(0);
 const refreshing = ref(false);
+const cachedRoutes = ['Dashboard', 'Agent', 'Listener', 'Payload', 'Log'];
 
 const refreshCurrentView = () => {
   refreshing.value = true;

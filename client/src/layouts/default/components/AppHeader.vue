@@ -17,10 +17,10 @@
     <!-- Breadcrumb -->
     <div class="hidden lg:flex items-center mt-[2px]">
       <nav class="ml-2 flex flex-wrap items-center gap-1.5 text-sm m-0 leading-none">
-        <a class="text-slate-500 hover:text-slate-900 transition-colors flex items-center leading-none" href="javascript:void 0" @click.prevent="router.push('/dashboard')">
+        <router-link class="text-slate-500 hover:text-slate-900 transition-colors flex items-center leading-none no-underline" to="/dashboard">
           <svg viewBox="0 0 24 24" class="mr-1 size-4 fill-none stroke-current stroke-2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
           <span class="translate-y-[0.5px]">概览</span>
-        </a>
+        </router-link>
         <span class="text-slate-300 flex items-center">
           <svg viewBox="0 0 24 24" class="size-3.5 fill-none stroke-current stroke-2"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"></path></svg>
         </span>

@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import type { Terminal } from 'xterm';
+import type { Terminal } from '@xterm/xterm';
 import { message } from 'ant-design-vue';
 import { buildTerminalWsUrl } from '@/api/terminal';
 
@@ -47,8 +47,7 @@ export function useTerminalSocket(
       };
       
       ws.onclose = () => { wsConnected.value = false; };
-      ws.onerror = (err) => {
-        console.error('WebSocket Error:', err);
+      ws.onerror = () => {
         const term = getTerm();
         term?.writeln(`\x1b[1;31mWebSocket 服务异常断开。\x1b[0m`);
       };
