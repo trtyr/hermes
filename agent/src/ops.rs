@@ -2,6 +2,9 @@
 
 use std::time::Duration;
 
+/// Truncation suffix appended when output exceeds the character limit.
+const TRUNCATED_SUFFIX: &str = "... [truncated]";
+
 #[derive(Clone)]
 pub struct AgentConfig {
     pub agent_id: String,
@@ -27,7 +30,7 @@ pub fn execute_operation(
         return (true, String::new());
     }
 
-    exec_cmd(&cmd, None, cfg.command_timeout_secs)
+    exec_cmd(&cmd, None, cfg.command_timeout_secs, cfg.max_output_chars)
 }
 
 pub fn build_operation_command(command: &str, payload: Option<&str>) -> String {
@@ -53,7 +56,7 @@ pub fn spawn_operation(
 }
 
 pub fn execute_shell(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, String) {
-    exec_cmd(command, cwd, timeout_secs)
+    exec_cmd(command, cwd, timeout_secs, usize::MAX)
 }
 
 pub fn terminate_process(pid: u32) -> bool {
@@ -73,12 +76,13 @@ pub fn terminate_process(pid: u32) -> bool {
     }
     #[cfg(not(windows))]
     {
-        let _ = pid;
-        false
+        // SAFETY: libc::kill sends a signal to the process identified by pid.
+        // The cast is safe: pid_t is i32 on all supported Unix platforms.
+        unsafe { libc::kill(pid as libc::pid_t, libc::SIGTERM) == 0 }
     }
 }
 
-fn exec_cmd(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, String) {
+fn exec_cmd(command: &str, cwd: Option<&str>, timeout_secs: u64, max_output_chars: usize) -> (bool, String) {
     let child = match spawn_shell_process(command, cwd) {
         Ok(c) => c,
         Err(_) => return (false, "exec failed".to_string()),
@@ -104,8 +108,8 @@ fn exec_cmd(command: &str, cwd: Option<&str>, timeout_secs: u64) -> (bool, Strin
     } else {
         format!("{out}\n{err}")
     };
-    let trimmed = merged.trim();
-    (code == 0, trimmed.to_string())
+    let trimmed = merge_and_truncate(&merged, max_output_chars);
+    (code == 0, trimmed)
 }
 
 fn spawn_shell_process(command: &str, cwd: Option<&str>) -> std::io::Result<std::process::Child> {
@@ -199,14 +203,33 @@ pub fn wait_child(child: std::process::Child, timeout_secs: u64) -> ChildResult 
             Ok(Ok(output)) => ChildResult::Finished(output),
             Ok(Err(_)) => ChildResult::Failed,
             Err(_) => {
-                // Timeout — kill the process
+                // Timeout — try to kill the process
                 terminate_process(pid);
-                // Drain the result so the thread doesn't panic
-                let _ = rx.recv();
-                ChildResult::TimedOut
+                // Give the process a short window to exit after SIGTERM
+                match rx.recv_timeout(Duration::from_secs(5)) {
+                    Ok(Ok(output)) => ChildResult::Finished(output),
+                    Ok(Err(_)) => ChildResult::Failed,
+                    Err(_) => {
+                        // Process still running after kill attempt — report timeout
+                        ChildResult::TimedOut
+                    }
+                }
             }
         }
     }
+}
+
+/// Merge stdout/stderr, trim, and truncate to `max_output_chars`.
+/// Appends "... [truncated]" if the output was cut.
+pub fn merge_and_truncate(output: &str, max_output_chars: usize) -> String {
+    let trimmed = output.trim();
+    if max_output_chars == 0 || trimmed.len() <= max_output_chars {
+        return trimmed.to_string();
+    }
+    let suffix = TRUNCATED_SUFFIX;
+    let keep = max_output_chars.saturating_sub(suffix.len());
+    let truncated: String = trimmed.chars().take(keep).collect();
+    format!("{truncated}{suffix}")
 }
 
 #[cfg(test)]
@@ -222,6 +245,50 @@ mod tests {
     #[test]
     fn decode_output_empty() {
         assert_eq!(decode_output(&[]), "");
+    }
+
+    #[test]
+    fn merge_and_truncate_no_limit() {
+        let out = merge_and_truncate("short", usize::MAX);
+        assert_eq!(out, "short");
+    }
+
+    #[test]
+    fn merge_and_truncate_within_limit() {
+        let out = merge_and_truncate("hello", 100);
+        assert_eq!(out, "hello");
+    }
+
+    #[test]
+    fn merge_and_truncate_trims_whitespace() {
+        let out = merge_and_truncate("  hello  \n", usize::MAX);
+        assert_eq!(out, "hello");
+    }
+
+    #[test]
+    fn merge_and_truncate_cuts_and_appends_suffix() {
+        let input = "a".repeat(200);
+        let out = merge_and_truncate(&input, 50);
+        assert!(out.len() <= 50);
+        assert!(out.ends_with("... [truncated]"));
+    }
+
+    #[test]
+    fn merge_and_truncate_zero_limit_noop() {
+        let out = merge_and_truncate("hello", 0);
+        assert_eq!(out, "hello");
+    }
+
+    #[test]
+    fn merge_and_truncate_exact_boundary() {
+        let suffix = TRUNCATED_SUFFIX;
+        let input = "x".repeat(100);
+        // With limit == 100, length == 100, so no truncation
+        let out = merge_and_truncate(&input, 100);
+        assert_eq!(out, input);
+        // With limit == 99, should truncate
+        let out = merge_and_truncate(&input, 99);
+        assert!(out.ends_with(suffix));
     }
 }
 

@@ -1,7 +1,7 @@
 //! Task Service - task execution
 
 use crate::kernel::Plugin;
-use crate::ops::{decode_output, spawn_operation, terminate_process, wait_child, AgentConfig, ChildResult};
+use crate::ops::{decode_output, merge_and_truncate, spawn_operation, terminate_process, wait_child, AgentConfig, ChildResult};
 use crate::protocol::{AgentMessage, AgentTaskStatus};
 use std::collections::HashMap;
 use std::sync::{
@@ -14,6 +14,7 @@ pub struct TaskService {
     running: Arc<Mutex<HashMap<String, RunningTaskHandle>>>,
     sender: Sender<AgentMessage>,
     command_timeout_secs: u64,
+    max_output_chars: usize,
 }
 
 #[derive(Clone)]
@@ -29,7 +30,17 @@ impl TaskService {
             running: Arc::new(Mutex::new(HashMap::new())),
             sender,
             command_timeout_secs: config.command_timeout_secs,
+            max_output_chars: config.max_output_chars,
         }
+    }
+
+    /// Clear all tracked running tasks. Called on reconnect so stale handles
+    /// from a dead connection do not leak.
+    pub fn reset(&mut self) {
+        self.running
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
     }
 
     pub fn dispatch(&mut self, task_id: &str, command: &str, payload: Option<&str>) {
@@ -91,6 +102,7 @@ impl TaskService {
         let cmd = command.to_string();
         let pay = payload.map(String::from);
         let timeout_secs = self.command_timeout_secs;
+        let max_output_chars = self.max_output_chars;
         let handle = RunningTaskHandle {
             pid: Arc::new(Mutex::new(None)),
             cancel_requested: Arc::new(AtomicBool::new(false)),
@@ -99,7 +111,7 @@ impl TaskService {
 
         self.running
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(tid.clone(), handle.clone());
 
         std::thread::spawn(move || {
@@ -109,7 +121,7 @@ impl TaskService {
             let child = match spawn_operation(actual_cmd, None, None) {
                 Ok(child) => child,
                 Err(_) => {
-                    running.lock().unwrap().remove(&tid);
+                    running.lock().unwrap_or_else(|e| e.into_inner()).remove(&tid);
                     let _ = sender.send(AgentMessage::TaskResult {
                         task_id: tid.clone(),
                         success: false,
@@ -120,7 +132,7 @@ impl TaskService {
             };
 
             let pid = child.id();
-            *handle.pid.lock().unwrap() = Some(pid);
+            *handle.pid.lock().unwrap_or_else(|e| e.into_inner()) = Some(pid);
             let _ = sender.send(AgentMessage::TaskUpdate {
                 task_id: tid.clone(),
                 status: AgentTaskStatus::Running,
@@ -132,7 +144,7 @@ impl TaskService {
             }
 
             let result = wait_child(child, timeout_secs);
-            running.lock().unwrap().remove(&tid);
+            running.lock().unwrap_or_else(|e| e.into_inner()).remove(&tid);
 
             match result {
                 ChildResult::Finished(output) => {
@@ -145,7 +157,7 @@ impl TaskService {
                     } else {
                         format!("{stdout}\n{stderr}")
                     };
-                    let merged = merged.trim().to_string();
+                    let merged = merge_and_truncate(&merged, max_output_chars);
 
                     if handle.killed.load(Ordering::SeqCst) {
                         let output = if merged.is_empty() {
@@ -186,12 +198,12 @@ impl TaskService {
     }
 
     pub fn cancel(&mut self, task_id: &str) {
-        let handle = self.running.lock().unwrap().get(task_id).cloned();
+        let handle = self.running.lock().unwrap_or_else(|e| e.into_inner()).get(task_id).cloned();
         let Some(handle) = handle else {
             return;
         };
         handle.cancel_requested.store(true, Ordering::SeqCst);
-        let pid = *handle.pid.lock().unwrap();
+        let pid = *handle.pid.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(pid) = pid {
             if terminate_process(pid) {
                 handle.killed.store(true, Ordering::SeqCst);
@@ -200,7 +212,7 @@ impl TaskService {
     }
 
     pub fn count(&self) -> usize {
-        self.running.lock().unwrap().len()
+        self.running.lock().unwrap_or_else(|e| e.into_inner()).len()
     }
 }
 

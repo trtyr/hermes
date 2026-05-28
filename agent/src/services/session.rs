@@ -1,7 +1,7 @@
 //! Session Service - command sessions
 
 use crate::kernel::Plugin;
-use crate::ops::{default_cwd, execute_shell, AgentConfig};
+use crate::ops::{default_cwd, execute_shell, merge_and_truncate, AgentConfig};
 use crate::protocol::{AgentMessage, CommandOutputStream};
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
@@ -30,11 +30,22 @@ impl SessionService {
         }
     }
 
+    /// Clear all session state. Called on reconnect so stale sessions from a
+    /// dead connection do not leak.
+    pub fn reset(&mut self) {
+        self.sessions
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        self.active_executions.store(0, Ordering::SeqCst);
+        self.flush_hint.store(false, Ordering::SeqCst);
+    }
+
     pub fn open(&mut self, session_id: &str) {
         let cwd = default_cwd();
         self.sessions
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(session_id.to_string(), cwd.clone());
         let _ = self.sender.send(AgentMessage::CommandSessionOpened {
             command_session_id: session_id.to_string(),
@@ -43,7 +54,7 @@ impl SessionService {
     }
 
     pub fn close(&mut self, session_id: &str) {
-        if self.sessions.lock().unwrap().remove(session_id).is_some() {
+        if self.sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(session_id).is_some() {
             let _ = self.sender.send(AgentMessage::CommandSessionClosed {
                 command_session_id: session_id.to_string(),
             });
@@ -52,7 +63,7 @@ impl SessionService {
 
     pub fn execute(&mut self, session_id: &str, request_id: &str, line: &str) {
         let cwd = {
-            let sessions = self.sessions.lock().unwrap();
+            let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
             let Some(cwd) = sessions.get(session_id) else {
                 return;
             };
@@ -66,6 +77,7 @@ impl SessionService {
         let sessions = Arc::clone(&self.sessions);
         let sender = self.sender.clone();
         let command_timeout_secs = self.config.command_timeout_secs;
+        let max_output_chars = self.config.max_output_chars;
         let active_executions = Arc::clone(&self.active_executions);
         let flush_hint = Arc::clone(&self.flush_hint);
         let session_id = session_id.to_string();
@@ -77,8 +89,12 @@ impl SessionService {
             let (success, stdout, stderr, cwd_after) =
                 execute_session_line(&line, &cwd, command_timeout_secs);
 
+            // Truncate output to max_output_chars
+            let stdout = merge_and_truncate(&stdout, max_output_chars);
+            let stderr = merge_and_truncate(&stderr, max_output_chars);
+
             {
-                let mut sessions = sessions.lock().unwrap();
+                let mut sessions = sessions.lock().unwrap_or_else(|e| e.into_inner());
                 if let Some(current_cwd) = sessions.get_mut(&session_id) {
                     *current_cwd = cwd_after.clone();
                 }

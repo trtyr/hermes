@@ -9,6 +9,15 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
+/// Maximum file size (in bytes) allowed for download — 50 MB.
+const MAX_DOWNLOAD_BYTES: u64 = 50 * 1024 * 1024;
+
+/// Maximum decoded payload size (in bytes) allowed for upload — 50 MB.
+const MAX_UPLOAD_BYTES: u64 = 50 * 1024 * 1024;
+
+/// Maximum number of entries returned by a single `browse` call.
+const MAX_LIST_ENTRIES: usize = 500;
+
 /// Handle `upload` command: decode base64 content and write to remote_path
 pub fn handle_upload(task_id: &str, payload: &str, sender: &Sender<AgentMessage>) {
     #[derive(serde::Deserialize)]
@@ -24,6 +33,19 @@ pub fn handle_upload(task_id: &str, payload: &str, sender: &Sender<AgentMessage>
             return;
         }
     };
+
+    // Estimate decoded size before decoding: base64 expands ~4/3
+    let estimated_decoded_len = (parsed.content_base64.len() as u64 * 3) / 4;
+    if estimated_decoded_len > MAX_UPLOAD_BYTES {
+        let _ = sender.send(fail(
+            task_id,
+            format!(
+                "文件过大，超过 {}MB 上传限制",
+                MAX_UPLOAD_BYTES / (1024 * 1024)
+            ),
+        ));
+        return;
+    }
 
     let content = match STANDARD.decode(&parsed.content_base64) {
         Ok(c) => c,
@@ -108,6 +130,13 @@ fn write_file(path: &str, content: &[u8]) -> Result<(), String> {
 }
 
 fn read_file(path: &str) -> Result<Vec<u8>, String> {
+    let metadata = fs::metadata(path).map_err(|e| format!("metadata failed: {e}"))?;
+    if metadata.len() > MAX_DOWNLOAD_BYTES {
+        return Err(format!(
+            "文件过大，超过 {}MB 限制",
+            MAX_DOWNLOAD_BYTES / (1024 * 1024)
+        ));
+    }
     let mut file = fs::File::open(path).map_err(|e| format!("open failed: {e}"))?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)
@@ -120,6 +149,9 @@ fn browse_dir(path: &str) -> Result<Vec<BrowseEntry>, String> {
     let dir = fs::read_dir(path).map_err(|e| format!("read_dir failed: {e}"))?;
 
     for entry in dir {
+        if entries.len() >= MAX_LIST_ENTRIES {
+            break;
+        }
         let entry = entry.map_err(|e| format!("read_dir entry failed: {e}"))?;
         let metadata = entry
             .metadata()

@@ -233,7 +233,7 @@ impl NetworkService {
     }
 }
 
-// --- TLS config: accept any certificate (self-signed) ---
+// --- TLS config ---
 
 #[cfg(test)]
 mod tests {
@@ -247,6 +247,29 @@ mod tests {
     }
 }
 
+// --- TLS config: accept any certificate (self-signed) ---
+//
+// SECURITY POSTURE: encryption without authentication.
+//
+// This verifier accepts *any* server certificate, including self-signed ones.
+// The rationale:
+//
+// 1. The C2 server generates its own self-signed cert at first boot. There is
+//    no public CA infrastructure to validate against, and pinning a cert hash
+//    at compile time would break every time the server rotates its cert.
+//
+// 2. The agent already authenticates at the application layer via the
+//    agent token / HMAC challenge-response handshake (see `protocol.rs`).
+//    TLS here provides *transport encryption* (confidentiality + integrity),
+//    not server identity verification.
+//
+// 3. An active MITM attacker who presents their own cert would still need
+//    a valid agent token to complete registration. The token is the auth
+//    boundary, not the TLS cert.
+//
+// If the deployment model changes to use CA-signed certs or cert pinning,
+// replace this verifier with the default rustls `WebPkiVerifier`.
+
 #[cfg(feature = "tls")]
 fn build_tls_client_config() -> ClientConfig {
     use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
@@ -254,7 +277,11 @@ fn build_tls_client_config() -> ClientConfig {
     use rustls::{DigitallySignedStruct, Error, SignatureScheme};
 
     /// Verifier that accepts any server certificate.
-    /// Safe for C2 where the server uses self-signed certs.
+    ///
+    /// This is intentional: the C2 server uses self-signed certs, and the
+    /// real authentication happens at the application layer (agent token /
+    /// HMAC challenge-response). See the block comment above for the full
+    /// security rationale.
     #[derive(Debug)]
     struct AcceptAnyCert;
 

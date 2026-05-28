@@ -25,12 +25,19 @@ fn key() -> &'static [u8; 32] {
     unsafe { &*(KEY.load(Ordering::SeqCst) as *const [u8; 32]) }
 }
 
-/// Server address with encrypted storage
+/// Server address with XOR-encrypted heap storage, zeroed on drop.
+///
+/// The XOR key is derived from the process PID at first use, so the address
+/// is not recoverable from a raw memory scan after the process exits.
+/// This is *obfuscation*, not cryptographic security — it defeats casual
+/// string scanning (e.g. `strings` on the binary or a quick `/proc/mem` read)
+/// but not a determined attacker with live process access.
 pub struct SecureServerAddr {
     encrypted: Vec<u8>,
 }
 
 impl SecureServerAddr {
+    /// Encrypt an address string with the runtime XOR key.
     pub fn new(addr: &str) -> Self {
         ensure_key_init();
         let k = key();
@@ -44,6 +51,16 @@ impl SecureServerAddr {
         Self { encrypted: enc }
     }
 
+    /// Construct from a plain address string — equivalent to `new()`.
+    ///
+    /// Exists as a named alternative so call-sites make the intent clear:
+    /// the value *will* be encrypted on the heap, the caller just happens
+    /// to start with a plaintext literal (e.g. from the embedded config).
+    pub fn from_plain(addr: &str) -> Self {
+        Self::new(addr)
+    }
+
+    /// Decrypt and return the server address.
     pub fn get(&self) -> String {
         let k = key();
         let mut dec = Vec::with_capacity(self.encrypted.len());

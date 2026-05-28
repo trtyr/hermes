@@ -15,6 +15,7 @@ dependencies = [
  "base64",
  "encoding_rs",
  "hmac",
+ "libc",
  "png",
  "rustls",
  "serde",

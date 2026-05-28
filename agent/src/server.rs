@@ -1,10 +1,18 @@
 //! Embedded server connection profile.
 //!
-//! The server-side build flow temporarily rewrites this file, compiles the agent,
-//! then restores the workspace copy.
+//! **Build-flow integration:** the server-side agent build process
+//! (`server/src/kernel/service/agent_builds/build.rs`) temporarily rewrites
+//! this file with the target deployment address and token, compiles the
+//! agent binary, then restores the workspace copy. The values below are
+//! development defaults only — they are replaced at compile time for
+//! production builds.
+//!
+//! `Config::load()` in `protocol/config.rs` wraps the address through
+//! `SecureServerAddr` so it lives XOR-encrypted on the heap at runtime
+//! and is zeroed on drop.
 
 const EMBEDDED_SERVER_ADDR: &str = "82.157.147.224:1234";
-const EMBEDDED_AGENT_TOKEN: Option<&str> = Some("test-token-2026");
+const EMBEDDED_AGENT_TOKEN: Option<&str> = None;
 const EMBEDDED_PROTOCOL: &str = "tcp";
 const EMBEDDED_HEARTBEAT_SECS: u64 = 15;
 const EMBEDDED_JITTER: u32 = 0;
