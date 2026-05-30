@@ -129,6 +129,8 @@ where
     }
     let mut lines = BufReader::new(reader).lines();
     let mut registered = false;
+    let mut invalid_frame_count: u32 = 0;
+    const INVALID_FRAME_LOG_MAX: u32 = 3;
 
     loop {
         let line_result = lines.next_line().await;
@@ -196,7 +198,10 @@ where
                             .context("failed to forward agent frame into kernel")?;
                     }
                     Err(error) => {
-                        console::session_error(session_id, "invalid frame", &error);
+                        invalid_frame_count += 1;
+                        if invalid_frame_count <= INVALID_FRAME_LOG_MAX {
+                            console::session_error(session_id, "invalid frame", &error);
+                        }
                     }
                 }
             }
@@ -209,6 +214,18 @@ where
                 break;
             }
         }
+    }
+
+    if invalid_frame_count > INVALID_FRAME_LOG_MAX {
+        console::session_error(
+            session_id,
+            "suppressed invalid frames",
+            &format!(
+                "{} additional invalid frames suppressed ({} total)",
+                invalid_frame_count - INVALID_FRAME_LOG_MAX,
+                invalid_frame_count,
+            ),
+        );
     }
 
     console::session_disconnected(session_id, None, "connection ended", &ln);
