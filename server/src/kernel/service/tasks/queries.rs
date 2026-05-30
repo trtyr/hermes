@@ -10,6 +10,7 @@ impl TaskFacade {
         &self,
         status: Option<TaskStatus>,
         agent_id: Option<String>,
+        command: Option<String>,
         keyword: Option<String>,
     ) -> Vec<TaskSnapshot> {
         let state = self.kernel.state.read().await;
@@ -21,6 +22,11 @@ impl TaskFacade {
 
         if let Some(agent_id) = agent_id {
             tasks.retain(|task| task.target_agent_id.as_deref() == Some(agent_id.as_str()));
+        }
+
+        if let Some(command) = command {
+            let command = command.to_lowercase();
+            tasks.retain(|task| task.command.to_lowercase() == command);
         }
 
         if let Some(keyword) = keyword {

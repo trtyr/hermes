@@ -29,7 +29,7 @@ pub(crate) async fn list_tasks(
     let tasks = state
         .kernel
         .tasks()
-        .filtered_snapshots(status, query.agent_id, query.keyword)
+        .filtered_snapshots(status, query.agent_id, query.command, query.keyword)
         .await;
 
     let (limit, offset) = normalize_page(query.limit, query.offset);

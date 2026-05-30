@@ -26,6 +26,7 @@ pub(crate) struct AgentHistoryQuery {
 pub(crate) struct TaskListQuery {
     pub(crate) status: Option<String>,
     pub(crate) agent_id: Option<String>,
+    pub(crate) command: Option<String>,
     pub(crate) keyword: Option<String>,
     pub(crate) limit: Option<usize>,
     pub(crate) offset: Option<usize>,

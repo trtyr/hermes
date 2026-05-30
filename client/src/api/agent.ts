@@ -118,3 +118,37 @@ export async function updateAgentTags(agentId: string, tags: string[]): Promise<
     body: JSON.stringify({ tags }),
   });
 }
+
+// ─── Task history ───────────────────────────────────────────────────────────
+
+export interface TaskRecord {
+  task_id: string;
+  parent_task_id: string | null;
+  target_agent_id: string | null;
+  command: string;
+  payload: string | null;
+  status: string;
+  created_at: number;
+  updated_at: number;
+  success: boolean | null;
+  output: string | null;
+  children: string[];
+}
+
+export interface TaskListResponse {
+  tasks: TaskRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function listTasks(params: { agent_id?: string; command?: string; status?: string; limit?: number; offset?: number } = {}): Promise<TaskListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.agent_id) searchParams.append('agent_id', params.agent_id);
+  if (params.command) searchParams.append('command', params.command);
+  if (params.status) searchParams.append('status', params.status);
+  if (params.limit !== undefined) searchParams.append('limit', params.limit.toString());
+  if (params.offset !== undefined) searchParams.append('offset', params.offset.toString());
+  const qs = searchParams.toString();
+  return apiFetch<TaskListResponse>(`/tasks${qs ? `?${qs}` : ''}`);
+}
