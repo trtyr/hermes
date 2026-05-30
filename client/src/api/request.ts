@@ -76,7 +76,14 @@ export async function apiFetch<T = unknown>(
     return undefined as T;
   }
 
-  return res.json();
+  const body = await res.json();
+
+  if (!res.ok) {
+    const detail = body?.detail || body?.message || `请求失败 (${res.status})`;
+    throw new Error(detail);
+  }
+
+  return body as T;
 }
 
 /**
