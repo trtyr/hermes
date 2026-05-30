@@ -1,27 +1,43 @@
 # Hermes Server
 
-`server` is the control plane in the current three-part architecture:
+[![Rust](https://img.shields.io/badge/rust-2024+-ed8225?style=flat-square&logo=rust&logoColor=white)](https://rust-lang.org)
+[![License](https://img.shields.io/badge/license-unlicensed-22C55E?style=flat-square)]()
+[![Platform](https://img.shields.io/badge/platform-cross--platform-8B5CF6?style=flat-square)]()
 
-- `server`: task dispatch, agent session management, API, audit, persistence
-- `web_client`: operations UI, calls HTTP API and subscribes to WebSocket events
-- `agent client`: runs on office machines, connects to the TCP agent gateway
+[GitHub](https://github.com/trtyr/hermes) · [Quick Start](#quick-start) · [Configuration](#configuration) · [HTTP API](#http-api) · [Commands](#common-commands) · [Architecture](#architecture-highlights)
 
-At this stage the main focus is `server`, so the API contract is treated as the stable integration point for the other two parts.
+**Hermes C2 control plane.** Task dispatch, agent session management, HTTP API, WebSocket events, audit, persistence, and agent binary generation. Built on axum + tokio with a strict microkernel architecture.
 
 ## Architecture Highlights
 
-- Agent listener management: DB-backed listener registry with runtime enable/disable and future protocol extension points
-- HTTP API: the stable management plane for operators and future `web_client`
+- **Microkernel design**: API handler → service facade → `KernelMessage` → runtime handler → state + storage
+- Agent listener management: DB-backed listener registry with runtime enable/disable
+- HTTP API: 54 routes across 11 sub-APIs — the stable management plane
 - WebSocket events: real-time online agent and task state push
 - SQLite storage: persisted agent history, task history, audit logs, listener state, and agent build records
 - Agent build service: server-side generation of agent binaries for selected listeners and target platforms
 
-Documentation map:
+### Documentation Map
 
-- `docs/README.md`: 文档总入口
-- `docs/server-architecture/README.md`: `Server 架构`
-- `docs/server-web-client/README.md`: `Server 和 Web Client`
-- `docs/server-agent/README.md`: `Server 和 Agent`
+| Doc | Content |
+|---|---|
+| `docs/README.md` | 文档总入口 |
+| `docs/server-architecture/README.md` | Server 架构 |
+| `docs/server-web-client/README.md` | Server 和 Web Client |
+| `docs/server-agent/README.md` | Server 和 Agent |
+| `docs/e2e-guide.md` | E2E test suite guide |
+
+## Quick Start
+
+```bash
+make run
+```
+
+Without `make`:
+
+```bash
+cargo run
+```
 
 ## Defaults
 
@@ -103,7 +119,7 @@ Current routes:
 - `POST /agent-builds`
 - `GET /events/ws`
 
-Agent lifecycle semantics:
+### Agent Lifecycle Semantics
 
 - `POST /agents/:agent_id/disable`: administratively disable an agent asset; blocks new registration and task dispatch
 - `POST /agents/:agent_id/enable`: clear the disabled flag and allow the agent to return
@@ -113,21 +129,21 @@ Agent lifecycle semantics:
 - offline: agent session is gone, but persisted asset/history still exists
 - recover: agent reconnects and recreates its live session from persisted identity
 
-Command-session semantics:
+### Command Session Semantics
 
 - no PTY; every line still runs as a short-lived process
 - session only keeps context, especially `cwd`
 - `cd` and `pwd` are handled as session-aware built-ins
 - command sessions are separate from durable task dispatch
 
-Listener semantics:
+### Listener Semantics
 
 - HTTP API remains a single stable management endpoint
 - agent ingress listeners are managed separately from the API listener
 - listeners are persisted in SQLite and can be enabled, disabled, and queried over API
 - current production driver is `tcp_json`; `https_json` and `private_proto` are reserved extension points
 
-Agent build semantics:
+### Agent Build Semantics
 
 - server generates agent binaries matched to a selected listener
 - builds are recorded in SQLite for later traceability
@@ -146,18 +162,6 @@ Core flow:
 4. Agent sends `heartbeat`
 5. Server pushes `dispatch_task`
 6. Agent sends `task_result`
-
-## Quick Start
-
-```bash
-make run
-```
-
-Without `make`:
-
-```bash
-cargo run
-```
 
 ## Common Commands
 
@@ -189,7 +193,7 @@ Full regression, including agent build coverage:
 make e2e-all
 ```
 
-Note: `make e2e-all` expects the sibling agent project to exist at `../agent`.
+> **Note:** `make e2e-all` expects the sibling agent project to exist at `../agent`.
 
 One suite:
 
@@ -199,20 +203,7 @@ make e2e-suite SUITE=listeners
 make e2e-suite SUITE=command_session
 ```
 
-Available suite names:
-
-- `basic`
-- `auth`
-- `audit_precision`
-- `command_session`
-- `concurrent_stress`
-- `database`
-- `database_consistency`
-- `database_interruptions`
-- `edge`
-- `lifecycle`
-- `listeners`
-- `agent_builds`
+Available suite names: `basic`, `auth`, `audit_precision`, `command_session`, `concurrent_stress`, `database`, `database_consistency`, `database_interruptions`, `edge`, `lifecycle`, `listeners`, `agent_builds`.
 
 ## Agent Binary Generation
 
@@ -228,20 +219,20 @@ Example request:
 }
 ```
 
-or:
-
-```json
-{
-  "listener_id": 1,
-  "profile": "release",
-  "target_triple": "x86_64-pc-windows-msvc"
-}
-```
-
 Artifacts are written under `data/agent-builds/`.
+
+## Building
+
+- **Rust** ≥ 1.85 (edition 2024)
+- **No C library required** — `rusqlite` uses bundled SQLite
+- `cargo build` to compile, `make build-release` for optimized build
 
 ## Repository Conventions
 
 - default branch: `main`
 - release tags: `server-vMAJOR.MINOR.PATCH`
 - release notes/checklist: `docs/server-architecture/release-process.md`
+
+---
+
+⭐ Found this useful? Give it a star on [GitHub](https://github.com/trtyr/hermes).
