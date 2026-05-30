@@ -142,7 +142,7 @@ fn build_tls_server_config() -> anyhow::Result<Arc<ServerConfig>> {
     );
 
     let config = ServerConfig::builder_with_provider(provider)
-        .with_safe_default_protocol_versions()
+        .with_protocol_versions(&[&rustls::version::TLS13])
         .map_err(|e| anyhow::anyhow!("TLS version config failed: {}", e))?
         .with_no_client_auth()
         .with_single_cert(cert_chain, private_key)
