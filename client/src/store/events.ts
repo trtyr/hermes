@@ -109,7 +109,7 @@ export const useEventStore = defineStore('events', () => {
           } else if (payload.type === 'agent_registered' || payload.type === 'agent_updated') {
             agentDisplayNames.value.set(payload.agent.agent_id, payload.agent.hostname || payload.agent.agent_id);
           } else if (payload.type === 'agent_deleted') {
-            agentDisplayNames.value.delete(payload.agent_id);
+            // Keep display name in map so notifications can still resolve it
           } else if (payload.type === 'task_result') {
             // Handle file download: decode base64 and trigger browser download
             if (payload.command === 'download' && payload.success) {

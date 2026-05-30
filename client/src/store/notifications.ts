@@ -116,7 +116,7 @@ export const useNotificationStore = defineStore('notifications', () => {
           add({
             type: 'info',
             title: 'Agent 已删除',
-            message: event.agent_id,
+            message: eventStore.getAgentDisplayName(event.agent_id),
           }, true);
           break;
       }
