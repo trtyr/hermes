@@ -246,7 +246,7 @@ fn encode_png(width: u32, height: u32, rgba_data: &[u8]) -> Result<Vec<u8>, Stri
         let mut encoder = png::Encoder::new(writer, width, height);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
-        encoder.set_compression(png::Compression::Fastest);
+        encoder.set_compression(png::Compression::Fast);
         let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
         writer.write_image_data(rgba_data).map_err(|e| e.to_string())?;
     }
