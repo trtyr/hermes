@@ -182,12 +182,23 @@
           </a-select>
         </a-form-item>
 
-        <a-form-item label="回连地址" help="留空则使用监听器绑定地址">
-          <a-input
-            v-model:value="buildForm.server_addr"
-            placeholder="例: 192.168.1.100:4444"
-            class="font-mono"
-          />
+        <a-form-item label="回连地址" help="IP 手动填写，端口随监听器自动填充">
+          <a-input-group compact>
+            <a-input
+              v-model:value="buildForm.server_ip"
+              placeholder="公网 IP，例: 43.163.80.102"
+              class="font-mono"
+              style="width: calc(100% - 120px)"
+            />
+            <a-input-number
+              v-model:value="buildForm.server_port"
+              placeholder="端口"
+              :min="1"
+              :max="65535"
+              class="font-mono"
+              style="width: 120px"
+            />
+          </a-input-group>
         </a-form-item>
 
         <a-form-item label="Agent Token" help="留空则不嵌入默认认证令牌">
@@ -273,19 +284,23 @@ const building = ref(false);
 const buildForm = ref({
   target_triple: undefined as string | undefined,
   listener_id: undefined as number | undefined,
-  server_addr: '',
+  server_ip: '',
+  server_port: undefined as number | undefined,
   agent_token: '',
   profile: 'release',
   heartbeat_secs: undefined as number | undefined,
   jitter: undefined as number | undefined,
 });
 
-// Auto-fill agent_token when listener is selected
+// Auto-fill agent_token and port when listener is selected
 watch(() => buildForm.value.listener_id, (newListenerId) => {
   if (!newListenerId) return;
   const selected = listeners.value.find(l => l.listener_id === newListenerId);
   const listenerToken = selected?.config?.agent_token as string | undefined;
   buildForm.value.agent_token = listenerToken || globalAgentToken.value;
+  if (selected?.bind_port) {
+    buildForm.value.server_port = selected.bind_port;
+  }
 });
 
 // Listeners for the form dropdown
@@ -434,7 +449,9 @@ const handleBuild = async () => {
     };
     if (buildForm.value.target_triple) data.target_triple = buildForm.value.target_triple;
     if (buildForm.value.listener_id) data.listener_id = buildForm.value.listener_id;
-    if (buildForm.value.server_addr) data.server_addr = buildForm.value.server_addr;
+    if (buildForm.value.server_ip && buildForm.value.server_port) {
+      data.server_addr = `${buildForm.value.server_ip}:${buildForm.value.server_port}`;
+    }
     if (buildForm.value.agent_token) data.agent_token = buildForm.value.agent_token;
     if (buildForm.value.heartbeat_secs) data.heartbeat_secs = buildForm.value.heartbeat_secs;
     if (buildForm.value.jitter) data.jitter = buildForm.value.jitter;
@@ -463,7 +480,8 @@ const resetBuildForm = () => {
   buildForm.value = {
     target_triple: undefined,
     listener_id: undefined,
-    server_addr: '',
+    server_ip: '',
+    server_port: undefined,
     agent_token: '',
     profile: 'release',
     heartbeat_secs: undefined,
