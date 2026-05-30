@@ -2,6 +2,13 @@
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct TaskItem {
+    pub task_id: String,
+    pub command: String,
+    pub payload: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AgentMessage {
@@ -120,6 +127,8 @@ pub enum ServerCommand {
     },
     Ack {
         message: String,
+        #[serde(default)]
+        tasks: Option<Vec<TaskItem>>,
     },
     Disconnect {
         reason: Option<String>,

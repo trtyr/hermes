@@ -234,16 +234,16 @@ async fn heartbeat_dispatches_pending_tasks_for_registered_agent() {
 
     let command = receiver
         .try_recv()
-        .expect("task should be dispatched on heartbeat");
+        .expect("heartbeat should return ack with pending task");
     match command {
-        ServerCommand::DispatchTask {
-            task_id,
-            command,
-            payload,
-        } => {
-            assert_eq!(task_id, "task-pending-1");
-            assert_eq!(command, "whoami");
-            assert_eq!(payload, None);
+        ServerCommand::Ack { message, tasks } => {
+            assert_eq!(message, "ok");
+            let tasks = tasks.expect("ack should include pending tasks");
+            assert_eq!(tasks.len(), 1);
+            let task = &tasks[0];
+            assert_eq!(task.task_id, "task-pending-1");
+            assert_eq!(task.command, "whoami");
+            assert_eq!(task.payload, None);
         }
         other => panic!("unexpected command: {:?}", other),
     }

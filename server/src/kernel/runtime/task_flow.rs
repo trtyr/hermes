@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::console;
-use crate::protocol::{ServerCommand, TaskStatus, WebEvent};
+use crate::protocol::{ServerCommand, TaskItem, TaskStatus, WebEvent};
 
 use super::{agent_lifecycle::send_server_command_to_agent, effects::RuntimePorts, now_ts};
 use crate::kernel::state::{KernelState, NewTask};
@@ -182,36 +182,16 @@ fn cancel_task_recursive(state: &mut KernelState, effects: &RuntimePorts, task_i
     }
 }
 
-pub(super) fn dispatch_pending_tasks_for_agent(
+pub(super) fn collect_and_dispatch_pending_tasks(
     state: &mut KernelState,
     effects: &RuntimePorts,
     agent_id: &str,
-) {
-    if state.session_by_agent_id(agent_id).is_none() {
-        return;
-    }
-
+) -> Vec<TaskItem> {
+    let mut tasks = Vec::new();
     for task_id in state.pending_task_ids_for_agent(agent_id) {
         let Some(task) = state.task_snapshot(&task_id) else {
             continue;
         };
-
-        let dispatched = send_server_command_to_agent(
-            state,
-            effects,
-            agent_id,
-            ServerCommand::DispatchTask {
-                task_id: task.task_id.clone(),
-                command: task.command.clone(),
-                payload: task.payload.clone(),
-            },
-            "command sender closed while dispatching pending task",
-        )
-        .is_ok();
-
-        if !dispatched {
-            break;
-        }
 
         let task_id = task.task_id.clone();
         let command = task.command.clone();
@@ -221,10 +201,16 @@ pub(super) fn dispatch_pending_tasks_for_agent(
         }
         console::task_dispatched(&task_id, &command, agent_id);
         effects.publish(&WebEvent::TaskDispatched {
-            task_id,
+            task_id: task_id.clone(),
             target_agent_id: agent_id.to_string(),
+            command: command.clone(),
+            payload: payload.clone(),
+        });
+        tasks.push(TaskItem {
+            task_id,
             command,
             payload,
         });
     }
+    tasks
 }

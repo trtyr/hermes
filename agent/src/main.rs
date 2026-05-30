@@ -196,8 +196,15 @@ fn run_once(
                 };
 
                 match cmd {
-                    ServerCommand::Ack { message } => {
-                        alog!("registration acknowledged: {}", message);
+                    ServerCommand::Ack { message, tasks } => {
+                        alog!("ack: {}", message);
+                        if let Some(tasks) = tasks {
+                            for item in tasks {
+                                task.lock()
+                                    .unwrap_or_else(|e| e.into_inner())
+                                    .dispatch(&item.task_id, &item.command, item.payload.as_deref());
+                            }
+                        }
                     }
                     ServerCommand::Disconnect { .. } => {
                         alog!("got Disconnect, returning Ok");
