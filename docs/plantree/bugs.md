@@ -39,6 +39,19 @@
 
 ## ✅ FIXED
 
+### BUG-008: 截图任务导致 Agent 心跳超时断连
+
+**严重性:** 高 — 截图功能完全不可用，且导致 agent 离线
+
+**根因:** `handle_screenshot` 直接调用 Win32 GDI，无超时保护。GDI 调用在无桌面环境下可能阻塞或 panic，导致 TaskResult 永远不返回。
+
+**修复:**
+- Agent `sys_ops.rs`：截图操作包装为 `catch_unwind` + 30 秒超时（`mpsc::recv_timeout`）
+- GDI 调用增加 null 检查（`GetDC`、`CreateCompatibleDC`、`CreateCompatibleBitmap`、`BitBlt`、`GetDIBits`）
+- 任何失败返回明确错误消息而非静默阻塞
+
+**状态:** ✅ 已修复
+
 ### BUG-009: 心跳超时时间过长（实际 55 秒，非预期 15 秒）
 
 **严重性:** 中 — Agent 断连后需 55 秒才能被 server 检测到

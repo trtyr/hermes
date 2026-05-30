@@ -184,6 +184,24 @@ async function doScreenshot() {
     if (res.success && res.task_id) {
       pendingScreenshotTaskId.value = res.task_id;
 
+      // Register globally — result survives page navigation
+      eventStore.registerPendingTask(res.task_id, 'screenshot');
+
+      // Check if result already arrived (unlikely but possible)
+      const cached = eventStore.getTaskResult(res.task_id);
+      if (cached) {
+        screenshotLoading.value = false;
+        pendingScreenshotTaskId.value = null;
+        eventStore.clearPendingTask(res.task_id);
+        if (cached.success) {
+          message.success('截图成功');
+          fetchGallery();
+        } else {
+          message.error(cached.output || '截图失败');
+        }
+        return;
+      }
+
       unsubscribeEvents = eventStore.subscribe((event) => {
         if (event.type !== 'task_result') return;
         if (event.task_id !== pendingScreenshotTaskId.value) return;
@@ -195,6 +213,7 @@ async function doScreenshot() {
 
         screenshotLoading.value = false;
         pendingScreenshotTaskId.value = null;
+        eventStore.clearPendingTask(event.task_id);
 
         const { success, output } = event;
 
@@ -262,6 +281,21 @@ function formatTime(ts: number): string {
 
 onMounted(() => {
   fetchGallery();
+  // Check if a pending screenshot completed while we were unmounted
+  if (pendingScreenshotTaskId.value) {
+    const cached = eventStore.getTaskResult(pendingScreenshotTaskId.value);
+    if (cached) {
+      screenshotLoading.value = false;
+      pendingScreenshotTaskId.value = null;
+      eventStore.clearPendingTask(cached.task_id);
+      if (cached.success) {
+        message.success('截图成功');
+        fetchGallery();
+      } else {
+        message.error(cached.output || '截图失败');
+      }
+    }
+  }
 });
 
 onBeforeUnmount(() => {

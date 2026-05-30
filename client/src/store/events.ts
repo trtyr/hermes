@@ -41,6 +41,20 @@ export const useEventStore = defineStore('events', () => {
   /** task_id → { fileName } for pending file downloads */
   const pendingDownloads = ref<Map<string, { fileName: string }>>(new Map());
 
+  /** Global task result cache — survives page navigation */
+  interface CachedTaskResult {
+    task_id: string;
+    command: string;
+    success: boolean;
+    output: string;
+    received_at: number;
+  }
+  const taskResults = ref<Map<string, CachedTaskResult>>(new Map());
+  const MAX_CACHED_RESULTS = 200;
+
+  /** Pending task registrations — components register tasks they're waiting for */
+  const pendingTasks = ref<Map<string, { type: string; registered_at: number }>>(new Map());
+
   function getAgentDisplayName(agentId: string): string {
     return agentDisplayNames.value.get(agentId) || agentId;
   }
@@ -50,13 +64,33 @@ export const useEventStore = defineStore('events', () => {
     pendingDownloads.value.set(taskId, { fileName });
   }
 
+  /** Register a task as pending — components can check if result arrived while they were unmounted */
+  function registerPendingTask(taskId: string, type: string) {
+    pendingTasks.value.set(taskId, { type, registered_at: Date.now() });
+  }
+
+  /** Get cached task result (returns null if not yet received) */
+  function getTaskResult(taskId: string): CachedTaskResult | null {
+    return taskResults.value.get(taskId) ?? null;
+  }
+
+  /** Check if a pending task has completed (result is cached) */
+  function isTaskCompleted(taskId: string): boolean {
+    return taskResults.value.has(taskId);
+  }
+
+  /** Remove a pending task registration */
+  function clearPendingTask(taskId: string) {
+    pendingTasks.value.delete(taskId);
+  }
+
   function subscribe(callback: (event: BackendEvent) => void) {
     subscribers.value.add(callback);
     return () => subscribers.value.delete(callback);
   }
 
   function notifySubscribers(event: BackendEvent) {
-    subscribers.value.forEach(cb => cb(event));
+    subscribers.value.forEach(cb => { cb(event); });
   }
 
   /**
@@ -111,6 +145,20 @@ export const useEventStore = defineStore('events', () => {
           } else if (payload.type === 'agent_deleted') {
             // Keep display name in map so notifications can still resolve it
           } else if (payload.type === 'task_result') {
+            // Cache ALL task results globally (survives page navigation)
+            taskResults.value.set(payload.task_id, {
+              task_id: payload.task_id,
+              command: payload.command,
+              success: payload.success,
+              output: payload.output,
+              received_at: Date.now(),
+            });
+            // Trim old results if over limit
+            if (taskResults.value.size > MAX_CACHED_RESULTS) {
+              const oldest = [...taskResults.value.keys()].slice(0, taskResults.value.size - MAX_CACHED_RESULTS);
+              for (const k of oldest) taskResults.value.delete(k);
+            }
+
             // Handle file download: decode base64 and trigger browser download
             if (payload.command === 'download' && payload.success) {
               const pending = pendingDownloads.value.get(payload.task_id);
@@ -216,5 +264,9 @@ export const useEventStore = defineStore('events', () => {
     subscribe,
     getAgentDisplayName,
     registerDownload,
+    registerPendingTask,
+    getTaskResult,
+    isTaskCompleted,
+    clearPendingTask,
   };
 });

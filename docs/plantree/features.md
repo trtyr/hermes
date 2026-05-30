@@ -2,6 +2,20 @@
 
 ## ✅ 已完成
 
+### FEAT-004: 全局 Task 结果后台接收机制
+
+**问题:** 截图、目录浏览等异步操作的结果接收逻辑绑定在页面组件上。用户切换页面时组件卸载 → 事件监听清理 → 操作结果丢失。
+
+**改动:**
+- `events.ts` store 新增全局 `taskResults` Map — 所有 `task_result` 事件自动缓存（上限 200 条）
+- 新增 `registerPendingTask(taskId, type)` / `getTaskResult(taskId)` / `isTaskCompleted(taskId)` / `clearPendingTask(taskId)` API
+- `SessionScreenshotTab.vue`：发起截图时注册 pending task，组件 mount 时检查缓存结果
+- 截图超时保护：`catch_unwind` + 30 秒 `recv_timeout` + GDI null 检查
+
+**状态:** ✅ 已完成
+
+---
+
 ### FEAT-001: 审计日志清空功能
 
 **改动:**
@@ -66,21 +80,4 @@
 
 ## 📋 待实现
 
-### FEAT-004: 全局 Task 结果后台接收机制
-
-**问题:** 截图、目录浏览等异步操作的结果接收逻辑绑定在页面组件上。用户切换页面时组件卸载 → 事件监听清理 → 操作结果丢失。
-
-**需求:** 操作发起后，无论用户切换到哪个页面，结果都应在后台被接收和存储。回到原页面时数据已就绪。
-
-**方案:**
-1. `events.ts` store 新增全局 `taskResults` Map — 收到 `task_result` 事件时自动缓存（含 task_id → result 映射）
-2. 组件发起操作时注册 `task_id`（如 `registerPendingTask(taskId, type)`），不再自行订阅事件
-3. 组件渲染时从 store 读取结果（`getTaskResult(taskId)`），用 `watch` 或 `computed` 响应式更新
-4. 文件浏览 (`SessionFilesTab.vue`) 同样改为 store 级结果接收
-
-**涉及组件:**
-- `SessionScreenshotTab.vue` — 截图结果
-- `SessionFilesTab.vue` — 目录浏览结果
-- `events.ts` — 全局 task 结果缓存
-
-**状态:** 📋 待实现
+（暂无）
