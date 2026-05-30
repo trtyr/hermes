@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::{RwLock, oneshot};
 
+use crate::console;
 use crate::protocol::{CommandSessionSnapshot, CommandSessionStatus, ServerCommand, WebEvent};
 
 use super::super::{agent_lifecycle::send_server_command_to_agent, effects::RuntimePorts, now_ts};
@@ -52,6 +53,7 @@ pub(super) async fn close_command_session(
     }
     if state.session_by_agent_id(&snapshot.agent_id).is_none() {
         if let Some(closed) = state.close_command_session(&command_session_id, now) {
+            console::command_session_closed(&closed.command_session_id, &closed.agent_id);
             effects.publish(&WebEvent::CommandSessionClosed {
                 command_session_id: closed.command_session_id.clone(),
                 agent_id: closed.agent_id.clone(),

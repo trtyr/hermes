@@ -59,7 +59,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to persist agent snapshot: {}", error);
+            crate::console::storage_error(&format!("persist agent agent_id={}", agent.agent_id.as_deref().unwrap_or("?")), &error);
         }
     }
 
@@ -76,7 +76,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to mark agent offline: {}", error);
+            crate::console::storage_error(&format!("mark offline agent_id={}", agent_id), &error);
         }
     }
 

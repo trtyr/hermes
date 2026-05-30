@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use crate::console;
 use crate::protocol::{ServerCommand, WebEvent};
 
 use super::super::{command_sessions, effects::RuntimePorts, now_ts, task_flow};
@@ -35,10 +36,7 @@ pub(super) async fn handle_register(
     if let Some(old_session_id) = state.existing_session_for_agent(&agent_id) {
         if old_session_id != session_id {
             if let Some(old_session) = state.remove_existing_session_for_agent(&agent_id) {
-                eprintln!(
-                    "[server] superseding old session {} with new session {} for agent {}",
-                    old_session_id, session_id, registered_agent_id
-                );
+                console::session_superseded(old_session_id, session_id, &registered_agent_id);
                 let _ = old_session.sender.send(ServerCommand::Disconnect {
                     reason: Some("superseded by a newer session".to_string()),
                 });
@@ -69,6 +67,7 @@ pub(super) async fn handle_register(
                 message: "register_ok".to_string(),
             });
         }
+        console::agent_online(&registered_agent_id, &snapshot.hostname.as_deref().unwrap_or_default(), &snapshot.peer_addr);
         effects.publish(&WebEvent::AgentRegistered { agent: snapshot });
         task_flow::dispatch_pending_tasks_for_agent(&mut state, effects, &registered_agent_id);
         command_sessions::dispatch_pending_commands_for_agent(

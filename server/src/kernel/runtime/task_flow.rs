@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use crate::console;
 use crate::protocol::{ServerCommand, TaskStatus, WebEvent};
 
 use super::{agent_lifecycle::send_server_command_to_agent, effects::RuntimePorts, now_ts};
@@ -37,6 +38,7 @@ pub(super) async fn dispatch_task(
         ) {
             effects.task_updated(task);
         }
+        console::task_failed(&task_id, &target_agent_id, "agent not connected");
         return;
     }
 
@@ -49,6 +51,7 @@ pub(super) async fn dispatch_task(
         created_at: now,
     });
     effects.task_updated(task);
+    console::task_created(&task_id, &command, &target_agent_id);
 }
 
 pub(super) async fn broadcast_task(
@@ -81,6 +84,7 @@ pub(super) async fn broadcast_task(
         {
             effects.task_updated(task);
         }
+        console::task_failed(&task_id, "-", "no online agents for broadcast");
         return;
     }
 
@@ -137,8 +141,9 @@ fn cancel_task_recursive(state: &mut KernelState, effects: &RuntimePorts, task_i
                 effects.task_updated(task);
                 effects.publish(&WebEvent::TaskCancelledRequested {
                     task_id: task_id.to_string(),
-                    target_agent_id,
+                    target_agent_id: target_agent_id.clone(),
                 });
+                console::task_cancelled(task_id, target_agent_id.as_deref(), "cancelled before dispatch");
             }
         }
         TaskStatus::Dispatched | TaskStatus::Running => {
@@ -167,8 +172,10 @@ fn cancel_task_recursive(state: &mut KernelState, effects: &RuntimePorts, task_i
                 effects.task_updated(task);
                 effects.publish(&WebEvent::TaskCancelledRequested {
                     task_id: task_id.to_string(),
-                    target_agent_id,
+                    target_agent_id: target_agent_id.clone(),
                 });
+                let reason = if request_sent { "cancel requested by operator" } else { "cancel requested but agent unavailable" };
+                console::task_cancelled(task_id, target_agent_id.as_deref(), reason);
             }
         }
         _ => {}
@@ -212,6 +219,7 @@ pub(super) fn dispatch_pending_tasks_for_agent(
         if let Some(task) = state.mark_task_dispatched(&task_id, now_ts()) {
             effects.task_updated(task);
         }
+        console::task_dispatched(&task_id, &command, agent_id);
         effects.publish(&WebEvent::TaskDispatched {
             task_id,
             target_agent_id: agent_id.to_string(),

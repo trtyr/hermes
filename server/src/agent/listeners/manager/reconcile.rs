@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Instant};
 
 use crate::{
+    console,
     kernel::{AgentAuthMode, KernelHandle},
     protocol::{ListenerRecord, ListenerRuntimeStatus},
 };
@@ -20,7 +21,7 @@ pub(super) async fn reconcile_listeners(
     {
         Ok(listeners) => listeners,
         Err(error) => {
-            eprintln!("Failed to load listeners: {}", error);
+            crate::console::storage_error("load listeners", &error);
             return;
         }
     };
@@ -124,6 +125,7 @@ fn start_listener_if_needed(
         }
 
         current.note_restart();
+        console::listener_restarting(listener.listener_id, &listener.name);
         kernel.listener_commands().update_runtime_state(
             listener.listener_id,
             ListenerRuntimeStatus::Starting,

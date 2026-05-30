@@ -284,7 +284,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to update listener runtime state: {}", error);
+            crate::console::storage_error("update listener runtime state", &error);
         }
     }
 }

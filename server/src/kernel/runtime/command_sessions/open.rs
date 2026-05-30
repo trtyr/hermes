@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::{RwLock, oneshot};
 
+use crate::console;
 use crate::protocol::{CommandSessionSnapshot, ServerCommand};
 
 use super::super::{agent_lifecycle::send_server_command_to_agent, effects::RuntimePorts, now_ts};
@@ -27,10 +28,11 @@ pub(super) async fn open_command_session(
     state.insert_command_session(
         command_session_id.clone(),
         agent_id.clone(),
-        created_by,
+        created_by.clone(),
         now,
         respond_to,
     );
+    console::command_session_opened(&command_session_id, &agent_id, &created_by);
     if let Err(error) = send_server_command_to_agent(
         &mut state,
         effects,

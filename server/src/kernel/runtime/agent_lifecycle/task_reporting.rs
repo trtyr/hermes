@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use crate::console;
 use crate::protocol::{AgentTaskStatus, WebEvent};
 
 use super::super::{effects::RuntimePorts, now_ts};
@@ -29,6 +30,8 @@ pub(super) async fn handle_task_result(
             task_command = task.command.clone();
             parent_task = state.parent_task_snapshot(&task.task_id);
             effects.task_updated(task);
+            let display_agent_id = agent_id.clone().unwrap_or_else(|| "?".to_string());
+            console::task_completed(&task_id, &task_command, &display_agent_id, success);
         }
         if let Some(task) = parent_task {
             effects.task_updated(task);

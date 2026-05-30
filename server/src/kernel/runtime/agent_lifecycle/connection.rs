@@ -2,6 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use tokio::sync::{RwLock, mpsc};
 
+use crate::console;
 use crate::protocol::{ServerCommand, WebEvent};
 
 use super::super::{effects::RuntimePorts, now_ts};
@@ -81,6 +82,7 @@ pub(super) async fn disconnect_agent(
             effects.publish(&WebEvent::AgentDisconnectRequested {
                 agent_id: agent_id.clone(),
             });
+            console::agent_offline(&agent_id, "", "disconnected by server request");
         }
     }
 
@@ -105,25 +107,34 @@ pub(super) async fn sweep_heartbeats(state: &Arc<RwLock<KernelState>>, effects: 
         return;
     }
 
+    let sweep_count = timed_out_session_ids.len();
     let mut state = state.write().await;
     for session_id in timed_out_session_ids {
         if let Some(session) = state.remove_session(session_id) {
+            if let Some(ref agent_id) = session.agent_id {
+                console::agent_heartbeat_timeout(agent_id, &session.hostname.clone().unwrap_or_default(), session_id);
+            }
             cleanup_session_expired(&mut state, effects, session, "heartbeat timed out");
         }
     }
+    console::heartbeat_sweep(sweep_count);
 }
 
 pub(super) fn cleanup_session_disconnect(effects: &RuntimePorts, session: AgentSession) {
     let now = now_ts();
     let agent_id = session.agent_id.clone();
-    if let Some(agent_id) = agent_id {
-        effects.mark_agent_offline(agent_id.clone(), now);
+    let ln = session.listener_name.clone().unwrap_or_else(|| "?".to_string());
+    if let Some(ref aid) = agent_id {
+        console::agent_offline(aid, &session.hostname.clone().unwrap_or_default(), "session disconnected");
+        effects.mark_agent_offline(aid.clone(), now);
+    }
+    console::session_disconnected(session.session_id, agent_id.as_deref(), "disconnected", &ln);
+    if let Some(aid) = agent_id {
         effects.publish(&WebEvent::AgentDisconnected {
             session_id: session.session_id,
-            agent_id: Some(agent_id),
+            agent_id: Some(aid),
         });
     }
-    // Unregistered sessions (agent_id: None) — no WebSocket notification needed.
 }
 
 pub(super) fn cleanup_session_expired(
@@ -134,6 +145,7 @@ pub(super) fn cleanup_session_expired(
 ) {
     let now = now_ts();
     if let Some(agent_id) = session.agent_id.clone() {
+        console::agent_offline(&agent_id, &session.hostname.clone().unwrap_or_default(), reason);
         effects.mark_agent_offline(agent_id.clone(), now);
         let command_session_ids = state.command_session_ids_for_agent(&agent_id);
         for command_session_id in &command_session_ids {
@@ -212,6 +224,7 @@ pub(super) fn cleanup_session_expired(
             }
         }
     }
+    console::session_disconnected(session.session_id, session.agent_id.as_deref(), reason, &session.listener_name.clone().unwrap_or_else(|| "?".to_string()));
     // Only publish disconnect event for registered sessions (those with agent_id).
     if session.agent_id.is_some() {
         effects.publish(&WebEvent::AgentDisconnected {

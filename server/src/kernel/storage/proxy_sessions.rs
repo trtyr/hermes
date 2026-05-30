@@ -35,7 +35,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to persist proxy session: {}", error);
+            crate::console::storage_error("persist proxy session", &error);
         }
     }
 
@@ -50,7 +50,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to delete proxy session: {}", error);
+            crate::console::storage_error("delete proxy session", &error);
         }
     }
 }

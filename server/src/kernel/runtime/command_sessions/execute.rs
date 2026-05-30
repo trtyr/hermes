@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::{RwLock, oneshot};
 
+use crate::console;
 use crate::protocol::{
     CommandExecutionSnapshot, CommandSessionResult, CommandSessionStatus, ServerCommand, WebEvent,
 };
@@ -26,6 +27,7 @@ pub(super) async fn execute_command_session(
     state.register_pending_command_execute(command_id.clone(), respond_to);
     match enqueue_command(&mut state, &command_session_id, &command_id, line, now) {
         Ok(command) => {
+            console::command_session_execute(&command_session_id, &command_id, &command.line);
             effects.publish(&WebEvent::CommandUpdated { command });
             if let Err(error) =
                 dispatch_next_command_if_idle_locked(&mut state, effects, &command_session_id)

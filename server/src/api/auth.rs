@@ -1,4 +1,5 @@
 use super::*;
+use crate::console;
 
 use axum::extract::State;
 
@@ -23,28 +24,32 @@ pub(super) async fn login(
         .auth()
         .validate_web_credentials(&request.username, &request.password)
     else {
+        console::auth_login_failed(&request.username, "-");
         return unauthorized_response();
     };
 
     match state.kernel.auth().create_session(&username) {
-        Ok(session) => (
-            StatusCode::OK,
-            [(
-                header::SET_COOKIE,
-                session_cookie_header(
-                    &session.session_token,
-                    state.kernel.auth().session_ttl_secs(),
-                ),
-            )],
-            Json(AuthLoginResponse {
-                success: true,
-                detail: "login ok".to_string(),
-                session_token: session.session_token,
-                username: session.username,
-                expires_at: session.expires_at,
-            }),
-        )
-            .into_response(),
+        Ok(session) => {
+            console::auth_login_success(&username, "-");
+            (
+                StatusCode::OK,
+                [(
+                    header::SET_COOKIE,
+                    session_cookie_header(
+                        &session.session_token,
+                        state.kernel.auth().session_ttl_secs(),
+                    ),
+                )],
+                Json(AuthLoginResponse {
+                    success: true,
+                    detail: "login ok".to_string(),
+                    session_token: session.session_token,
+                    username: session.username,
+                    expires_at: session.expires_at,
+                }),
+            )
+                .into_response()
+        }
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse {

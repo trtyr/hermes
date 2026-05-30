@@ -84,7 +84,10 @@ pub(super) async fn run_https_json_listener(
                                     }
                                 }
                                 Err(error) => {
-                                    eprintln!("TLS handshake failed for {}: {}", peer_addr, error);
+                                    crate::console::listener_error(
+                                        &format!("TLS handshake from {}", peer_addr),
+                                        &error,
+                                    );
                                 }
                             }
                         });

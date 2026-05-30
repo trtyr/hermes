@@ -5,6 +5,7 @@ use tokio::{
 };
 
 use crate::{
+    console,
     kernel::{AgentAuthMode, AgentKernelMessage, KernelHandle},
     protocol::{AgentMessage, ServerCommand},
 };
@@ -77,7 +78,6 @@ pub async fn handle_json_line_agent_connection<S>(
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
-    eprintln!("[server] new connection from {}", peer_addr);
     let (expected_agent_token, agent_auth_mode) = resolve_listener_agent_auth(
         &kernel,
         listener_id,
@@ -86,6 +86,8 @@ where
     )
     .await;
     let session_id = kernel.allocate_session_id();
+    let ln = listener_name.clone().unwrap_or_else(|| "?".to_string());
+    console::session_connected(session_id, &peer_addr.to_string(), &ln, listener_id);
     let (reader, writer) = tokio::io::split(socket);
     let (sender, receiver) = mpsc::unbounded_channel::<ServerCommand>();
     let session_nonce = if expected_agent_token.is_some()
@@ -156,18 +158,12 @@ where
                                         auth_response.as_deref(),
                                         agent_id,
                                     ) {
-                                        eprintln!(
-                                            "Rejected agent {} due to invalid token",
-                                            peer_addr
-                                        );
+                                        console::session_register_rejected(session_id, &peer_addr.to_string(), &ln, "invalid token");
                                         break;
                                     }
                                     match kernel.agent_queries().persisted(agent_id).await {
                                         Ok(Some(agent)) if agent.is_disabled => {
-                                            eprintln!(
-                                                "Rejected disabled agent {} ({})",
-                                                agent_id, peer_addr
-                                            );
+                                            console::session_register_rejected(session_id, &peer_addr.to_string(), &ln, &format!("agent {} is disabled", agent_id));
                                             // Tell the agent to disconnect so it can reconnect later
                                             let _ = sender.send(ServerCommand::Disconnect {
                                                 reason: Some("agent is disabled".to_string()),
@@ -176,24 +172,19 @@ where
                                         }
                                         Ok(_) => {}
                                         Err(error) => {
-                                            eprintln!(
-                                                "Failed to check disabled state for {}: {}",
-                                                peer_addr, error
-                                            );
+                                            console::session_error(session_id, "disabled check failed", &error);
                                             break;
                                         }
                                     }
                                     registered = true;
-                                    eprintln!(
-                                        "[server] agent registered: session_id={}",
-                                        session_id
-                                    );
+                                    let auth_mode_str = match agent_auth_mode {
+                                        AgentAuthMode::PlainToken => "plain_token",
+                                        AgentAuthMode::ChallengeResponse => "challenge_response",
+                                    };
+                                    console::session_register_ok(session_id, agent_id, "", "", "", &peer_addr.to_string(), &ln, auth_mode_str);
                                 }
                                 _ => {
-                                    eprintln!(
-                                        "Rejected agent {} because first frame was not register",
-                                        peer_addr
-                                    );
+                                    console::session_register_rejected(session_id, &peer_addr.to_string(), &ln, "first frame was not Register");
                                     break;
                                 }
                             }
@@ -205,28 +196,22 @@ where
                             .context("failed to forward agent frame into kernel")?;
                     }
                     Err(error) => {
-                        eprintln!("Invalid agent frame from {}: {}", peer_addr, error);
+                        console::session_error(session_id, "invalid frame", &error);
                     }
                 }
             }
             Ok(None) => {
-                eprintln!(
-                    "[server] session_id={}: connection EOF (client closed)",
-                    session_id
-                );
+                console::session_disconnected(session_id, None, "EOF (client closed)", &ln);
                 break;
             }
             Err(error) => {
-                eprintln!(
-                    "[server] session_id={}: connection read error: {}",
-                    session_id, error
-                );
+                console::session_error(session_id, "read error", &error);
                 break;
             }
         }
     }
 
-    eprintln!("[server] connection ended for session_id={}", session_id);
+    console::session_disconnected(session_id, None, "connection ended", &ln);
 
     // Drop local sender first so write_loop's receiver can close
     // once the kernel also drops its clone (triggered by Disconnected below).
@@ -244,6 +229,5 @@ where
     }
 
     let _ = write_task.await;
-    eprintln!("[server] session_id={}: write_task finished", session_id);
     Ok(())
 }

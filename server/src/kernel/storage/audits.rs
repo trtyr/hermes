@@ -22,7 +22,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to persist audit record: {}", error);
+            crate::console::storage_error("persist audit record", &error);
         }
     }
 

@@ -203,13 +203,31 @@ pub async fn run_http_api(
 async fn log_http_request(request: Request, next: Next) -> impl IntoResponse {
     let method = request.method().clone();
     let uri = request.uri().clone();
+    let client_ip = request
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
+        .or_else(|| {
+            request
+                .extensions()
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|ci| ci.0.ip().to_string())
+        })
+        .unwrap_or_else(|| "-".to_string());
+    let user_agent = request
+        .headers()
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("-")
+        .to_string();
     let started = std::time::Instant::now();
 
     let response = next.run(request).await;
     let status = response.status();
     let elapsed_ms = started.elapsed().as_millis();
 
-    console::http_request(&method, &uri, status, elapsed_ms);
+    console::http_request(&method, &uri, status, elapsed_ms, &client_ip, &user_agent, "-");
 
     response
 }

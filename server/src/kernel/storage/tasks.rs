@@ -8,7 +8,7 @@ impl Storage {
         })();
 
         if let Err(error) = result {
-            eprintln!("Failed to persist task: {}", error);
+            crate::console::storage_error(&format!("persist task task_id={}", task.task_id), &error);
         }
     }
 }
