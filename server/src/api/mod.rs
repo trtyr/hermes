@@ -24,6 +24,7 @@ use axum::{
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};
 
+use anyhow::Context as _;
 use crate::console;
 use crate::kernel::KernelHandle;
 use common::*;
@@ -191,7 +192,9 @@ pub async fn run_http_api(
 ) -> anyhow::Result<(), anyhow::Error> {
     let app = build_router(kernel);
 
-    let listener = tokio::net::TcpListener::bind(api_addr).await?;
+    let listener = tokio::net::TcpListener::bind(api_addr)
+        .await
+        .with_context(|| format!("HTTP API 无法绑定到 {}:{}", api_addr.0, api_addr.1))?;
     console::startup_http_api(listener.local_addr()?);
     axum::serve(listener, app).await?;
     Ok(())

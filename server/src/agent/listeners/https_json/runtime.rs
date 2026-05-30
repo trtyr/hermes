@@ -105,10 +105,11 @@ pub(super) async fn run_https_json_listener(
             }
         }
         Err(error) => {
+            let detail = format!("无法绑定到 {}: {}", bind_addr, error);
             kernel.listener_commands().update_runtime_state(
                 listener.listener_id,
                 ListenerRuntimeStatus::Error,
-                Some(error.to_string()),
+                Some(detail),
             );
             console::listener_error(
                 &format!(
