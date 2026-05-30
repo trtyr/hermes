@@ -161,7 +161,7 @@ pub fn build_router(kernel: KernelHandle) -> Router {
             get(tasks::get_task).delete(tasks::cancel_task),
         )
         .route("/tasks/broadcast", post(tasks::broadcast_task))
-        .route("/audits", get(audits::list_audits))
+        .route("/audits", get(audits::list_audits).delete(audits::clear_audits))
         .route("/events/ws", get(system::ws_events))
         .route(
             "/web/terminal/open",

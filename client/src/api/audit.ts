@@ -26,6 +26,10 @@ export interface AuditFilter {
   offset?: number;
 }
 
+export async function clearAudits(): Promise<{ success: boolean; detail: string }> {
+  return apiFetch<{ success: boolean; detail: string }>('/audits', { method: 'DELETE' });
+}
+
 export async function fetchAudits(filter: AuditFilter = {}): Promise<AuditListResponse> {
   const searchParams = new URLSearchParams();
   if (filter.operator) searchParams.append('operator', filter.operator);

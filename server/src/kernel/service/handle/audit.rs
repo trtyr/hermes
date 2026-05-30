@@ -36,4 +36,8 @@ impl KernelHandle {
             })
             .await
     }
+
+    pub fn clear_audit_records(&self) -> anyhow::Result<usize> {
+        self.storage.clear_audit_records()
+    }
 }

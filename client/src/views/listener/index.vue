@@ -1,54 +1,5 @@
 <template>
   <div class="h-full w-full flex flex-col p-4 relative">
-    <!-- Agent认证设置 -->
-    <a-card
-      title="Agent 认证"
-      class="mb-4"
-      :bordered="true"
-      size="small"
-    >
-      <template #extra>
-        <a-tooltip title="新 Agent 连接时的认证方式和令牌">
-          <QuestionCircleOutlined class="text-slate-400" />
-        </a-tooltip>
-      </template>
-      <div class="flex items-start gap-6">
-        <div class="flex-1">
-          <label class="text-xs text-slate-500 mb-1 block">认证令牌</label>
-          <a-input-password
-            v-model:value="authForm.agent_token"
-            placeholder="留空则不认证"
-            :disabled="authLoading"
-            size="small"
-            class="max-w-xs"
-          />
-        </div>
-        <div class="flex-1">
-          <label class="text-xs text-slate-500 mb-1 block">认证模式</label>
-          <a-radio-group v-model:value="authForm.agent_auth_mode" :disabled="authLoading" size="small">
-            <a-radio-button value="plain_token">共享令牌</a-radio-button>
-            <a-radio-button value="challenge_response">挑战-响应</a-radio-button>
-          </a-radio-group>
-        </div>
-        <div class="flex items-end gap-2" style="padding-top: 1px;">
-          <a-button type="primary" size="small" :loading="authLoading" @click="saveAuthSettings">
-            保存
-          </a-button>
-          <a-button size="small" :loading="authLoading" @click="loadAuthSettings">
-            刷新
-          </a-button>
-        </div>
-      </div>
-      <div class="text-xs text-slate-400 mt-2">
-        <template v-if="authForm.agent_auth_mode === 'plain_token'">
-          Agent 注册时明文携带令牌，Server 对比验证。令牌需在生成 Agent 时一并嵌入。
-        </template>
-        <template v-else>
-          Server 发送随机 nonce，Agent 用 HMAC-SHA256 签名响应，令牌不在网络上传输。需在生成 Agent 时嵌入相同令牌。
-        </template>
-      </div>
-    </a-card>
-
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-semibold text-slate-800 flex items-center gap-2 m-0">
@@ -105,6 +56,30 @@
             <span class="font-mono text-sm text-slate-600">
               {{ record.bind_host }}:{{ record.bind_port }}
             </span>
+          </template>
+
+          <template v-else-if="column.key === 'auth'">
+            <a-popover v-model:open="authPopoverVisible[record.listener_id]" trigger="click" placement="bottomLeft">
+              <template #content>
+                <div class="w-64">
+                  <label class="text-xs text-slate-500 mb-1 block">认证令牌</label>
+                  <a-input-password v-model:value="editingToken" size="small" placeholder="留空则不认证" />
+                  <label class="text-xs text-slate-500 mb-1 mt-2 block">认证模式</label>
+                  <a-radio-group v-model:value="editingAuthMode" size="small">
+                    <a-radio-button value="plain_token">共享令牌</a-radio-button>
+                    <a-radio-button value="challenge_response">挑战-响应</a-radio-button>
+                  </a-radio-group>
+                  <div class="mt-2 flex gap-2">
+                    <a-button type="primary" size="small" @click="saveListenerAuth(record)">保存</a-button>
+                    <a-button size="small" @click="authPopoverVisible[record.listener_id] = false">取消</a-button>
+                  </div>
+                </div>
+              </template>
+              <a-button type="text" size="small" @click="openAuthEditor(record)">
+                <LockOutlined v-if="record.config?.agent_token" class="text-green-500" />
+                <UnlockOutlined v-else class="text-slate-400" />
+              </a-button>
+            </a-popover>
           </template>
 
           <template v-else-if="column.key === 'runtime_status'">
@@ -179,13 +154,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import {
   ApiOutlined,
   ReloadOutlined,
   PlusOutlined,
-  QuestionCircleOutlined,
+  LockOutlined,
+  UnlockOutlined,
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
@@ -194,9 +170,9 @@ import {
   fetchListeners, 
   startListener, 
   stopListener, 
-  deleteListener 
+  deleteListener,
+  updateListener 
 } from '@/api/listener';
-import { getAuthSettings, updateAuthSettings } from '@/api/settings';
 import CreateListenerModal from './components/CreateListenerModal.vue';
 
 const listeners = ref<ListenerRecord[]>([]);
@@ -221,6 +197,7 @@ const columns = [
   { title: '名称', dataIndex: 'name', key: 'name', width: 200 },
   { title: '协议', dataIndex: 'kind', key: 'kind', width: 100 },
   { title: '侦听地址', key: 'address', width: 200 },
+  { title: '认证', key: 'auth', width: 100 },
   { title: '当前状态', dataIndex: 'runtime_status', key: 'runtime_status', width: 180 },
   { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
   { title: '操作', key: 'action', width: 140, fixed: 'right' as const },
@@ -238,41 +215,38 @@ const loadListeners = async () => {
   }
 };
 
-// Agent Auth Settings
-const authForm = reactive({ agent_token: '', agent_auth_mode: 'plain_token' });
-const authLoading = ref(false);
+// Per-listener Auth Settings
+const authPopoverVisible = ref<Record<number, boolean>>({});
+const editingToken = ref('');
+const editingAuthMode = ref('plain_token');
 
-const loadAuthSettings = async () => {
-  authLoading.value = true;
-  try {
-    const settings = await getAuthSettings();
-    authForm.agent_token = settings.agent_token || '';
-    authForm.agent_auth_mode = settings.agent_auth_mode || 'plain_token';
-  } catch (_e: any) {
-    // silently fail - user can click refresh
-  } finally {
-    authLoading.value = false;
-  }
+const openAuthEditor = (record: ListenerRecord) => {
+  editingToken.value = (record.config?.agent_token as string) || '';
+  editingAuthMode.value = (record.config?.agent_auth_mode as string) || 'plain_token';
+  authPopoverVisible.value[record.listener_id] = true;
 };
 
-const saveAuthSettings = async () => {
-  authLoading.value = true;
+const saveListenerAuth = async (record: ListenerRecord) => {
   try {
-    const result = await updateAuthSettings({
-      agent_token: authForm.agent_token,
-      agent_auth_mode: authForm.agent_auth_mode
-    });
-    message.success(result.detail || '认证设置已更新');
+    const newConfig = { ...record.config };
+    if (editingToken.value) {
+      newConfig.agent_token = editingToken.value;
+      newConfig.agent_auth_mode = editingAuthMode.value;
+    } else {
+      delete newConfig.agent_token;
+      delete newConfig.agent_auth_mode;
+    }
+    await updateListener(record.listener_id, { config: newConfig });
+    message.success('认证设置已更新');
+    authPopoverVisible.value[record.listener_id] = false;
+    await loadListeners();
   } catch (e: any) {
     message.error(e.message || '保存失败');
-  } finally {
-    authLoading.value = false;
   }
 };
 
 onMounted(() => {
   loadListeners();
-  loadAuthSettings();
 });
 
 // Batch Actions

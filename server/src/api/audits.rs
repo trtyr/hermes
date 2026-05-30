@@ -66,3 +66,43 @@ pub(super) async fn list_audits(
             .into_response(),
     }
 }
+
+pub(super) async fn clear_audits(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    if let Some(response) = authorize_api(&state, &headers, None) {
+        return response;
+    }
+    let operator = extract_operator_for_request(&state, &headers, None);
+    match state.kernel.clear_audit_records() {
+        Ok(deleted) => {
+            state.kernel.append_audit_record(
+                operator,
+                "clear_audits".to_string(),
+                "audit".to_string(),
+                None,
+                Some(format!("deleted {} records", deleted)),
+                now_ts(),
+            );
+            (
+                StatusCode::OK,
+                Json(ApiResponse {
+                    success: true,
+                    detail: format!("cleared {} audit records", deleted),
+                    task_id: None,
+                }),
+            )
+                .into_response()
+        }
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse {
+                success: false,
+                detail: error.to_string(),
+                task_id: None,
+            }),
+        )
+            .into_response(),
+    }
+}

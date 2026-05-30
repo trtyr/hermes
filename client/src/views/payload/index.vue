@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import {
   RocketOutlined,
@@ -277,6 +277,15 @@ const buildForm = ref({
   profile: 'release',
   heartbeat_secs: undefined as number | undefined,
   jitter: undefined as number | undefined,
+});
+
+// Auto-fill agent_token when listener is selected
+watch(() => buildForm.value.listener_id, (newListenerId) => {
+  if (!newListenerId) return;
+  const selected = listeners.value.find(l => l.listener_id === newListenerId);
+  if (selected?.config?.agent_token) {
+    buildForm.value.agent_token = selected.config.agent_token as string;
+  }
 });
 
 // Listeners for the form dropdown
@@ -395,10 +404,10 @@ onMounted(() => {
       loadBuilds();
       
       if (event.type === 'agent_build_completed') {
-        if (event.status === 'succeeded') {
-          message.success(`构建 #${event.build_id} 完成！`);
-        } else if (event.status === 'failed') {
-          message.error(`构建 #${event.build_id} 失败`);
+        if (event.build.status === 'succeeded') {
+          message.success(`构建 #${event.build.build_id} 完成！`);
+        } else if (event.build.status === 'failed') {
+          message.error(`构建 #${event.build.build_id} 失败`);
         }
       }
     }

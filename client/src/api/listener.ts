@@ -43,3 +43,10 @@ export async function stopListener(id: number): Promise<{ success: boolean }> {
 export async function deleteListener(id: number): Promise<{ success: boolean }> {
   return apiFetch<{ success: boolean }>(`/listeners/${id}`, { method: 'DELETE' });
 }
+
+export async function updateListener(id: number, data: { name?: string; config?: Record<string, unknown> }): Promise<{ success: boolean; listener: ListenerRecord }> {
+  return apiFetch<{ success: boolean; listener: ListenerRecord }>(`/listeners/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}

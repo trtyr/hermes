@@ -100,4 +100,10 @@ impl Storage {
         .await
         .context("sqlite audit records join error")?
     }
+
+    pub fn clear_audit_records(&self) -> anyhow::Result<usize> {
+        let connection = open_connection(&self.sqlite_path)?;
+        let deleted = connection.execute("DELETE FROM audits", [])?;
+        Ok(deleted)
+    }
 }

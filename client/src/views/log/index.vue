@@ -7,6 +7,17 @@
         操作日志
       </h2>
       <div class="flex gap-2">
+        <a-popconfirm
+          title="确定清空所有审计日志？此操作不可恢复。"
+          ok-text="清空"
+          cancel-text="取消"
+          @confirm="handleClearAudits"
+        >
+          <a-button danger>
+            <template #icon><DeleteOutlined /></template>
+            清空
+          </a-button>
+        </a-popconfirm>
         <a-button @click="loadAudits" :loading="loading">
           <template #icon><ReloadOutlined /></template>
           刷新
@@ -126,15 +137,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { message, Modal } from 'ant-design-vue';
 import {
   FileSearchOutlined,
   ReloadOutlined,
   SearchOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
-import { AuditRecord, fetchAudits } from '@/api/audit';
+import { AuditRecord, fetchAudits, clearAudits } from '@/api/audit';
 
 const audits = ref<AuditRecord[]>([]);
 const loading = ref(false);
@@ -215,6 +227,20 @@ const loadAudits = async () => {
     message.error(err.message || '获取审计日志失败');
   } finally {
     loading.value = false;
+  }
+};
+
+const handleClearAudits = async () => {
+  try {
+    const res = await clearAudits();
+    if (res.success) {
+      message.success(res.detail);
+      loadAudits();
+    } else {
+      message.error(res.detail);
+    }
+  } catch (err: any) {
+    message.error(err.message || '清空失败');
   }
 };
 
