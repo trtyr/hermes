@@ -165,6 +165,29 @@ impl KernelState {
         Some(snapshot)
     }
 
+    pub fn buffer_task_chunk(
+        &mut self,
+        task_id: String,
+        chunk_index: u32,
+        total_chunks: u32,
+        data: String,
+    ) {
+        let entry = self.pending_task_chunks.entry(task_id).or_default();
+        entry.push((chunk_index, data));
+        entry.sort_by_key(|(idx, _)| *idx);
+        entry.dedup_by_key(|(idx, _)| *idx);
+        entry.truncate(total_chunks as usize);
+    }
+
+    pub fn assemble_task_chunks(&mut self, task_id: &str) -> String {
+        let chunks = self.pending_task_chunks.remove(task_id).unwrap_or_default();
+        let mut output = String::new();
+        for (_, data) in chunks {
+            output.push_str(&data);
+        }
+        output
+    }
+
     pub fn mark_task_cancelled(
         &mut self,
         task_id: &str,

@@ -48,6 +48,37 @@ pub(super) async fn handle_task_result(
     }
 }
 
+pub(super) async fn handle_task_chunk(
+    state: &Arc<RwLock<KernelState>>,
+    effects: &RuntimePorts,
+    session_id: u64,
+    task_id: String,
+    chunk_index: u32,
+    total_chunks: u32,
+    data: String,
+    success: bool,
+    is_last: bool,
+) {
+    let now = now_ts();
+    let mut guard = state.write().await;
+    guard.update_last_seen(session_id, now);
+
+    if let Some(session) = guard.session_mut(session_id) {
+        effects.persist_agent_online(session.snapshot());
+    }
+
+    guard.buffer_task_chunk(task_id.clone(), chunk_index, total_chunks, data);
+
+    if !is_last {
+        return;
+    }
+
+    let output = guard.assemble_task_chunks(&task_id);
+    drop(guard);
+
+    handle_task_result(state, effects, session_id, task_id, success, output).await;
+}
+
 pub(super) async fn handle_task_update(
     state: &Arc<RwLock<KernelState>>,
     effects: &RuntimePorts,

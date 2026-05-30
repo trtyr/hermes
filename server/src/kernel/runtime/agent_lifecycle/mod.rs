@@ -146,6 +146,27 @@ pub(super) async fn handle_agent_frame(
             )
             .await;
         }
+        AgentMessage::TaskResultChunk {
+            task_id,
+            chunk_index,
+            total_chunks,
+            data,
+            is_last,
+            success,
+        } => {
+            task_reporting::handle_task_chunk(
+                state,
+                effects,
+                session_id,
+                task_id,
+                chunk_index,
+                total_chunks,
+                data,
+                success,
+                is_last,
+            )
+            .await;
+        }
         AgentMessage::TaskUpdate {
             task_id,
             status,

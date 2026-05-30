@@ -46,6 +46,14 @@ pub enum AgentMessage {
         success: bool,
         output: String,
     },
+    TaskResultChunk {
+        task_id: String,
+        chunk_index: u32,
+        total_chunks: u32,
+        data: String,
+        is_last: bool,
+        success: bool,
+    },
     TaskUpdate {
         task_id: String,
         status: AgentTaskStatus,

@@ -3,6 +3,34 @@
 use crate::protocol::AgentMessage;
 use std::sync::mpsc::Sender;
 
+const CHUNK_BYTES: usize = 32768;
+
+fn send_chunked_result(
+    sender: &Sender<AgentMessage>,
+    task_id: &str,
+    output: &str,
+    success: bool,
+) {
+    let bytes = output.as_bytes();
+    let total_chunks = ((bytes.len() + CHUNK_BYTES - 1) / CHUNK_BYTES).max(1) as u32;
+
+    for i in 0..total_chunks {
+        let start = i as usize * CHUNK_BYTES;
+        let end = ((i as usize + 1) * CHUNK_BYTES).min(bytes.len());
+        let data = String::from_utf8_lossy(&bytes[start..end]).to_string();
+        let is_last = i == total_chunks - 1;
+
+        let _ = sender.send(AgentMessage::TaskResultChunk {
+            task_id: task_id.to_string(),
+            chunk_index: i,
+            total_chunks,
+            data,
+            is_last,
+            success,
+        });
+    }
+}
+
 /// Check if a command is a built-in system operation
 pub fn is_sys_op(command: &str) -> bool {
     matches!(command, "ps" | "screenshot")
@@ -96,23 +124,19 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
             Ok(Ok(png_data)) => {
                 use base64::{engine::general_purpose::STANDARD, Engine as _};
                 let b64 = STANDARD.encode(&png_data);
-                let _ = sender.send(AgentMessage::TaskResult {
-                    task_id: tid,
-                    success: true,
-                    output: b64,
-                });
+                send_chunked_result(sender, &tid, &b64, true);
             }
             Ok(Err(e)) => {
-                let _ = sender.send(fail(&tid, format!("screenshot failed: {e}")));
+                send_chunked_result(sender, &tid, &format!("screenshot failed: {e}"), false);
             }
             Err(_timeout) => {
-                let _ = sender.send(fail(&tid, "screenshot timed out after 30s".to_string()));
+                send_chunked_result(sender, &tid, "screenshot timed out after 30s", false);
             }
         }
     }
     #[cfg(not(windows))]
     {
-        let _ = sender.send(fail(task_id, "screenshot not supported on this platform".to_string()));
+        send_chunked_result(sender, task_id, "screenshot not supported on this platform", false);
     }
 }
 
