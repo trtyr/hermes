@@ -2,7 +2,38 @@
 
 ## 🔴 OPEN
 
-_(无)_
+### BUG-008: 截图任务导致 Agent 心跳超时断连
+
+**严重性:** 高 — 截图功能完全不可用，且导致 agent 离线
+
+**现象:**
+- 截图任务 dispatch 后 agent 既不返回 `task_result`，也不发送心跳
+- 约 70 秒后 server 端 heartbeat timeout → agent 被强制清理离线
+- `browse` 等其他任务正常完成，仅 `screenshot` 稳定复现
+
+**日志证据:**
+```
+06:41:23  task-18 (screenshot) created
+06:41:34  task-18 dispatched → agent 执行截图...
+          （agent 无 task_result 返回，无心跳）
+06:42:44  heartbeat timeout → agent 离线
+```
+
+**可能根因:**
+- `sys_ops::handle_screenshot` 在独立线程执行（`std::thread::spawn`）
+- Windows GDI 截屏调用可能阻塞/panic（`SetProcessDPIAware`、`BitBlt`、`GetDIBits`）
+- 如果截图线程 panic，`sender.send(TaskResult)` 不会执行 → 无结果回报
+- 但 panic 不应影响主线程心跳 — 除非截图操作导致整个进程卡死
+
+**排查方向:**
+1. 截图线程是否 panic（加 catch_unwind 或日志）
+2. `capture_screen_to_png()` 是否在无桌面/无显示器环境下阻塞
+3. base64 编码大图片是否导致 OOM
+4. 截图操作是否持有锁导致主线程阻塞
+
+**复现条件:** 稳定复现 — 每次截图必触发
+
+**状态:** 🔴 待排查
 
 ---
 
