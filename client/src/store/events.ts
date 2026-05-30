@@ -16,7 +16,7 @@ export type BackendEvent =
   | { type: 'agent_disabled'; agent_id: string }
   | { type: 'agent_enabled'; agent_id: string }
   | { type: 'agent_deleted'; agent_id: string }
-  | { type: 'task_dispatched'; task_id: string; target_agent_id: string }
+  | { type: 'task_dispatched'; task_id: string; target_agent_id: string; command: string; payload?: string }
   | { type: 'task_result'; task_id: string; agent_id: string | null; command: string; success: boolean; output: string }
   | { type: 'task_updated'; task_id: string }
   | { type: 'agent_build_created'; build: { build_id: number; status: string; [key: string]: any } }
@@ -82,6 +82,11 @@ export const useEventStore = defineStore('events', () => {
   /** Remove a pending task registration */
   function clearPendingTask(taskId: string) {
     pendingTasks.value.delete(taskId);
+  }
+
+  /** Get pending download info (returns null if not registered) */
+  function getPendingDownload(taskId: string): { fileName: string } | null {
+    return pendingDownloads.value.get(taskId) ?? null;
   }
 
   function subscribe(callback: (event: BackendEvent) => void) {
@@ -159,6 +164,10 @@ export const useEventStore = defineStore('events', () => {
               for (const k of oldest) taskResults.value.delete(k);
             }
 
+            // Notify subscribers BEFORE download processing so notification
+            // handler can read pendingDownloads for the filename.
+            notifySubscribers(payload);
+
             // Handle file download: decode base64 and trigger browser download
             if (payload.command === 'download' && payload.success) {
               const pending = pendingDownloads.value.get(payload.task_id);
@@ -182,6 +191,7 @@ export const useEventStore = defineStore('events', () => {
                 }
               }
             }
+            return; // already notified above
           }
           notifySubscribers(payload);
         } catch {
@@ -268,5 +278,6 @@ export const useEventStore = defineStore('events', () => {
     getTaskResult,
     isTaskCompleted,
     clearPendingTask,
+    getPendingDownload,
   };
 });

@@ -34,11 +34,14 @@ export const useNotificationStore = defineStore('notifications', () => {
     }
 
     if (!silent) {
+      const key = `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       antNotification.open({
+        key,
         message: notif.title,
         description: notif.message,
         duration: 4,
         placement: 'topRight',
+        onClick: () => antNotification.close(key),
       });
     }
   }
@@ -81,12 +84,24 @@ export const useNotificationStore = defineStore('notifications', () => {
           });
           break;
         }
+        case 'task_dispatched': {
+          if (event.command === 'download' && event.payload) {
+            const filename = event.payload.split(/[/\\]/).pop() || event.payload;
+            add({
+              type: 'info',
+              title: '下载中',
+              message: filename,
+            });
+          }
+          break;
+        }
         case 'task_result': {
           // Generate meaningful notification based on command type
           let taskLabel = `Task ${event.task_id}`;
           const cmd = event.command || '';
           if (cmd === 'download') {
-            taskLabel = '文件下载完成';
+            const pending = eventStore.getPendingDownload(event.task_id);
+            taskLabel = pending ? `下载完成: ${pending.fileName}` : '文件下载完成';
           } else if (cmd === 'upload') {
             taskLabel = '文件上传完成';
           } else if (cmd === 'browse') {
