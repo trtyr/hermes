@@ -119,7 +119,7 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
 /// Maximum screenshot dimension (width or height). Larger screens are
 /// downscaled to keep the resulting PNG under ~1 MB after base64 encoding.
 #[cfg(windows)]
-const SCREENSHOT_MAX_DIM: i32 = 1280;
+const SCREENSHOT_MAX_DIM: i32 = 800;
 
 #[cfg(windows)]
 unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
@@ -246,7 +246,7 @@ fn encode_png(width: u32, height: u32, rgba_data: &[u8]) -> Result<Vec<u8>, Stri
         let mut encoder = png::Encoder::new(writer, width, height);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
-        encoder.set_compression(png::Compression::Fast);
+        encoder.set_compression(png::Compression::Default);
         let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
         writer.write_image_data(rgba_data).map_err(|e| e.to_string())?;
     }
