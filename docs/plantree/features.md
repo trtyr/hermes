@@ -78,6 +78,15 @@
 
 ---
 
+### 截图阻塞修复（写入线程解耦）
+
+**改动:**
+- Agent `network.rs`: TCP 写入分离到独立线程，`send()` 推入 `mpsc::channel` 不阻塞主循环
+- Agent `sys_ops.rs`: 截图缩放至 1280px + PNG `Fastest` 压缩
+- Server `console.rs`: 超时日志 ms→s 标签修正
+
+---
+
 ## 📋 待实现
 
 （暂无）

@@ -2,38 +2,7 @@
 
 ## 🔴 OPEN
 
-### BUG-008: 截图任务导致 Agent 心跳超时断连
-
-**严重性:** 高 — 截图功能完全不可用，且导致 agent 离线
-
-**现象:**
-- 截图任务 dispatch 后 agent 既不返回 `task_result`，也不发送心跳
-- 约 70 秒后 server 端 heartbeat timeout → agent 被强制清理离线
-- `browse` 等其他任务正常完成，仅 `screenshot` 稳定复现
-
-**日志证据:**
-```
-06:41:23  task-18 (screenshot) created
-06:41:34  task-18 dispatched → agent 执行截图...
-          （agent 无 task_result 返回，无心跳）
-06:42:44  heartbeat timeout → agent 离线
-```
-
-**可能根因:**
-- `sys_ops::handle_screenshot` 在独立线程执行（`std::thread::spawn`）
-- Windows GDI 截屏调用可能阻塞/panic（`SetProcessDPIAware`、`BitBlt`、`GetDIBits`）
-- 如果截图线程 panic，`sender.send(TaskResult)` 不会执行 → 无结果回报
-- 但 panic 不应影响主线程心跳 — 除非截图操作导致整个进程卡死
-
-**排查方向:**
-1. 截图线程是否 panic（加 catch_unwind 或日志）
-2. `capture_screen_to_png()` 是否在无桌面/无显示器环境下阻塞
-3. base64 编码大图片是否导致 OOM
-4. 截图操作是否持有锁导致主线程阻塞
-
-**复现条件:** 稳定复现 — 每次截图必触发
-
-**状态:** 🔴 待排查
+（无）
 
 ---
 
@@ -43,12 +12,12 @@
 
 **严重性:** 高 — 截图功能完全不可用，且导致 agent 离线
 
-**根因:** `handle_screenshot` 直接调用 Win32 GDI，无超时保护。GDI 调用在无桌面环境下可能阻塞或 panic，导致 TaskResult 永远不返回。
+**根因（深层）:** Agent `flush_outbox` 持有 `Mutex<NetworkService>` 同步写入所有消息到 TCP。截图产生 2-7MB base64 JSON 消息，同步 `writeln!` 阻塞整个主循环 — 无法发送心跳 → server ~50s 超时断连 → 写入失败 → 截图结果丢失。`browse`（几 KB）正常，`screenshot`（几 MB）稳定复现。
 
-**修复:**
-- Agent `sys_ops.rs`：截图操作包装为 `catch_unwind` + 30 秒超时（`mpsc::recv_timeout`）
-- GDI 调用增加 null 检查（`GetDC`、`CreateCompatibleDC`、`CreateCompatibleBitmap`、`BitBlt`、`GetDIBits`）
-- 任何失败返回明确错误消息而非静默阻塞
+**修复（3 层）:**
+1. **截图缩放** — `sys_ops.rs`: 超过 1280px 的屏幕 nearest-neighbor 缩放 + PNG `Fastest` 压缩，减少 3-5x 数据量
+2. **写入线程解耦** — `network.rs`: 独立写入线程，`send()` 推入 `mpsc::channel` 不阻塞主循环，TCP 写入由写入线程异步完成
+3. **GDI 超时保护**（前期修复）— `catch_unwind` + 30s 超时 + null 检查
 
 **状态:** ✅ 已修复
 
