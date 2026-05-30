@@ -9,6 +9,8 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::time::UNIX_EPOCH;
 
+use super::sys_ops::send_chunked_result;
+
 /// Maximum file size (in bytes) allowed for download — 50 MB.
 const MAX_DOWNLOAD_BYTES: u64 = 50 * 1024 * 1024;
 
@@ -66,20 +68,18 @@ pub fn handle_upload(task_id: &str, payload: &str, sender: &Sender<AgentMessage>
     });
 }
 
-/// Handle `download` command: read file and return base64-encoded content
+/// Handle `download` command: read file and return base64-encoded content in chunks
 pub fn handle_download(task_id: &str, remote_path: &str, sender: &Sender<AgentMessage>) {
     let result = read_file(remote_path);
-    let _ = sender.send(match result {
+    match result {
         Ok(content) => {
             let encoded = STANDARD.encode(&content);
-            AgentMessage::TaskResult {
-                task_id: task_id.to_string(),
-                success: true,
-                output: encoded,
-            }
+            send_chunked_result(sender, task_id, &encoded, true);
         }
-        Err(e) => fail(task_id, e),
-    });
+        Err(e) => {
+            let _ = sender.send(fail(task_id, e));
+        }
+    }
 }
 
 /// Handle `browse` command: list directory entries and return JSON metadata

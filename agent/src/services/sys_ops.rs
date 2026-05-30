@@ -5,7 +5,7 @@ use std::sync::mpsc::Sender;
 
 const CHUNK_BYTES: usize = 32768;
 
-fn send_chunked_result(
+pub fn send_chunked_result(
     sender: &Sender<AgentMessage>,
     task_id: &str,
     output: &str,
