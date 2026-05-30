@@ -109,6 +109,22 @@ impl Storage {
         let path = self.sqlite_path.clone();
         tokio::task::spawn_blocking(move || {
             let connection = open_connection(&path)?;
+
+            // Check for port conflict
+            let conflict: Option<String> = connection
+                .query_row(
+                    "SELECT name FROM listeners WHERE bind_host = ?1 AND bind_port = ?2 LIMIT 1",
+                    params![bind_host, bind_port],
+                    |row| row.get(0),
+                )
+                .ok();
+            if let Some(existing_name) = conflict {
+                anyhow::bail!(
+                    "端口冲突: {}:{} 已被监听器 '{}' 占用",
+                    bind_host, bind_port, existing_name
+                );
+            }
+
             let now = now_ts();
             connection.execute(
                 "INSERT INTO listeners (
@@ -149,10 +165,29 @@ impl Storage {
                 return Ok(None);
             };
             let updated_name = name.unwrap_or(current.name);
+            let host_changed = bind_host.as_deref() != Some(current.bind_host.as_str());
+            let port_changed = bind_port.map_or(false, |p| p != current.bind_port);
             let updated_bind_host = bind_host.unwrap_or(current.bind_host);
             let updated_bind_port = bind_port.unwrap_or(current.bind_port);
             let updated_config = config.unwrap_or(current.config);
             let now = now_ts();
+
+            // Check for port conflict (only if host or port changed)
+            if host_changed || port_changed {
+                let conflict: Option<String> = connection
+                    .query_row(
+                        "SELECT name FROM listeners WHERE bind_host = ?1 AND bind_port = ?2 AND listener_id != ?3 LIMIT 1",
+                        params![updated_bind_host, updated_bind_port, listener_id],
+                        |row| row.get(0),
+                    )
+                    .ok();
+                if let Some(existing_name) = conflict {
+                    anyhow::bail!(
+                        "端口冲突: {}:{} 已被监听器 '{}' 占用",
+                        updated_bind_host, updated_bind_port, existing_name
+                    );
+                }
+            }
 
             connection.execute(
                 "UPDATE listeners
