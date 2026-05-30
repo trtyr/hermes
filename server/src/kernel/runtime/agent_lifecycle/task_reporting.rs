@@ -23,8 +23,10 @@ pub(super) async fn handle_task_result(
         }
         let mut parent_task = None;
         let mut accepted = false;
+        let mut task_command = String::new();
         if let Some(task) = state.complete_task(&task_id, success, output.clone(), now) {
             accepted = true;
+            task_command = task.command.clone();
             parent_task = state.parent_task_snapshot(&task.task_id);
             effects.task_updated(task);
         }
@@ -35,6 +37,7 @@ pub(super) async fn handle_task_result(
             effects.publish(&WebEvent::TaskResult {
                 task_id,
                 agent_id,
+                command: task_command,
                 success,
                 output,
             });

@@ -116,13 +116,14 @@ pub(super) async fn sweep_heartbeats(state: &Arc<RwLock<KernelState>>, effects: 
 pub(super) fn cleanup_session_disconnect(effects: &RuntimePorts, session: AgentSession) {
     let now = now_ts();
     let agent_id = session.agent_id.clone();
-    if let Some(agent_id) = agent_id.clone() {
-        effects.mark_agent_offline(agent_id, now);
+    if let Some(agent_id) = agent_id {
+        effects.mark_agent_offline(agent_id.clone(), now);
+        effects.publish(&WebEvent::AgentDisconnected {
+            session_id: session.session_id,
+            agent_id: Some(agent_id),
+        });
     }
-    effects.publish(&WebEvent::AgentDisconnected {
-        session_id: session.session_id,
-        agent_id,
-    });
+    // Unregistered sessions (agent_id: None) — no WebSocket notification needed.
 }
 
 pub(super) fn cleanup_session_expired(
@@ -211,10 +212,13 @@ pub(super) fn cleanup_session_expired(
             }
         }
     }
-    effects.publish(&WebEvent::AgentDisconnected {
-        session_id: session.session_id,
-        agent_id: session.agent_id,
-    });
+    // Only publish disconnect event for registered sessions (those with agent_id).
+    if session.agent_id.is_some() {
+        effects.publish(&WebEvent::AgentDisconnected {
+            session_id: session.session_id,
+            agent_id: session.agent_id,
+        });
+    }
 }
 
 pub(in crate::kernel::runtime) fn send_server_command_to_agent(

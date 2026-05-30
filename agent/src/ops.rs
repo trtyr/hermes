@@ -116,24 +116,8 @@ fn spawn_shell_process(command: &str, cwd: Option<&str>) -> std::io::Result<std:
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        let (program, args) = if command.starts_with('"') {
-            if let Some(end) = command[1..].find('"') {
-                let prog = &command[1..end + 1];
-                let rest = command[end + 2..].trim();
-                (prog.to_string(), rest.to_string())
-            } else {
-                (command.to_string(), String::new())
-            }
-        } else {
-            match command.split_once(' ') {
-                Some((prog, rest)) => (prog.to_string(), rest.to_string()),
-                None => (command.to_string(), String::new()),
-            }
-        };
-        let mut cmd = std::process::Command::new(&program);
-        if !args.is_empty() {
-            cmd.raw_arg(&args);
-        }
+        let mut cmd = std::process::Command::new("cmd.exe");
+        cmd.arg("/C").arg(command);
         if let Some(cwd) = cwd {
             cmd.current_dir(cwd);
         }

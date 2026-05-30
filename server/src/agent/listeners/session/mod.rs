@@ -20,6 +20,50 @@ use auth::{generate_session_nonce, is_agent_token_valid};
 use protocol::{AGENT_PROTOCOL_VERSION, TRANSPORT_CAPABILITIES};
 use writer::write_loop;
 
+fn parse_agent_auth_mode(value: Option<&str>) -> Option<AgentAuthMode> {
+    match value {
+        Some("plain_token") => Some(AgentAuthMode::PlainToken),
+        Some("challenge_response") => Some(AgentAuthMode::ChallengeResponse),
+        _ => None,
+    }
+}
+
+async fn resolve_listener_agent_auth(
+    kernel: &KernelHandle,
+    listener_id: Option<i64>,
+    fallback_agent_token: Option<String>,
+    fallback_agent_auth_mode: AgentAuthMode,
+) -> (Option<String>, AgentAuthMode) {
+    let Some(listener_id) = listener_id else {
+        return (fallback_agent_token, fallback_agent_auth_mode);
+    };
+
+    let Ok(Some(listener)) = kernel.listener_queries().record(listener_id).await else {
+        return (fallback_agent_token, fallback_agent_auth_mode);
+    };
+
+    let Some(listener_agent_token) = listener
+        .config
+        .get("agent_token")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+    else {
+        return (fallback_agent_token, fallback_agent_auth_mode);
+    };
+
+    let listener_agent_auth_mode = parse_agent_auth_mode(
+        listener
+            .config
+            .get("agent_auth_mode")
+            .and_then(|value| value.as_str()),
+    )
+    .unwrap_or(fallback_agent_auth_mode);
+
+    (Some(listener_agent_token), listener_agent_auth_mode)
+}
+
 pub async fn handle_json_line_agent_connection<S>(
     kernel: KernelHandle,
     socket: S,
@@ -34,6 +78,13 @@ where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     eprintln!("[server] new connection from {}", peer_addr);
+    let (expected_agent_token, agent_auth_mode) = resolve_listener_agent_auth(
+        &kernel,
+        listener_id,
+        expected_agent_token,
+        agent_auth_mode,
+    )
+    .await;
     let session_id = kernel.allocate_session_id();
     let (reader, writer) = tokio::io::split(socket);
     let (sender, receiver) = mpsc::unbounded_channel::<ServerCommand>();
@@ -176,17 +227,21 @@ where
     }
 
     eprintln!("[server] connection ended for session_id={}", session_id);
-    let _ = registered;
 
     // Drop local sender first so write_loop's receiver can close
     // once the kernel also drops its clone (triggered by Disconnected below).
     drop(sender);
 
-    kernel
-        .agent_commands()
-        .send_message(AgentKernelMessage::Disconnected { session_id })
-        .await
-        .context("failed to notify kernel about agent disconnect")?;
+    // Only notify kernel about disconnect if the agent was successfully registered.
+    // Unregistered connections (auth failures, protocol errors) never came online,
+    // so they should not trigger AgentDisconnected events to WebSocket clients.
+    if registered {
+        kernel
+            .agent_commands()
+            .send_message(AgentKernelMessage::Disconnected { session_id })
+            .await
+            .context("failed to notify kernel about agent disconnect")?;
+    }
 
     let _ = write_task.await;
     eprintln!("[server] session_id={}: write_task finished", session_id);

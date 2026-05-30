@@ -87,7 +87,7 @@
           </template>
 
           <template v-else-if="column.key === 'privilege'">
-            <a-tooltip v-if="record.privilege" :title="record.privilege">
+            <a-tooltip v-if="record.privilege" :title="record.privilege.replace(/^Admin:\s*/, '')">
               <SafetyCertificateOutlined
                 :style="{ color: record.privilege.startsWith('Admin') || record.privilege === 'SYSTEM' ? '#f5222d' : '#8c8c8c', fontSize: '16px', cursor: 'pointer' }"
               />

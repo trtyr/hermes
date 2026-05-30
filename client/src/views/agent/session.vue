@@ -27,7 +27,7 @@
 
         <div class="h-4 w-px bg-gray-200"></div>
 
-        <a-tooltip v-if="agent.privilege" :title="agent.privilege">
+        <a-tooltip v-if="agent.privilege" :title="agent.privilege?.replace(/^Admin:\s*/, '')">
           <SafetyCertificateOutlined
             :style="{
               color: agent.privilege?.startsWith('Admin') || agent.privilege === 'SYSTEM' ? '#f5222d' : '#8c8c8c',

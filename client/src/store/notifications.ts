@@ -71,27 +71,44 @@ export const useNotificationStore = defineStore('notifications', () => {
             route: '/agent',
           });
           break;
-        case 'agent_disconnected':
+        case 'agent_disconnected': {
+          const displayName = event.agent_id ? eventStore.getAgentDisplayName(event.agent_id) : 'unknown';
           add({
             type: 'warning',
             title: 'Agent 离线',
-            message: event.agent_id || 'unknown',
+            message: displayName,
             route: '/agent',
           });
           break;
-        case 'task_result':
+        }
+        case 'task_result': {
+          // Generate meaningful notification based on command type
+          let taskLabel = `Task ${event.task_id}`;
+          const cmd = event.command || '';
+          if (cmd === 'download') {
+            taskLabel = '文件下载完成';
+          } else if (cmd === 'upload') {
+            taskLabel = '文件上传完成';
+          } else if (cmd === 'browse') {
+            taskLabel = '目录浏览完成';
+          } else if (cmd) {
+            // Generic command execution
+            const preview = cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
+            taskLabel = `命令执行: ${preview}`;
+          }
           add({
             type: event.success ? 'success' : 'error',
             title: event.success ? '任务完成' : '任务失败',
-            message: `Task ${event.task_id}`,
+            message: taskLabel,
             route: '/agent',
           });
           break;
+        }
         case 'agent_build_completed':
           add({
-            type: event.status === 'completed' ? 'success' : 'error',
+            type: event.build.status === 'succeeded' ? 'success' : 'error',
             title: '载荷构建完成',
-            message: `Build #${event.build_id} — ${event.status}`,
+            message: `Build #${event.build.build_id} — ${event.build.status}`,
             route: '/payload',
           });
           break;

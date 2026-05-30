@@ -466,6 +466,7 @@ pub enum WebEvent {
     TaskResult {
         task_id: String,
         agent_id: Option<String>,
+        command: String,
         success: bool,
         output: String,
     },

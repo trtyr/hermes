@@ -59,6 +59,7 @@ import { ref, reactive } from 'vue';
 import { message } from 'ant-design-vue';
 import { uploadFile, downloadFile } from '@/api/agent';
 import type { Agent } from '@/api/agent';
+import { useEventStore } from '@/store/events';
 
 const props = defineProps<{
   visible: boolean;
@@ -66,6 +67,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['update:visible']);
+
+const eventStore = useEventStore();
 
 const activeTab = ref('upload');
 const uploading = ref(false);
@@ -128,7 +131,11 @@ async function doDownload() {
   try {
     const res = await downloadFile(props.agent.agent_id, downloadForm.remotePath);
     if (res.success) {
-      message.success(`下载任务已下发 (task: ${res.task_id || '-'})，结果将通过任务系统返回`);
+      if (res.task_id) {
+        const fileName = downloadForm.remotePath.split(/[/\\]/).pop() || 'download';
+        eventStore.registerDownload(res.task_id, fileName);
+      }
+      message.success(`下载任务已下发，文件将自动下载`);
       downloadForm.remotePath = '';
     } else {
       message.error(res.detail || '下载失败');

@@ -16,6 +16,9 @@
       <a-button size="small" type="primary" :loading="browseLoading" @click="browseFromInput">
         浏览
       </a-button>
+      <a-button size="small" :loading="browseLoading" @click="refreshCurrentPath">
+        <template #icon><ReloadOutlined /></template>
+      </a-button>
       <a-button size="small" @click="fileOpsVisible = true">
         <template #icon><UploadOutlined /></template>
         上传
@@ -118,6 +121,7 @@ import { message } from 'ant-design-vue';
 import {
   FolderOpenOutlined, FolderOutlined, FileOutlined,
   DownloadOutlined, ExclamationCircleOutlined, UploadOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons-vue';
 import { browseFile, downloadFile } from '@/api/agent';
 import type { Agent, FileEntry } from '@/api/agent';
@@ -134,6 +138,7 @@ const browseLoading = ref(false);
 const browseError = ref<string | null>(null);
 const pendingBrowseTaskId = ref<string | null>(null);
 const fileOpsVisible = ref(false);
+const browseCache = ref<Record<string, FileEntry[]>>({});
 let unsubscribeBrowseEvents: (() => void) | null = null;
 
 const eventStore = useEventStore();
@@ -145,12 +150,20 @@ function initBrowse() {
   }
 }
 
-async function doBrowse(path: string) {
-  browseLoading.value = true;
-  browseError.value = null;
-  browseEntries.value = [];
+async function doBrowse(path: string, forceRefresh = false) {
   currentBrowsePath.value = path;
   browsePathInput.value = path;
+  browseError.value = null;
+
+  // Check cache first (unless force refresh)
+  if (!forceRefresh && browseCache.value[path]) {
+    browseEntries.value = browseCache.value[path];
+    browseLoading.value = false;
+    return;
+  }
+
+  browseLoading.value = true;
+  browseEntries.value = [];
   pendingBrowseTaskId.value = null;
 
   if (unsubscribeBrowseEvents) {
@@ -174,7 +187,9 @@ async function doBrowse(path: string) {
 
         if (success && output) {
           try {
-            browseEntries.value = JSON.parse(output) as FileEntry[];
+            const entries = JSON.parse(output) as FileEntry[];
+            browseEntries.value = entries;
+            browseCache.value[path] = entries;
           } catch {
             browseError.value = '解析目录列表失败';
           }
@@ -201,6 +216,12 @@ function browseFromInput() {
   const path = browsePathInput.value.trim();
   if (!path) return;
   doBrowse(path);
+}
+
+function refreshCurrentPath() {
+  if (currentBrowsePath.value) {
+    doBrowse(currentBrowsePath.value, true);
+  }
 }
 
 function browseChild(name: string) {
@@ -232,7 +253,12 @@ function onDownloadFile(fileName: string) {
   const base = currentBrowsePath.value.endsWith(sep) ? currentBrowsePath.value : currentBrowsePath.value + sep;
   const remotePath = base + fileName;
   downloadFile(props.agentId, remotePath)
-    .then(() => message.info(`下载任务已下发: ${fileName}`))
+    .then((res) => {
+      if (res.task_id) {
+        eventStore.registerDownload(res.task_id, fileName);
+      }
+      message.info(`下载任务已下发: ${fileName}`);
+    })
     .catch((e: any) => message.error(e.message));
 }
 
