@@ -88,6 +88,10 @@ pub(super) async fn handle_heartbeat(
     let mut state = state.write().await;
     if let Some(current_agent_id) = state.update_last_seen(session_id, now) {
         if let Some(session) = state.session_mut(session_id) {
+            // Log heartbeat
+            let aid = session.agent_id.as_deref().unwrap_or("?");
+            let hn = session.hostname.as_deref().unwrap_or("-");
+            crate::console::agent_heartbeat(aid, hn, session_id);
             effects.persist_agent_online(session.snapshot());
         }
         if let Some(agent_id) = current_agent_id.clone() {

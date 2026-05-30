@@ -112,7 +112,8 @@ pub(super) async fn sweep_heartbeats(state: &Arc<RwLock<KernelState>>, effects: 
     for session_id in timed_out_session_ids {
         if let Some(session) = state.remove_session(session_id) {
             if let Some(ref agent_id) = session.agent_id {
-                console::agent_heartbeat_timeout(agent_id, &session.hostname.clone().unwrap_or_default(), session_id);
+                let elapsed = now.saturating_sub(session.last_seen);
+                console::agent_heartbeat_timeout(agent_id, &session.hostname.clone().unwrap_or_default(), session_id, elapsed);
             }
             cleanup_session_expired(&mut state, effects, session, "heartbeat timed out");
         }

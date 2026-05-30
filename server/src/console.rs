@@ -221,9 +221,20 @@ pub fn agent_offline(agent_id: &str, hostname: &str, reason: &str) {
     );
 }
 
-pub fn agent_heartbeat_timeout(agent_id: &str, hostname: &str, session_id: u64) {
+pub fn agent_heartbeat_timeout(agent_id: &str, hostname: &str, session_id: u64, elapsed_secs: u64) {
     eprintln!(
-        "[{}] [agent] {} ({}) session #{} heartbeat timeout, cleaning up",
+        "[{}] [agent] {} ({}) #{} heartbeat timeout (last seen {}s ago), cleaning up",
+        timestamp(),
+        agent_id,
+        hostname,
+        session_id,
+        elapsed_secs,
+    );
+}
+
+pub fn agent_heartbeat(agent_id: &str, hostname: &str, session_id: u64) {
+    eprintln!(
+        "[{}] [heartbeat] {} ({}) #{}",
         timestamp(),
         agent_id,
         hostname,
