@@ -188,8 +188,8 @@ impl NetworkService {
 
     pub fn receive_hello(&mut self) -> Option<ServerHello> {
         let stream = self.stream.as_mut()?;
-        Self::set_stream_read_timeout(stream, Duration::from_millis(250)).ok();
-        nlog!("receive_hello: waiting up to 250ms");
+        Self::set_stream_read_timeout(stream, Duration::from_secs(5)).ok();
+        nlog!("receive_hello: waiting up to 5s");
 
         let mut buf = Vec::new();
         let mut byte = [0u8; 1];
