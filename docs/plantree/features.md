@@ -52,3 +52,35 @@
 ### bind 错误信息改进
 
 **改动:** Server HTTP API 和 TCP/HTTPS listener bind 失败时附带地址信息，如 `HTTP API 无法绑定到 0.0.0.0:3000: Address already in use`
+
+---
+
+### 截图画廊
+
+**改动:**
+- Server `GET /tasks` 新增 `command` 过滤参数
+- 前端 `listTasks()` API 函数 + `TaskRecord` / `TaskListResponse` 类型
+- `SessionScreenshotTab.vue` 重写：网格画廊 + lightbox 弹窗 + 历史截图持久化
+
+---
+
+## 📋 待实现
+
+### FEAT-004: 全局 Task 结果后台接收机制
+
+**问题:** 截图、目录浏览等异步操作的结果接收逻辑绑定在页面组件上。用户切换页面时组件卸载 → 事件监听清理 → 操作结果丢失。
+
+**需求:** 操作发起后，无论用户切换到哪个页面，结果都应在后台被接收和存储。回到原页面时数据已就绪。
+
+**方案:**
+1. `events.ts` store 新增全局 `taskResults` Map — 收到 `task_result` 事件时自动缓存（含 task_id → result 映射）
+2. 组件发起操作时注册 `task_id`（如 `registerPendingTask(taskId, type)`），不再自行订阅事件
+3. 组件渲染时从 store 读取结果（`getTaskResult(taskId)`），用 `watch` 或 `computed` 响应式更新
+4. 文件浏览 (`SessionFilesTab.vue`) 同样改为 store 级结果接收
+
+**涉及组件:**
+- `SessionScreenshotTab.vue` — 截图结果
+- `SessionFilesTab.vue` — 目录浏览结果
+- `events.ts` — 全局 task 结果缓存
+
+**状态:** 📋 待实现
