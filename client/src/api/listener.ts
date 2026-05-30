@@ -19,6 +19,7 @@ export interface SpawnListenerRequest {
   kind: string;
   bind_host: string;
   bind_port: number;
+  config?: Record<string, unknown>;
 }
 
 export async function fetchListeners(): Promise<{ success: boolean; listeners: ListenerRecord[] }> {

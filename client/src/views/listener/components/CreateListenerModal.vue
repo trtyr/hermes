@@ -28,6 +28,19 @@
           <a-input-number v-model:value="formState.bind_port" :min="1" :max="65535" class="w-full" />
         </a-form-item>
       </div>
+
+      <a-divider orientation="left" style="margin-top: 8px;">Agent 认证</a-divider>
+
+      <a-form-item label="认证令牌 (Token)">
+        <a-input v-model:value="authToken" placeholder="留空则使用全局配置" />
+      </a-form-item>
+
+      <a-form-item label="认证模式 (Auth Mode)">
+        <a-radio-group v-model:value="authMode" button-style="solid">
+          <a-radio-button value="plain_token">共享令牌</a-radio-button>
+          <a-radio-button value="challenge_response">挑战-响应</a-radio-button>
+        </a-radio-group>
+      </a-form-item>
     </a-form>
   </a-modal>
 </template>
@@ -46,6 +59,8 @@ const emit = defineEmits(['update:visible', 'success']);
 
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
+const authToken = ref('');
+const authMode = ref('plain_token');
 
 const formState = reactive<SpawnListenerRequest>({
   name: '',
@@ -64,14 +79,22 @@ const rules = {
 const handleCancel = () => {
   emit('update:visible', false);
   formRef.value?.resetFields();
+  authToken.value = '';
+  authMode.value = 'plain_token';
 };
 
 const handleSubmit = async () => {
   try {
     await formRef.value?.validate();
     submitting.value = true;
-    
-    await spawnListener(formState);
+
+    const config: Record<string, unknown> = {};
+    if (authToken.value) {
+      config.agent_token = authToken.value;
+      config.agent_auth_mode = authMode.value;
+    }
+
+    await spawnListener({ ...formState, config: Object.keys(config).length ? config : undefined });
     message.success('监听器创建成功');
     emit('success');
     handleCancel();
