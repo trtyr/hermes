@@ -99,7 +99,7 @@ fn handle_ps(task_id: &str, sender: &Sender<AgentMessage>) {
 
 /// Handle `screenshot` command: capture screen
 ///
-/// Uses Win32 GDI to capture the screen and encodes as PNG.
+/// Uses Win32 GDI to capture the screen and encodes as JPEG (quality 70).
 /// Wrapped with a 30-second timeout to prevent GDI calls from blocking
 /// the agent indefinitely (e.g. in headless/remote desktop environments).
 fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
@@ -113,7 +113,7 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
 
         // Run GDI capture in a dedicated thread with timeout
         std::thread::spawn(move || {
-            let result = std::panic::catch_unwind(|| unsafe { capture_screen_to_png() });
+            let result = std::panic::catch_unwind(|| unsafe { capture_screen_to_jpeg() });
             let _ = tx.send(match result {
                 Ok(inner) => inner,
                 Err(_) => Err("screenshot panicked (GDI call failed)".to_string()),
@@ -121,9 +121,9 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
         });
 
         match rx.recv_timeout(Duration::from_secs(30)) {
-            Ok(Ok(png_data)) => {
+            Ok(Ok(jpg_data)) => {
                 use base64::{engine::general_purpose::STANDARD, Engine as _};
-                let b64 = STANDARD.encode(&png_data);
+                let b64 = STANDARD.encode(&jpg_data);
                 send_chunked_result(sender, &tid, &b64, true);
             }
             Ok(Err(e)) => {
@@ -141,18 +141,19 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
 }
 
 /// Maximum screenshot dimension (width or height). Larger screens are
-/// downscaled to keep the resulting PNG under ~1 MB after base64 encoding.
+/// downscaled with Lanczos3. JPEG quality 70 keeps output ~100-200 KB
+/// for a 1280px-wide screenshot.
 #[cfg(windows)]
-const SCREENSHOT_MAX_DIM: i32 = 800;
+const SCREENSHOT_MAX_DIM: i32 = 1280;
 
 #[cfg(windows)]
-unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
+unsafe fn capture_screen_to_jpeg() -> Result<Vec<u8>, String> {
+    use image::{codecs::jpeg::JpegEncoder, imageops, imageops::FilterType, DynamicImage, RgbaImage};
     use windows_sys::Win32::Graphics::Gdi::*;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         GetSystemMetrics, SetProcessDPIAware, SM_CXSCREEN, SM_CYSCREEN,
     };
 
-    // Ensure DPI awareness for correct full-screen capture on high-DPI displays
     SetProcessDPIAware();
 
     let width = GetSystemMetrics(SM_CXSCREEN);
@@ -161,6 +162,7 @@ unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
         return Err("Invalid screen dimensions".to_string());
     }
 
+    // ── GDI capture → BGRA buffer ──
     let hdc_screen = GetDC(std::ptr::null_mut());
     if hdc_screen.is_null() {
         return Err("GetDC failed: no desktop session available".to_string());
@@ -214,67 +216,36 @@ unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
         return Err("GetDIBits failed".to_string());
     }
 
-    // Downscale if either dimension exceeds the limit.  Nearest-neighbor
-    // sampling on the BGRA buffer — no extra allocation for intermediate
-    // RGBA conversion on the full-size image.
-    let (out_w, out_h, pixels) = if width > SCREENSHOT_MAX_DIM || height > SCREENSHOT_MAX_DIM {
-        let scale_w = SCREENSHOT_MAX_DIM as f64 / width as f64;
-        let scale_h = SCREENSHOT_MAX_DIM as f64 / height as f64;
-        let scale = scale_w.min(scale_h);
-        let ow = ((width as f64 * scale) as i32).max(1);
-        let oh = ((height as f64 * scale) as i32).max(1);
-        let scaled = downscale_bgra(&pixels, width, height, ow, oh);
-        (ow as u32, oh as u32, scaled)
-    } else {
-        (width as u32, height as u32, pixels)
-    };
-
-    // Convert BGRA -> RGBA
+    // ── BGRA → RGBA conversion ──
     let mut rgba = pixels;
     for chunk in rgba.chunks_exact_mut(4) {
         chunk.swap(0, 2);
     }
 
-    encode_png(out_w, out_h, &rgba)
-}
+    // ── Build image + resize ──
+    let img = RgbaImage::from_raw(width as u32, height as u32, rgba)
+        .ok_or("failed to create image buffer")?;
+    let img = DynamicImage::ImageRgba8(img);
 
-/// Nearest-neighbor downscale on a BGRA pixel buffer.
-#[cfg(windows)]
-fn downscale_bgra(
-    src: &[u8],
-    src_w: i32,
-    src_h: i32,
-    dst_w: i32,
-    dst_h: i32,
-) -> Vec<u8> {
-    let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
-    for dy in 0..dst_h {
-        let sy = (dy as f64 * src_h as f64 / dst_h as f64) as i32;
-        let sy = sy.min(src_h - 1);
-        for dx in 0..dst_w {
-            let sx = (dx as f64 * src_w as f64 / dst_w as f64) as i32;
-            let sx = sx.min(src_w - 1);
-            let src_off = ((sy * src_w + sx) * 4) as usize;
-            let dst_off = ((dy * dst_w + dx) * 4) as usize;
-            dst[dst_off..dst_off + 4].copy_from_slice(&src[src_off..src_off + 4]);
-        }
-    }
-    dst
-}
+    let img = if width > SCREENSHOT_MAX_DIM || height > SCREENSHOT_MAX_DIM {
+        let scale = (SCREENSHOT_MAX_DIM as f64 / width as f64)
+            .min(SCREENSHOT_MAX_DIM as f64 / height as f64);
+        let new_w = ((width as f64 * scale) as u32).max(1);
+        let new_h = ((height as f64 * scale) as u32).max(1);
+        DynamicImage::ImageRgba8(imageops::resize(&img, new_w, new_h, FilterType::Lanczos3))
+    } else {
+        img
+    };
 
-#[cfg(windows)]
-fn encode_png(width: u32, height: u32, rgba_data: &[u8]) -> Result<Vec<u8>, String> {
-    let mut buf = Vec::new();
-    {
-        let writer = std::io::BufWriter::new(&mut buf);
-        let mut encoder = png::Encoder::new(writer, width, height);
-        encoder.set_color(png::ColorType::Rgba);
-        encoder.set_depth(png::BitDepth::Eight);
-        encoder.set_compression(png::Compression::Default);
-        let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
-        writer.write_image_data(rgba_data).map_err(|e| e.to_string())?;
-    }
-    Ok(buf)
+    // ── JPEG encode (quality 70 — good clarity at ~10x smaller than PNG) ──
+    let mut jpg = Vec::new();
+    let rgba = img.to_rgba8();
+    let mut encoder = JpegEncoder::new_with_quality(&mut jpg, 70);
+    encoder
+        .encode(&rgba, rgba.width(), rgba.height(), image::ExtendedColorType::Rgba8)
+        .map_err(|e| format!("JPEG encode failed: {e}"))?;
+
+    Ok(jpg)
 }
 
 fn fail(task_id: &str, detail: String) -> AgentMessage {
