@@ -35,6 +35,43 @@
 
 **状态:** 🔴 待排查
 
+### BUG-009: 心跳超时时间过长（实际 55 秒，非预期 15 秒）
+
+**严重性:** 中 — Agent 断连后需 55 秒才能被 server 检测到
+
+**问题:** Agent 心跳间隔 15 秒，但 server 端超时公式为 `sleep_interval × 3 + jitter_extra + grace`：
+- `15 × 3 = 45s`（3 倍间隔）
+- `+ 10s`（HEARTBEAT_GRACE_MS）
+- `= 55 秒` 总超时
+
+即 agent 连续丢失 ~3.67 次心跳才被判定离线。期间 server 不知道 agent 已死。
+
+**关键常量（`connection.rs`）:**
+```rust
+const UNREGISTERED_SESSION_TIMEOUT_MS: u64 = 10_000;  // 未注册 10s
+const HEARTBEAT_GRACE_MS: u64 = 10_000;                // 宽限 10s
+const MIN_HEARTBEAT_TIMEOUT_MS: u64 = 5_000;           // 最小 5s
+```
+
+**超时公式（`agent_state.rs:186-203`）:**
+```
+timeout = sleep_interval × 1000 × 3 + sleep_interval × 1000 × jitter/100 + heartbeat_grace_ms
+```
+
+**Sweep 频率:** watchdog 每 1 秒触发一次 `SweepHeartbeats`，检测本身不是瓶颈。
+
+**影响:**
+- Agent 崩溃/断网后，server 需 55 秒才清理 session
+- 期间任务会 dispatch 给死 agent（等到下次心跳才发现）
+- 用户体感"心跳很慢"
+
+**可能方案:**
+- 降低倍数（3→2）或去掉 grace
+- 改为可配置（从 config.toml 读取）
+- 或保持当前设计但在 UI 上展示实际超时时间，避免误解
+
+**状态:** 🔴 待讨论
+
 ---
 
 ## ✅ FIXED
