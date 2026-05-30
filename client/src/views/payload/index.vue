@@ -242,6 +242,7 @@ import {
   deleteAgentBuild,
 } from '@/api/agentBuild';
 import { fetchListeners, ListenerRecord } from '@/api/listener';
+import { getAuthSettings } from '@/api/settings';
 import { useConnectionStore } from '@/store/connection';
 import { useEventStore } from '@/store/events';
 import { apiFetchBlob } from '@/api/request';
@@ -283,14 +284,14 @@ const buildForm = ref({
 watch(() => buildForm.value.listener_id, (newListenerId) => {
   if (!newListenerId) return;
   const selected = listeners.value.find(l => l.listener_id === newListenerId);
-  if (selected?.config?.agent_token) {
-    buildForm.value.agent_token = selected.config.agent_token as string;
-  }
+  const listenerToken = selected?.config?.agent_token as string | undefined;
+  buildForm.value.agent_token = listenerToken || globalAgentToken.value;
 });
 
 // Listeners for the form dropdown
 const listeners = ref<ListenerRecord[]>([]);
 const listenersLoading = ref(false);
+const globalAgentToken = ref('');
 const eventStore = useEventStore();
 
 // Log drawer state
@@ -398,6 +399,7 @@ let unsubscribe: (() => void) | null = null;
 onMounted(() => {
   loadBuilds();
   loadListeners();
+  getAuthSettings().then(s => { globalAgentToken.value = s.agent_token; }).catch(() => {});
   
   unsubscribe = eventStore.subscribe((event) => {
     if (event.type === 'agent_build_created' || event.type === 'agent_build_completed' || event.type === 'agent_build_deleted') {
