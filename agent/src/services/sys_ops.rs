@@ -116,6 +116,11 @@ fn handle_screenshot(task_id: &str, sender: &Sender<AgentMessage>) {
     }
 }
 
+/// Maximum screenshot dimension (width or height). Larger screens are
+/// downscaled to keep the resulting PNG under ~1 MB after base64 encoding.
+#[cfg(windows)]
+const SCREENSHOT_MAX_DIM: i32 = 1280;
+
 #[cfg(windows)]
 unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
     use windows_sys::Win32::Graphics::Gdi::*;
@@ -185,12 +190,52 @@ unsafe fn capture_screen_to_png() -> Result<Vec<u8>, String> {
         return Err("GetDIBits failed".to_string());
     }
 
+    // Downscale if either dimension exceeds the limit.  Nearest-neighbor
+    // sampling on the BGRA buffer — no extra allocation for intermediate
+    // RGBA conversion on the full-size image.
+    let (out_w, out_h, pixels) = if width > SCREENSHOT_MAX_DIM || height > SCREENSHOT_MAX_DIM {
+        let scale_w = SCREENSHOT_MAX_DIM as f64 / width as f64;
+        let scale_h = SCREENSHOT_MAX_DIM as f64 / height as f64;
+        let scale = scale_w.min(scale_h);
+        let ow = ((width as f64 * scale) as i32).max(1);
+        let oh = ((height as f64 * scale) as i32).max(1);
+        let scaled = downscale_bgra(&pixels, width, height, ow, oh);
+        (ow as u32, oh as u32, scaled)
+    } else {
+        (width as u32, height as u32, pixels)
+    };
+
     // Convert BGRA -> RGBA
-    for chunk in pixels.chunks_exact_mut(4) {
+    let mut rgba = pixels;
+    for chunk in rgba.chunks_exact_mut(4) {
         chunk.swap(0, 2);
     }
 
-    encode_png(width as u32, height as u32, &pixels)
+    encode_png(out_w, out_h, &rgba)
+}
+
+/// Nearest-neighbor downscale on a BGRA pixel buffer.
+#[cfg(windows)]
+fn downscale_bgra(
+    src: &[u8],
+    src_w: i32,
+    src_h: i32,
+    dst_w: i32,
+    dst_h: i32,
+) -> Vec<u8> {
+    let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
+    for dy in 0..dst_h {
+        let sy = (dy as f64 * src_h as f64 / dst_h as f64) as i32;
+        let sy = sy.min(src_h - 1);
+        for dx in 0..dst_w {
+            let sx = (dx as f64 * src_w as f64 / dst_w as f64) as i32;
+            let sx = sx.min(src_w - 1);
+            let src_off = ((sy * src_w + sx) * 4) as usize;
+            let dst_off = ((dy * dst_w + dx) * 4) as usize;
+            dst[dst_off..dst_off + 4].copy_from_slice(&src[src_off..src_off + 4]);
+        }
+    }
+    dst
 }
 
 #[cfg(windows)]
@@ -201,6 +246,7 @@ fn encode_png(width: u32, height: u32, rgba_data: &[u8]) -> Result<Vec<u8>, Stri
         let mut encoder = png::Encoder::new(writer, width, height);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(png::Compression::Fastest);
         let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
         writer.write_image_data(rgba_data).map_err(|e| e.to_string())?;
     }

@@ -8,6 +8,7 @@ use crate::kernel::Plugin;
 use crate::protocol::{ServerCommand, ServerHello};
 use std::io::{Read, Write};
 use std::net::TcpStream;
+use std::sync::mpsc;
 use std::time::Duration;
 
 macro_rules! nlog { ($($arg:tt)*) => {{}} }
@@ -26,11 +27,13 @@ type InnerStream = StreamOwned<ClientConnection, TcpStream>;
 
 pub struct NetworkService {
     stream: Option<InnerStream>,
+    write_tx: Option<mpsc::Sender<Vec<u8>>>,
+    write_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl NetworkService {
     pub fn new() -> Self {
-        Self { stream: None }
+        Self { stream: None, write_tx: None, write_handle: None }
     }
 
     fn is_read_timeout_kind(kind: std::io::ErrorKind) -> bool {
@@ -44,9 +47,20 @@ impl NetworkService {
         match TcpStream::connect(addr) {
             Ok(s) => {
                 s.set_read_timeout(Some(Duration::from_secs(30))).ok();
-                s.set_write_timeout(Some(Duration::from_secs(30))).ok();
                 let _ = s.set_nodelay(true);
                 nlog!("NET connect OK to {}, nodelay=true", addr);
+                // Clone the stream: main loop reads from one handle,
+                // dedicated write thread writes to the other.
+                let write_stream = match s.try_clone() {
+                    Ok(ws) => ws,
+                    Err(_) => return false,
+                };
+                let (tx, rx) = mpsc::channel::<Vec<u8>>();
+                let handle = std::thread::spawn(move || {
+                    write_thread(write_stream, rx);
+                });
+                self.write_tx = Some(tx);
+                self.write_handle = Some(handle);
                 self.stream = Some(s);
                 true
             }
@@ -64,7 +78,6 @@ impl NetworkService {
         let tcp = match TcpStream::connect(addr) {
             Ok(s) => {
                 s.set_read_timeout(Some(Duration::from_secs(30))).ok();
-                s.set_write_timeout(Some(Duration::from_secs(30))).ok();
                 s
             }
             Err(_) => return false,
@@ -87,7 +100,12 @@ impl NetworkService {
             }
         }
 
+        // TLS streams don't support try_clone, so for TLS we fall back
+        // to direct writes (same as before). The write-thread path is
+        // only used for plain TCP.
         self.stream = Some(stream);
+        self.write_tx = None;
+        self.write_handle = None;
         true
     }
 
@@ -108,6 +126,15 @@ impl NetworkService {
     pub fn send(&mut self, msg: &impl serde::Serialize) -> Result<(), ()> {
         let json = serde_json::to_string(msg).map_err(|_| ())?;
         nlog!("NET SEND: {} bytes: {}", json.len(), &json[..json.len().min(200)]);
+        // Non-TLS path: push to write thread channel (non-blocking)
+        if let Some(tx) = &self.write_tx {
+            let mut line = json.into_bytes();
+            line.push(b'\n');
+            return tx.send(line).map_err(|_| {
+                nlog!("NET SEND ERR: write channel closed");
+            });
+        }
+        // TLS fallback (or no write thread): direct write
         let stream = self.stream.as_mut().ok_or(())?;
         let result = writeln!(stream, "{}", json);
         match &result {
@@ -340,6 +367,22 @@ fn build_tls_client_config() -> ClientConfig {
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(AcceptAnyCert))
         .with_no_client_auth()
+}
+
+/// Dedicated write thread: consumes serialized messages from a channel
+/// and writes them to the TCP stream.  Runs until the channel is closed
+/// (i.e. the `NetworkService` is dropped or the connection is reset).
+///
+/// This decouples the main loop from slow TCP writes — a multi-MB
+/// screenshot result no longer blocks heartbeat sending.
+#[cfg(not(feature = "tls"))]
+fn write_thread(mut stream: TcpStream, rx: mpsc::Receiver<Vec<u8>>) {
+    stream.set_write_timeout(Some(Duration::from_secs(60))).ok();
+    while let Ok(data) = rx.recv() {
+        if stream.write_all(&data).is_err() {
+            break;
+        }
+    }
 }
 
 impl Plugin for NetworkService {
