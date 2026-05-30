@@ -238,11 +238,12 @@ unsafe fn capture_screen_to_jpeg() -> Result<Vec<u8>, String> {
     };
 
     // ── JPEG encode (quality 70 — good clarity at ~10x smaller than PNG) ──
+    // JPEG does not support alpha — convert to Rgb8 first
     let mut jpg = Vec::new();
-    let rgba = img.to_rgba8();
+    let rgb = img.to_rgb8();
     let mut encoder = JpegEncoder::new_with_quality(&mut jpg, 70);
     encoder
-        .encode(&rgba, rgba.width(), rgba.height(), image::ExtendedColorType::Rgba8)
+        .encode(rgb.as_raw(), rgb.width(), rgb.height(), image::ExtendedColorType::Rgb8)
         .map_err(|e| format!("JPEG encode failed: {e}"))?;
 
     Ok(jpg)
