@@ -29,11 +29,8 @@ pub(super) async fn execute_command_session(
         Ok(command) => {
             console::command_session_execute(&command_session_id, &command_id, &command.line);
             effects.publish(&WebEvent::CommandUpdated { command });
-            if let Err(error) =
-                dispatch_next_command_if_idle_locked(&mut state, effects, &command_session_id)
-            {
-                state.fail_pending_command_execute(&command_id, &error.to_string());
-            }
+            // Dispatch deferred to heartbeat: dispatch_pending_commands_for_agent()
+            // in registration.rs handles queued commands on the next pulse.
         }
         Err(error) => {
             state.fail_pending_command_execute(&command_id, &error.to_string());
@@ -56,14 +53,9 @@ pub(super) async fn queue_command_session(
             effects.publish(&WebEvent::CommandUpdated {
                 command: command.clone(),
             });
-            match dispatch_next_command_if_idle_locked(&mut state, effects, &command_session_id) {
-                Ok(_) => {
-                    let _ = respond_to.send(Ok(command));
-                }
-                Err(error) => {
-                    let _ = respond_to.send(Err(error));
-                }
-            }
+            // Dispatch deferred to heartbeat: dispatch_pending_commands_for_agent()
+            // in registration.rs handles queued commands on the next pulse.
+            let _ = respond_to.send(Ok(command));
         }
         Err(error) => {
             let _ = respond_to.send(Err(error));
