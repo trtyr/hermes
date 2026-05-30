@@ -369,6 +369,36 @@ pub fn proxy_session_started(proxy_id: &str, agent_id: &str, bind_addr: &str) {
     );
 }
 
+pub fn proxy_client_connect(proxy_id: &str, peer_addr: &str, target: &str) {
+    eprintln!(
+        "[{}] [proxy] {} client={} → {}",
+        timestamp(),
+        proxy_id,
+        peer_addr,
+        target,
+    );
+}
+
+pub fn proxy_stream_open(proxy_id: &str, stream_id: &str, target: &str) {
+    eprintln!(
+        "[{}] [proxy] {} stream={} connected to {}",
+        timestamp(),
+        proxy_id,
+        stream_id,
+        target,
+    );
+}
+
+pub fn proxy_stream_open_failed(proxy_id: &str, target: &str, reason: &str) {
+    eprintln!(
+        "[{}] [proxy] ERROR {} stream to {} failed: {}",
+        timestamp(),
+        proxy_id,
+        target,
+        reason,
+    );
+}
+
 pub fn proxy_session_deleted(proxy_id: &str, agent_id: &str) {
     eprintln!(
         "[{}] [proxy] {} deleted: agent={}",

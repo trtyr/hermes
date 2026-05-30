@@ -10,6 +10,7 @@ use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
 use super::KernelHandle;
+use crate::console;
 use crate::kernel::message::ProxyKernelMessage;
 use crate::protocol::ProxySessionSnapshot;
 
@@ -43,6 +44,7 @@ impl ProxyFacade {
         let proxy_id = format!("proxy-{}", PROXY_SEQ.fetch_add(1, Ordering::Relaxed));
         let listener = TcpListener::bind("0.0.0.0:0").await?;
         let bind_addr = listener.local_addr()?.to_string();
+        console::proxy_session_started(&proxy_id, &agent_id, &bind_addr);
 
         let (tx, rx) = oneshot::channel();
         self.kernel
@@ -60,12 +62,13 @@ impl ProxyFacade {
         let clients = Arc::new(Mutex::new(Vec::<JoinHandle<()>>::new()));
         let clients_for_loop = Arc::clone(&clients);
         let accept_task = tokio::spawn(async move {
-            while let Ok((stream, _)) = listener.accept().await {
+            while let Ok((stream, peer_addr)) = listener.accept().await {
                 let kernel = kernel.clone();
                 let proxy_id = proxy_id_for_task.clone();
                 let clients = Arc::clone(&clients_for_loop);
+                let peer = peer_addr.to_string();
                 let handle = tokio::spawn(async move {
-                    let _ = handle_socks5_client(kernel, proxy_id, stream).await;
+                    let _ = handle_socks5_client(kernel, proxy_id, stream, &peer).await;
                 });
 
                 let mut client_tasks = clients.lock().unwrap_or_else(|error| error.into_inner());
@@ -132,6 +135,7 @@ async fn handle_socks5_client(
     kernel: KernelHandle,
     proxy_id: String,
     mut stream: TcpStream,
+    peer_addr: &str,
 ) -> anyhow::Result<()> {
     let mut head = [0u8; 2];
     stream.read_exact(&mut head).await?;
@@ -181,6 +185,8 @@ async fn handle_socks5_client(
     let mut port_buf = [0u8; 2];
     stream.read_exact(&mut port_buf).await?;
     let port = u16::from_be_bytes(port_buf);
+    let target = format!("{}:{}", host, port);
+    console::proxy_client_connect(&proxy_id, peer_addr, &target);
 
     let stream_id = format!("pstream-{}", STREAM_SEQ.fetch_add(1, Ordering::Relaxed));
     let (client_tx, mut client_rx) = mpsc::unbounded_channel::<Option<Vec<u8>>>();
@@ -198,8 +204,11 @@ async fn handle_socks5_client(
         .map_err(anyhow::Error::new)?;
 
     match timeout(PROXY_STREAM_OPEN_TIMEOUT, rx).await {
-        Ok(Ok(Ok(()))) => {}
+        Ok(Ok(Ok(()))) => {
+            console::proxy_stream_open(&proxy_id, &stream_id, &target);
+        }
         Ok(Ok(Err(_))) | Ok(Err(_)) | Err(_) => {
+            console::proxy_stream_open_failed(&proxy_id, &target, "stream open failed or timed out");
             stream
                 .write_all(&[0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
                 .await?;
