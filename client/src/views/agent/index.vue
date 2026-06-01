@@ -117,7 +117,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { message, Modal } from 'ant-design-vue';
+import { Modal } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { ReloadOutlined, WindowsOutlined, SafetyCertificateOutlined, DeleteOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons-vue';
 import { fetchAgents, disconnectAgent, deleteAgent, disableAgent, enableAgent } from '@/api/agent';
 import type { Agent } from '@/api/agent';

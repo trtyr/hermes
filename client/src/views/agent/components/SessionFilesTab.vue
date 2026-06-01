@@ -117,7 +117,7 @@
 
 <script setup lang="ts">
 import { ref, onBeforeUnmount } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import {
   FolderOpenOutlined, FolderOutlined, FileOutlined,
   DownloadOutlined, ExclamationCircleOutlined, UploadOutlined,

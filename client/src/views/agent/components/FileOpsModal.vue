@@ -56,7 +56,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { uploadFile, downloadFile } from '@/api/agent';
 import type { Agent } from '@/api/agent';
 import { useEventStore } from '@/store/events';

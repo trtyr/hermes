@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
 import type { FormInstance } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { spawnListener, SpawnListenerRequest } from '@/api/listener';
 
 const props = defineProps<{

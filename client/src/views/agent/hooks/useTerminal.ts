@@ -1,5 +1,5 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { openTerminalSession, submitTerminalCommand, closeTerminalSession } from '@/api/terminal';
 import { useTerminalCore } from './useTerminalCore';
 import { useTerminalHistory } from './useTerminalHistory';

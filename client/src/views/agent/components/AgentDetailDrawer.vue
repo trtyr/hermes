@@ -106,7 +106,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, nextTick } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { DownOutlined, PlusOutlined } from '@ant-design/icons-vue';
 import { fetchAgentDetail, updateBeaconConfig, updateAgentTags } from '@/api/agent';
 import type { Agent } from '@/api/agent';

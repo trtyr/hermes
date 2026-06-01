@@ -113,7 +113,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { CameraOutlined, ReloadOutlined, EyeOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue';
 import { takeScreenshot, listTasks } from '@/api/agent';
 import { useEventStore } from '@/store/events';

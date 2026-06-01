@@ -137,7 +137,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { message, Modal } from 'ant-design-vue';
+import { Modal } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import {
   LeftOutlined, WindowsOutlined,
   SafetyCertificateOutlined, SettingOutlined,

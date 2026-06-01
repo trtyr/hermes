@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import type { Terminal } from '@xterm/xterm';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { buildTerminalWsUrl } from '@/api/terminal';
 
 export function useTerminalSocket(

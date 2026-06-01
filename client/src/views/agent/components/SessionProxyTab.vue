@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { ApiOutlined, CopyOutlined, PlusOutlined } from '@ant-design/icons-vue';
 import { listProxies, startProxy as apiStartProxy, deleteProxy as apiDeleteProxy } from '@/api/proxy';
 import type { ProxySessionRecord } from '@/api/proxy';

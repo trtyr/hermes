@@ -96,7 +96,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
-import { message } from 'ant-design-vue';
+import { message } from '@/utils/message';
 import { DeleteOutlined, EditOutlined, InfoCircleOutlined } from '@ant-design/icons-vue';
 import { useConnectionStore } from '@/store/connection';
 import type { BackendProfile } from '@/store/connection';
