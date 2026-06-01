@@ -1,6 +1,6 @@
 ---
-timestamp: 2026-05-28T10:25:35Z
-commit: 31ffbf4
+timestamp: 2026-06-01T03:18:25Z
+commit: bee5081
 ---
 
 # Hermes Server — Agent Working Guide
@@ -13,12 +13,26 @@ Hermes Server is the control plane in a three-part C2 architecture:
 - **web_client**: browser UI, calls HTTP API + subscribes to WebSocket events
 - **agent_client**: deployed on target hosts, connects via listener gateways
 
-The API contract is the stable integration surface between the three parts.
+Stack: Rust 2024, tokio, axum 0.8, rusqlite (bundled). 163 `.rs` files, ~21k lines.
+
+## STRUCTURE
+
+```
+src/
+├── main.rs              # Entry: loads config → new_kernel() → try_join!(gateway, http_api)
+├── lib.rs               # Re-exports 5 modules for integration tests
+├── protocol.rs          # All DTOs, events, message types (548 lines, pure data, no behavior)
+├── console.rs           # Custom logging (eprintln!, no tracing/log crate)
+├── api/                 # HTTP route handlers (54 routes, 11 sub-APIs)
+├── agent/               # Agent gateway + listener adapters (TCP, HTTPS)
+└── kernel/              # Microkernel: service, runtime, state, storage
+scripts/e2e/             # Python E2E test suites (16 suites)
+docs/server-architecture/ # Per-domain architecture docs (11 files)
+```
 
 ## Architecture: Microkernel Control Plane
 
-This project follows a strict microkernel design. The dependency chain is:
-
+Dependency chain:
 ```
 external input → facade → KernelMessage → runtime dispatcher → state mutation → effects → storage / event bus
 ```
@@ -59,6 +73,47 @@ kernel/runtime → kernel/state + runtime effects → storage + event bus
 ### Architecture Docs
 
 Detailed per-domain docs under `docs/server-architecture/`. Read `docs/server-architecture/server-architecture.md` first, then the specific domain doc for whatever you're changing.
+
+## CODE MAP
+
+**Hot symbols (most connected):**
+
+| Symbol | Kind | File | Degree | Role |
+|---|---|---|---|---|
+| `KernelState` | struct | `src/kernel/state/types.rs` | 99 | Central in-memory state, 15 HashMap fields |
+| `KernelHandle` | struct | `src/kernel/service/handle/types.rs` | 85 | Facade entry point, all kernel access |
+| `RuntimePorts` | struct | `src/kernel/runtime/effects.rs` | 76 | Side-effect abstraction (persistence + events) |
+| `AppState` | struct | `src/api/common/app_state.rs` | 67 | Axum state wrapping KernelHandle |
+| `authorize_api` | fn | `src/api/common/auth.rs` | 57 | Auth middleware (session/token/bearer) |
+| `build_router` | fn | `src/api/mod.rs` | 52 | Assembles 54 routes across 11 sub-APIs |
+| `ListenerRecord` | struct | `src/protocol.rs` | 51 | Listener data contract |
+| `WebEvent` | enum | `src/protocol.rs` | 48 | WebSocket event types |
+
+**Feature clusters (by connectivity):**
+
+| Cluster | Files | Symbols | Description |
+|---|---|---|---|
+| `kernel/service` | 30 | 208 | Domain facades — the facade layer |
+| `kernel/runtime` | 20 | 102 | Message dispatch + domain handlers |
+| `kernel/state` | 8 | 227 | In-memory state machines |
+| `protocol` | 1 | 248 | All shared data types |
+| `api/common` | 8 | 242 | Auth, AppState, paging, responses |
+| `kernel/storage` | 9 | 94 | SQLite persistence |
+
+**Startup call graph:**
+```
+main() → Config::get_config() → new_kernel() → tokio::try_join!(
+  run_agent_gateway() → run_listener_manager() → reconcile loop → driver.spawn() → accept loop,
+  run_http_api() → axum::serve(build_router()) → handlers → KernelHandle → KernelMessage → kernel_loop
+)
+```
+
+## HEALTH
+
+- Health score: **60/100**
+- Cycles: 5 (all within `kernel/runtime` ↔ `kernel/runtime/agent_lifecycle`)
+- God modules: `kernel/state` (227 symbols), `kernel/storage` (94 symbols), `kernel/runtime` (46 symbols), `api/agents` (21 symbols)
+- Zero `unsafe` blocks, zero `.unwrap()` in production, zero TODO markers
 
 ## Commands
 
@@ -131,7 +186,7 @@ Three auth paths coexist:
 
 ## NOTES
 
-- `KernelState` is held by the kernel loop, accessed via `Arc<Mutex<KernelState>>` through facades.
+- `KernelState` is held by the kernel loop, accessed via `Arc<RwLock<KernelState>>` through facades.
 - `RuntimePorts` abstracts all I/O: storage writes, event bus publish, agent message sending.
 - E2E tests with names like `database_consistency`, `concurrent_stress`, `fault_matrix` exist — consult `scripts/e2e/` before writing new tests.
 - Temp SQLite databases are created per test in `kernel/runtime/tests.rs`.

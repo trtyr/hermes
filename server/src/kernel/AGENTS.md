@@ -1,6 +1,6 @@
 ---
-timestamp: 2026-05-28T10:25:35Z
-commit: 31ffbf4
+timestamp: 2026-06-01T03:18:25Z
+commit: bee5081
 ---
 
 # Kernel — Microkernel Control Plane
@@ -101,7 +101,7 @@ kernel/runtime → kernel/state + effects → storage + event bus
 
 - **Facade pattern**: Each domain facade in `service/` wraps a `KernelHandle` sender. New features add facade methods + message variants + runtime handlers.
 - **Message ownership**: `KernelMessage` carries `KernelHandle` as `reply_to` field; runtime handlers use it to send back responses or effects.
-- **State singletons**: `KernelState` is held by the kernel loop, accessed via `Arc<Mutex<KernelState>>` in facades, passed to runtime handlers.
+- **State singletons**: `KernelState` is held by the kernel loop, accessed via `Arc<RwLock<KernelState>>` in facades, passed to runtime handlers.
 
 ## NOTES
 
