@@ -75,10 +75,10 @@ pub(crate) async fn get_terminal_session(
     match state.kernel.command_sessions().snapshot(&session_id).await {
         Some(session) => (
             StatusCode::OK,
-            Json(WebTerminalResponse {
-                success: true,
-                message: "ok".to_string(),
-                data: WebTerminalSessionData {
+                Json(WebTerminalResponse {
+                    success: true,
+                    message: "ok".to_string(),
+                    data: WebTerminalSessionData {
                     session_id: session.command_session_id,
                     cwd: session.cwd,
                     status: simple_session_status(&session.status),
